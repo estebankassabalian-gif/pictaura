@@ -35,12 +35,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma (migrations + client + deps)
+# Prisma (migrations + client + all transitive deps)
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/effect ./node_modules/effect
+COPY --from=builder /app/node_modules ./node_modules
 
 # Entrypoint script: migrate then start
 RUN printf '#!/bin/sh\nset -e\necho "Running Prisma migrations..."\nnode node_modules/prisma/build/index.js migrate deploy || echo "Migration warning (may already be applied)"\necho "Starting server..."\nexec node server.js\n' > /app/start.sh && chmod +x /app/start.sh
