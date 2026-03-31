@@ -66,9 +66,13 @@ const _parsed = envSchema.safeParse(process.env);
 if (!_parsed.success) {
   console.error("❌ Variables d'environnement invalides ou manquantes:");
   console.error(_parsed.error.flatten().fieldErrors);
-  // Hard-fail only at runtime (not during next build / static generation)
-  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
-  if (process.env.NODE_ENV === "production" && !isBuildPhase) {
+  // Never throw at build time — env vars are injected at runtime by the container.
+  // Only throw when actually serving requests (not during next build / page collection).
+  const isRuntime =
+    typeof globalThis !== "undefined" &&
+    process.env.NODE_ENV === "production" &&
+    !process.argv.some((a) => a.includes("next") && process.argv.includes("build"));
+  if (isRuntime && !process.env.NEXT_PHASE) {
     throw new Error("Invalid environment variables");
   }
 }
