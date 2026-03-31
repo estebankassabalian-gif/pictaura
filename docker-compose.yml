@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pictaura-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pictaura
+      POSTGRES_PASSWORD: pictaura
+      POSTGRES_DB: pictaura
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pictaura"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pictaura-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

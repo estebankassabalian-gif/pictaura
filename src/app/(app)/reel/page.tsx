@@ -1,0 +1,239 @@
+"use client";
+
+import { useState, useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { useSession } from "next-auth/react";
+import { Upload, CheckCircle2, Film, Loader2, Download, Info } from "lucide-react";
+
+const STYLES = [
+  { id: "zoom-in", label: "Zoom avant", desc: "Classique — focalise sur le sujet" },
+  { id: "zoom-out", label: "Zoom arriere", desc: "Revele l'ensemble progressivement" },
+  { id: "pan-right", label: "Pan droite", desc: "Panoramique cinematique" },
+  { id: "pan-left", label: "Pan gauche", desc: "Panoramique inverse" },
+  { id: "diagonal", label: "Diagonal", desc: "Zoom + pan — le plus dynamique" },
+];
+
+const FILTERS = [
+  { id: "cinematic", label: "Cinematic", desc: "Orange & Teal — Hollywood" },
+  { id: "warm", label: "Warm", desc: "Golden hour" },
+  { id: "none", label: "Aucun", desc: "Photo originale" },
+];
+
+const REEL_CREDITS_COST = 3;
+
+export default function ReelPage() {
+  const { data: session } = useSession();
+  const [file, setFile] = useState<File | null>(null);
+  const [style, setStyle] = useState("zoom-in");
+  const [filter, setFilter] = useState("cinematic");
+  const [duration, setDuration] = useState(4);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{ reelUrl: string; sizeMb: number; duration: number } | null>(null);
+
+  const credits = session?.user?.credits ?? 0;
+  const isAdmin = session?.user?.role === "ADMIN";
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles[0]) {
+      setFile(acceptedFiles[0]);
+      setResult(null);
+      setError("");
+    }
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { "image/jpeg": [".jpg", ".jpeg"], "image/png": [".png"], "image/webp": [".webp"] },
+    maxFiles: 1,
+    maxSize: 20 * 1024 * 1024,
+  });
+
+  async function handleGenerate() {
+    if (!file) { setError("Ajoutez une photo"); return; }
+    if (!isAdmin && credits < REEL_CREDITS_COST) {
+      setError(`${REEL_CREDITS_COST} credits requis (vous en avez ${credits})`);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("photo", file);
+      formData.append("style", style);
+      formData.append("filter", filter);
+      formData.append("duration", String(duration));
+
+      const res = await fetch("/api/reel", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Erreur lors de la generation");
+        return;
+      }
+
+      setResult(data);
+    } catch {
+      setError("Erreur reseau. Reessayez.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <h1 className="text-2xl font-bold text-white mb-1">Reel Instagram — Effet Ken Burns</h1>
+      <p className="text-[var(--muted)] text-sm mb-6">
+        Transformez une photo en video MP4 animee 9:16 · {REEL_CREDITS_COST} credits ·{" "}
+        {isAdmin ? "Admin — credits illimites" : `${credits} credit(s) disponibles`}
+      </p>
+
+      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 mb-6 text-sm text-blue-300 flex items-start gap-2.5">
+        <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <div>
+          <strong>Pourquoi un Reel ?</strong> Les Reels ont 3-5x plus de reach que les photos statiques
+          sur Instagram (algo 2025). Le mouvement arrete le scroll en &lt;200ms.
+        </div>
+      </div>
+
+      {/* Upload */}
+      <div
+        {...getRootProps()}
+        className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors mb-6 ${
+          isDragActive
+            ? "border-violet-400 bg-violet-500/10"
+            : file
+            ? "border-emerald-500/30 bg-emerald-500/10"
+            : "border-white/10 hover:border-violet-400 hover:bg-white/[0.02]"
+        }`}
+      >
+        <input {...getInputProps()} />
+        {file ? (
+          <div>
+            <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+            <p className="font-medium text-white">{file.name}</p>
+            <p className="text-xs text-[var(--muted)] mt-1">{(file.size / 1024 / 1024).toFixed(1)} Mo · Cliquez pour changer</p>
+          </div>
+        ) : (
+          <div>
+            <Upload className="w-8 h-8 text-[var(--muted)] mx-auto mb-3" />
+            <p className="text-zinc-300 font-medium">
+              {isDragActive ? "Deposez la photo ici..." : "Glissez ou cliquez pour selectionner une photo"}
+            </p>
+            <p className="text-xs text-[var(--muted)] mt-1">JPEG, PNG, WEBP · Max 20 Mo</p>
+          </div>
+        )}
+      </div>
+
+      {/* Style */}
+      <div className="mb-5">
+        <h2 className="text-sm font-semibold text-zinc-300 mb-2">Style de mouvement</h2>
+        <div className="space-y-2">
+          {STYLES.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setStyle(s.id)}
+              className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                style === s.id
+                  ? "border-violet-500 bg-violet-500/10"
+                  : "border-white/8 hover:border-white/15"
+              }`}
+            >
+              <span className="font-medium text-sm text-white">{s.label}</span>
+              <span className="text-xs text-[var(--muted)] ml-2">— {s.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter */}
+      <div className="mb-5">
+        <h2 className="text-sm font-semibold text-zinc-300 mb-2">Filtre couleur</h2>
+        <div className="flex gap-2">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`flex-1 py-2 rounded-lg border text-sm transition-all ${
+                filter === f.id
+                  ? "border-violet-500 bg-violet-500/10 text-violet-300 font-medium"
+                  : "border-white/8 text-zinc-400 hover:border-white/15"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Duration */}
+      <div className="mb-6">
+        <h2 className="text-sm font-semibold text-zinc-300 mb-2">
+          Duree : <span className="text-violet-400">{duration}s</span>
+        </h2>
+        <input
+          type="range"
+          min={3}
+          max={8}
+          value={duration}
+          onChange={(e) => setDuration(Number(e.target.value))}
+          className="w-full accent-violet-600"
+        />
+        <div className="flex justify-between text-xs text-[var(--muted)] mt-1">
+          <span>3s (loop court = algo boost)</span>
+          <span>8s</span>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3 mb-4">
+          {error}
+        </div>
+      )}
+
+      <button
+        onClick={handleGenerate}
+        disabled={loading || !file}
+        className="w-full bg-gradient-to-r from-violet-600 to-blue-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+      >
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" /> Generation en cours (20-40s)...
+          </span>
+        ) : (
+          `Generer le Reel — ${REEL_CREDITS_COST} credits`
+        )}
+      </button>
+
+      {/* Result */}
+      {result && (
+        <div className="bg-[var(--surface)] border border-white/8 rounded-2xl p-5">
+          <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
+            <Film className="w-5 h-5 text-violet-400" /> Reel genere
+          </h2>
+          <video
+            src={result.reelUrl}
+            controls
+            autoPlay
+            loop
+            muted
+            className="w-full rounded-xl mb-4 max-h-96 object-contain bg-black"
+          />
+          <div className="flex items-center justify-between text-sm text-[var(--muted)] mb-4">
+            <span>{result.duration}s · {result.sizeMb} Mo · 1080x1920</span>
+          </div>
+          <a
+            href={result.reelUrl}
+            download="reel-instagram.mp4"
+            className="flex items-center justify-center gap-2 w-full text-center bg-gradient-to-r from-violet-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all"
+          >
+            <Download className="w-4 h-4" /> Telecharger le MP4
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}

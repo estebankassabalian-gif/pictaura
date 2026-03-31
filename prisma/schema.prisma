@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Preset {
+  AIRBNB       // conservé pour compatibilité données existantes
+  IMMOBILIER   // remplace AIRBNB — cible agences immobilières
+  INSTAGRAM
+  VINTED
+  SHOPIFY
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  AWAITING_VALIDATION // Gemini a retourné un résultat, en attente validation user (avant déduction crédit)
+  REJECTED            // User a rejeté le résultat — aucun crédit débité
+}
+
+enum TransactionType {
+  PURCHASE    // Achat Stripe
+  FREE_SIGNUP // 5 crédits offerts à l'inscription
+  ADMIN_GRANT // Crédit manuel par l'admin
+  USAGE       // Photo traitée (négatif)
+  REFUND      // Remboursement si traitement échoué
+  REFERRAL    // Crédit de parrainage
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  emailVerified    DateTime?
+  name             String?
+  image            String?
+  passwordHash     String?   // Null pour les utilisateurs OAuth uniquement
+  role             Role      @default(USER)
+  credits          Int       @default(0)
+  isActive         Boolean   @default(true)
+  isSubscribed     Boolean   @default(false) // true = watermark retiré + features premium
+  stripeCustomerId String?   @unique
+  referredById     String?
+  referredBy       User?     @relation("Referrals", fields: [referredById], references: [id])
+  referrals        User[]    @relation("Referrals")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  jobs             ProcessingJob[]
+  transactions     CreditTransaction[]
+  inpaintingJobs   InpaintingJob[]
+  referralsMade    Referral[]          @relation("ReferrerReferrals")
+  referralsReceived Referral[]         @relation("ReferredReferrals")
+
+  @@map("users")
+}
+
+// ─── NextAuth required tables ────────────────────────────────
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Business models ────────────────────────────────────────
+
+model ProcessingJob {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  preset      Preset
+  subOption   String?   // Option spécifique au preset (ex: filtre Instagram, format Stories)
+  status      JobStatus @default(PENDING)
+  photoCount  Int
+  creditsCost Int       // Crédits déduits au moment de la soumission
+  errorMsg    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  photos ProcessedPhoto[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("processing_jobs")
+}
+
+model ProcessedPhoto {
+  id                 String        @id @default(uuid())
+  jobId              String
+  job                ProcessingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  originalKey        String        // Clé R2 permanente du fichier original
+  processedKey       String?       // Clé R2 permanente du fichier traité
+  fileName           String        // Nom original du fichier
+  fileSizeOriginal   Int?          // Octets
+  fileSizeProcessed  Int?
+  status             JobStatus     @default(PENDING)
+  seoAltText         String?       // Généré par GPT-4o-mini
+  seoFileName        String?       // Nom de fichier SEO optimisé
+  seoDescription     String?       @db.Text // Description courte pour Shopify/Immo
+  seoKeywords        String?       @db.Text // JSON array ["mot1","mot2",...] — tous users
+  seoMetaTitle       String?                // Meta title 60 chars — tous users
+  seoHashtags        String?       @db.Text // "#tag1 #tag2 ..." — abonnés uniquement
+  seoSchemaJson      String?       @db.Text // JSON-LD schema.org — abonnés uniquement
+  photoScore         Float?        // Score /10 attribué par GPT Vision
+  photoScoreReport   String?       @db.Text // Rapport textuel du score
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  inpaintingJobs InpaintingJob[]
+
+  @@index([jobId])
+  @@map("processed_photos")
+}
+
+model InpaintingJob {
+  id                  String    @id @default(uuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  photoId             String?
+  photo               ProcessedPhoto? @relation(fields: [photoId], references: [id])
+  instruction         String    @db.Text // Instruction en langage naturel de l'user
+  llmPrompt           String?   @db.Text // Prompt sécurisé envoyé à Gemini
+  replicateModelUsed  String?   // Modèle utilisé (Gemini ou Replicate)
+  replicatePredictionId String? // ID de prédiction pour audit
+  resultKey           String?   // Clé R2 du résultat
+  creditsCost         Int       @default(1) // 1 crédit par retouche (débité uniquement à la validation)
+  status              JobStatus @default(PENDING)
+  errorMsg            String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([photoId])
+  @@index([status])
+  @@map("inpainting_jobs")
+}
+
+model CreditTransaction {
+  id                    String          @id @default(uuid())
+  userId                String
+  user                  User            @relation(fields: [userId], references: [id])
+  type                  TransactionType
+  amount                Int             // Positif = ajout, Négatif = déduction
+  balanceAfter          Int             // Snapshot pour piste d'audit
+  description           String?
+  stripePaymentIntentId String?         // Pour l'idempotence des webhooks
+  jobId                 String?         // Pour les transactions USAGE/REFUND
+  createdAt             DateTime        @default(now())
+
+  @@unique([stripePaymentIntentId]) // Garantit l'idempotence Stripe
+  @@index([userId])
+  @@index([createdAt])
+  @@map("credit_transactions")
+}
+
+model CreditPack {
+  id            String  @id @default(uuid())
+  name          String  // "Pack Starter"
+  credits       Int     // 20
+  priceEurCents Int     // 500 (= 5,00€)
+  stripePriceId String  @unique
+  isActive      Boolean @default(true)
+  displayOrder  Int     @default(0)
+
+  @@map("credit_packs")
+}
+
+model Referral {
+  id             String   @id @default(uuid())
+  referrerId     String
+  referrer       User     @relation("ReferrerReferrals", fields: [referrerId], references: [id])
+  referredUserId String   @unique // Un user ne peut être parrainé qu'une fois
+  referredUser   User     @relation("ReferredReferrals", fields: [referredUserId], references: [id])
+  commissionPct  Int      @default(20) // 20%
+  earnedCredits  Int      @default(0)  // Crédits totaux gagnés via ce parrainage
+  createdAt      DateTime @default(now())
+
+  @@index([referrerId])
+  @@map("referrals")
+}
