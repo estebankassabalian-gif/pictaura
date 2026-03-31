@@ -66,8 +66,9 @@ const _parsed = envSchema.safeParse(process.env);
 if (!_parsed.success) {
   console.error("❌ Variables d'environnement invalides ou manquantes:");
   console.error(_parsed.error.flatten().fieldErrors);
-  // In production, hard fail. In dev, warn only.
-  if (process.env.NODE_ENV === "production") {
+  // Hard-fail only at runtime (not during next build / static generation)
+  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+  if (process.env.NODE_ENV === "production" && !isBuildPhase) {
     throw new Error("Invalid environment variables");
   }
 }
