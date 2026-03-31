@@ -1,10 +1,14 @@
 import { Resend } from "resend";
 import { env } from "@/config/env";
 
-const resend = new Resend(env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend() {
+  if (!_resend) _resend = new Resend(env.RESEND_API_KEY);
+  return _resend;
+}
 
-const FROM = env.RESEND_FROM_EMAIL ?? "noreply@pictaura.app";
-const APP_URL = env.NEXT_PUBLIC_APP_URL ?? "https://pictaura.app";
+const FROM = () => env.RESEND_FROM_EMAIL ?? "noreply@pictaura.app";
+const APP_URL = () => env.NEXT_PUBLIC_APP_URL ?? "https://pictaura.app";
 
 /**
  * Envoie un email de notification quand le traitement est terminé.
@@ -35,11 +39,11 @@ export async function sendJobCompletedEmail({
   };
 
   const presetLabel = presetLabels[preset] ?? preset;
-  const resultsUrl = `${APP_URL}/results/${jobId}`;
+  const resultsUrl = `${APP_URL()}/results/${jobId}`;
   const allOk = failedCount === 0;
 
-  await resend.emails.send({
-    from: `Pictaura <${FROM}>`,
+  await getResend().emails.send({
+    from: `Pictaura <${FROM()}>`,
     to,
     subject: allOk
       ? `✅ Vos ${photoCount} photo(s) ${presetLabel} sont prêtes !`
@@ -96,7 +100,7 @@ export async function sendJobCompletedEmail({
     <!-- Footer -->
     <div style="border-top: 1px solid #f3f4f6; padding: 16px 32px; text-align: center;">
       <p style="color: #9ca3af; font-size: 11px; margin: 0;">
-        Pictaura · <a href="${APP_URL}" style="color: #9ca3af;">pictaura.app</a>
+        Pictaura · <a href="${APP_URL()}" style="color: #9ca3af;">pictaura.app</a>
       </p>
     </div>
   </div>
@@ -117,10 +121,10 @@ export async function sendWelcomeEmail({
   userName: string;
 }): Promise<void> {
   const firstName = userName.split(" ")[0];
-  const dashboardUrl = `${APP_URL}/dashboard`;
+  const dashboardUrl = `${APP_URL()}/dashboard`;
 
-  await resend.emails.send({
-    from: `Pictaura <${FROM}>`,
+  await getResend().emails.send({
+    from: `Pictaura <${FROM()}>`,
     to,
     subject: "Bienvenue sur Pictaura — vos 5 crédits vous attendent",
     html: `
@@ -157,7 +161,7 @@ export async function sendWelcomeEmail({
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px;">
         <tr>
           <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <a href="${APP_URL}/immobilier" style="text-decoration: none; color: #e4e4e7; font-size: 14px; font-weight: 500;">
+            <a href="${APP_URL()}/immobilier" style="text-decoration: none; color: #e4e4e7; font-size: 14px; font-weight: 500;">
               → Immobilier &amp; Airbnb
             </a>
             <p style="color: #52525b; font-size: 12px; margin: 2px 0 0;">Optimisation pour annonces et locations courte durée</p>
@@ -165,7 +169,7 @@ export async function sendWelcomeEmail({
         </tr>
         <tr>
           <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <a href="${APP_URL}/vinted" style="text-decoration: none; color: #e4e4e7; font-size: 14px; font-weight: 500;">
+            <a href="${APP_URL()}/vinted" style="text-decoration: none; color: #e4e4e7; font-size: 14px; font-weight: 500;">
               → Vinted &amp; Seconde main
             </a>
             <p style="color: #52525b; font-size: 12px; margin: 2px 0 0;">Photos produits claires et attractives pour marketplace</p>
@@ -173,7 +177,7 @@ export async function sendWelcomeEmail({
         </tr>
         <tr>
           <td style="padding: 10px 0;">
-            <a href="${APP_URL}/shopify" style="text-decoration: none; color: #e4e4e7; font-size: 14px; font-weight: 500;">
+            <a href="${APP_URL()}/shopify" style="text-decoration: none; color: #e4e4e7; font-size: 14px; font-weight: 500;">
               → E-commerce &amp; Shopify
             </a>
             <p style="color: #52525b; font-size: 12px; margin: 2px 0 0;">Visuels produits professionnels pour boutique en ligne</p>
@@ -194,7 +198,7 @@ export async function sendWelcomeEmail({
     <!-- Footer -->
     <div style="border-top: 1px solid rgba(255,255,255,0.05); padding: 16px 32px; text-align: center;">
       <p style="color: #3f3f46; font-size: 11px; margin: 0;">
-        Pictaura · <a href="${APP_URL}" style="color: #3f3f46; text-decoration: none;">pictaura.app</a>
+        Pictaura · <a href="${APP_URL()}" style="color: #3f3f46; text-decoration: none;">pictaura.app</a>
       </p>
     </div>
   </div>

@@ -1,8 +1,13 @@
 import Replicate from "replicate";
 import { env } from "@/config/env";
 
-export const replicate = new Replicate({
-  auth: env.REPLICATE_API_TOKEN,
+let _replicate: Replicate | null = null;
+function getReplicate(): Replicate {
+  if (!_replicate) _replicate = new Replicate({ auth: env.REPLICATE_API_TOKEN });
+  return _replicate;
+}
+export const replicate = new Proxy({} as Replicate, {
+  get(_t, prop) { return (getReplicate() as any)[prop]; },
 });
 
 // ─── Model versions ─────────────────────────────────────────

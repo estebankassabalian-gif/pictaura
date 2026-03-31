@@ -7,19 +7,25 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "@/config/env";
 
-export const r2Client = new S3Client({
-  region: "auto",
-  endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: env.R2_ACCESS_KEY_ID,
-    secretAccessKey: env.R2_SECRET_ACCESS_KEY,
-  },
-  // R2 ne supporte pas les checksums AWS SDK v3
-  requestChecksumCalculation: "WHEN_REQUIRED",
-  responseChecksumValidation: "WHEN_REQUIRED",
-});
+let _r2Client: S3Client | null = null;
+function getR2Client(): S3Client {
+  if (!_r2Client) {
+    _r2Client = new S3Client({
+      region: "auto",
+      endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: env.R2_ACCESS_KEY_ID,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+      },
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
+    });
+  }
+  return _r2Client;
+}
+export { getR2Client as getR2 };
 
-const BUCKET = env.R2_BUCKET_NAME;
+const BUCKET = () => env.R2_BUCKET_NAME;
 const SIGNED_URL_EXPIRY_SECONDS = 3600; // 1 heure
 
 /**
@@ -31,9 +37,9 @@ export async function uploadToR2(
   body: Buffer,
   contentType: string
 ): Promise<string> {
-  await r2Client.send(
+  await getR2Client().send(
     new PutObjectCommand({
-      Bucket: BUCKET,
+      Bucket: BUCKET(),
       Key: key,
       Body: body,
       ContentType: contentType,
@@ -48,8 +54,8 @@ export async function uploadToR2(
  * Toujours régénérer depuis la clé, ne jamais stocker l'URL.
  */
 export async function getSignedDownloadUrl(key: string): Promise<string> {
-  const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
-  return getSignedUrl(r2Client, command, {
+  const command = new GetObjectCommand({ Bucket: BUCKET(), Key: key });
+  return getSignedUrl(getR2Client(), command, {
     expiresIn: SIGNED_URL_EXPIRY_SECONDS,
   });
 }
@@ -58,8 +64,8 @@ export async function getSignedDownloadUrl(key: string): Promise<string> {
  * Supprime un fichier de R2.
  */
 export async function deleteFromR2(key: string): Promise<void> {
-  await r2Client.send(
-    new DeleteObjectCommand({ Bucket: BUCKET, Key: key })
+  await getR2Client().send(
+    new DeleteObjectCommand({ Bucket: BUCKET(), Key: key })
   );
 }
 

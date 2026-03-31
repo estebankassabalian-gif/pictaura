@@ -2,8 +2,13 @@ import OpenAI from "openai";
 import { env } from "@/config/env";
 import { Preset } from "@prisma/client";
 
-export const openai = new OpenAI({
-  apiKey: env.OPENAI_API_KEY,
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) _openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+  return _openai;
+}
+export const openai = new Proxy({} as OpenAI, {
+  get(_t, prop) { return (getOpenAI() as any)[prop]; },
 });
 
 /**

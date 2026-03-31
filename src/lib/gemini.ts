@@ -10,7 +10,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "@/config/env";
 
-const genAI = new GoogleGenerativeAI(env.GOOGLE_AI_KEY ?? "");
+let _genAI: GoogleGenerativeAI | null = null;
+function getGenAI(): GoogleGenerativeAI {
+  if (!_genAI) _genAI = new GoogleGenerativeAI(env.GOOGLE_AI_KEY ?? "");
+  return _genAI;
+}
 
 /**
  * Analyse une photo avec Gemini 2.5 Flash vision.
@@ -20,12 +24,12 @@ export async function analyzePhotoForRetouching(
   imageBase64: string,
   analyzePrompt: string
 ): Promise<{ analysis: string; suggestions: string[] }> {
-  const model = genAI.getGenerativeModel({
+  const model = getGenAI().getGenerativeModel({
     model: "gemini-2.5-flash",
     generationConfig: {
       responseMimeType: "application/json",
       maxOutputTokens: 500,
-    } as Parameters<typeof genAI.getGenerativeModel>[0]["generationConfig"],
+    } as any,
   });
 
   const result = await model.generateContent({
@@ -100,7 +104,7 @@ export async function retouchPhoto(
   const editPrompt = buildEditPrompt(systemPrompt, cleanInstruction);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const model = genAI.getGenerativeModel({
+  const model = getGenAI().getGenerativeModel({
     model: "gemini-3.1-flash-image-preview",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseModalities: ["image"] } as any,
