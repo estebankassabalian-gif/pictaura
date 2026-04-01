@@ -128,6 +128,7 @@ model ProcessingJob {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([userId, status])
   @@map("processing_jobs")
 }
 

@@ -9,24 +9,33 @@ import { ImageIcon, CreditCard, FolderOpen, AlertTriangle, Plus, ArrowRight } fr
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ welcome?: string }>;
+  searchParams: Promise<{ welcome?: string; page?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) return null;
-  const { welcome } = await searchParams;
+  const { welcome, page: pageStr } = await searchParams;
 
-  const recentJobs = await prisma.processingJob.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-    include: {
-      _count: { select: { photos: true } },
-    },
-  });
+  const PAGE_SIZE = 10;
+  const currentPage = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
+  const skip = (currentPage - 1) * PAGE_SIZE;
 
-  const totalPhotos = await prisma.processedPhoto.count({
-    where: { job: { userId: session.user.id }, status: "COMPLETED" },
-  });
+  const [recentJobs, totalJobs, totalPhotos] = await Promise.all([
+    prisma.processingJob.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: PAGE_SIZE,
+      skip,
+      include: {
+        _count: { select: { photos: true } },
+      },
+    }),
+    prisma.processingJob.count({ where: { userId: session.user.id } }),
+    prisma.processedPhoto.count({
+      where: { job: { userId: session.user.id }, status: "COMPLETED" },
+    }),
+  ]);
+
+  const totalPages = Math.ceil(totalJobs / PAGE_SIZE);
 
   const isAdmin = session.user.role === "ADMIN";
 
@@ -76,7 +85,7 @@ export default async function DashboardPage({
       <div className="grid grid-cols-3 gap-6 mb-8">
         <StatCard label="Photos traitees" value={String(totalPhotos)} icon={ImageIcon} />
         <StatCard label="Credits restants" value={isAdmin ? "\u221E" : String(session.user.credits)} icon={CreditCard} />
-        <StatCard label="Jobs total" value={String(recentJobs.length)} icon={FolderOpen} />
+        <StatCard label="Jobs total" value={String(totalJobs)} icon={FolderOpen} />
       </div>
 
       {/* CTA low credits */}
@@ -146,7 +155,7 @@ export default async function DashboardPage({
                     {new Date(job.createdAt).toLocaleDateString("fr-FR")}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {job.status === "COMPLETED" && (
+                    {(job.status === "COMPLETED" || job.status === "PROCESSING" || job.status === "PENDING") && (
                       <Link
                         href={`/results/${job.id}`}
                         className="text-violet-400 font-medium hover:underline flex items-center gap-1 justify-end"
@@ -159,6 +168,31 @@ export default async function DashboardPage({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          {currentPage > 1 && (
+            <Link
+              href={`/dashboard?page=${currentPage - 1}`}
+              className="px-3 py-1.5 text-sm border border-white/10 rounded-lg hover:border-violet-400 text-zinc-400 hover:text-violet-400 transition-colors"
+            >
+              Precedent
+            </Link>
+          )}
+          <span className="text-sm text-zinc-500">
+            Page {currentPage} / {totalPages}
+          </span>
+          {currentPage < totalPages && (
+            <Link
+              href={`/dashboard?page=${currentPage + 1}`}
+              className="px-3 py-1.5 text-sm border border-white/10 rounded-lg hover:border-violet-400 text-zinc-400 hover:text-violet-400 transition-colors"
+            >
+              Suivant
+            </Link>
+          )}
         </div>
       )}
     </div>

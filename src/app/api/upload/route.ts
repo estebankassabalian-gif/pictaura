@@ -130,36 +130,53 @@ export async function POST(req: NextRequest) {
 
     // ── Upload chaque photo vers R2 ───────────────────────────
     const photoRecords = [];
+    const uploadedKeys: string[] = [];
     const blurWarnings: string[] = [];
 
-    for (const file of files) {
-      const buffer = Buffer.from(await file.arrayBuffer());
+    try {
+      for (const file of files) {
+        const buffer = Buffer.from(await file.arrayBuffer());
 
-      // Détection de flou (non bloquant — juste un warning)
-      const blurResult = await detectBlur(buffer);
-      if (blurResult.isBlurry && blurResult.message) {
-        blurWarnings.push(`${file.name} : ${blurResult.message}`);
+        // Détection de flou (non bloquant — juste un warning)
+        const blurResult = await detectBlur(buffer);
+        if (blurResult.isBlurry && blurResult.message) {
+          blurWarnings.push(`${file.name} : ${blurResult.message}`);
+        }
+
+        const { key } = await uploadOriginalPhoto(
+          buffer,
+          file.type,
+          file.name,
+          userId,
+          jobId
+        );
+        uploadedKeys.push(key);
+
+        const photo = await prisma.processedPhoto.create({
+          data: {
+            jobId,
+            originalKey: key,
+            fileName: file.name,
+            fileSizeOriginal: file.size,
+            status: "PENDING",
+          },
+        });
+
+        photoRecords.push(photo.id);
       }
-
-      const { key } = await uploadOriginalPhoto(
-        buffer,
-        file.type,
-        file.name,
-        userId,
-        jobId
-      );
-
-      const photo = await prisma.processedPhoto.create({
-        data: {
-          jobId,
-          originalKey: key,
-          fileName: file.name,
-          fileSizeOriginal: file.size,
-          status: "PENDING",
-        },
+    } catch (uploadError) {
+      // Nettoyage R2 : supprimer les fichiers déjà uploadés
+      console.error("Upload partiel échoué, nettoyage R2...", uploadError);
+      const { deleteFromR2 } = await import("@/lib/r2");
+      for (const key of uploadedKeys) {
+        try { await deleteFromR2(key); } catch { /* best effort */ }
+      }
+      // Marquer le job comme échoué et rembourser les crédits
+      await prisma.processingJob.update({
+        where: { id: jobId },
+        data: { status: "FAILED", errorMsg: "Échec de l'upload" },
       });
-
-      photoRecords.push(photo.id);
+      throw uploadError;
     }
 
     return NextResponse.json({
@@ -170,7 +187,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(
-      { error: "Erreur lors de l'upload" },
+      { error: "Erreur lors de l'upload. Vos crédits ont été préservés." },
       { status: 500 }
     );
   }

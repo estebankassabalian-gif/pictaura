@@ -27,11 +27,16 @@ export default async function BillingPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const transactions = await prisma.creditTransaction.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  let transactions: Awaited<ReturnType<typeof prisma.creditTransaction.findMany>> = [];
+  try {
+    transactions = await prisma.creditTransaction.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+  } catch (err) {
+    console.error("Billing: failed to fetch transactions", err);
+  }
 
   const isAdmin = session.user.role === "ADMIN";
 

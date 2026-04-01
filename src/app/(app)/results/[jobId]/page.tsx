@@ -414,20 +414,37 @@ export default function ResultsPage() {
   const [reprocessing, setReprocessing] = useState(false);
   const [actionError, setActionError] = useState("");
 
+  const [fetchError, setFetchError] = useState("");
+
   const fetchJob = useCallback(async () => {
     try {
       const res = await fetch(`/api/jobs/${jobId}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (res.status === 404) setFetchError("Traitement introuvable.");
+        return;
+      }
       const data = await res.json();
       setJob(data);
+      setFetchError("");
       return data;
-    } catch { /* ignore */ }
+    } catch {
+      setFetchError("Impossible de charger les resultats. Verifiez votre connexion.");
+    }
   }, [jobId]);
+
+  const [pollTimeout, setPollTimeout] = useState(false);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
+    const maxPollTime = 10 * 60 * 1000; // 10 minutes max
+    const startTime = Date.now();
 
     async function poll() {
+      if (Date.now() - startTime > maxPollTime) {
+        clearInterval(intervalId);
+        setPollTimeout(true);
+        return;
+      }
       const data = await fetchJob();
       if (data?.status === "COMPLETED" || data?.status === "FAILED") {
         clearInterval(intervalId);
@@ -479,8 +496,20 @@ export default function ResultsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 text-violet-400 animate-spin mx-auto mb-4" />
-          <p className="text-zinc-400">Chargement...</p>
+          {fetchError ? (
+            <>
+              <XCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
+              <p className="text-red-400 font-medium mb-2">{fetchError}</p>
+              <Link href="/dashboard" className="text-violet-400 hover:underline text-sm">
+                Retour au dashboard
+              </Link>
+            </>
+          ) : (
+            <>
+              <Loader2 className="w-10 h-10 text-violet-400 animate-spin mx-auto mb-4" />
+              <p className="text-zinc-400">Chargement...</p>
+            </>
+          )}
         </div>
       </div>
     );
@@ -556,6 +585,27 @@ export default function ResultsPage() {
                 Photo {i + 1}
               </span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Timeout warning */}
+      {pollTimeout && isProcessing && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-5 mb-6">
+          <div className="flex items-center gap-3">
+            <Clock className="w-6 h-6 text-amber-400" />
+            <div className="flex-1">
+              <p className="font-semibold text-amber-300">Le traitement prend plus de temps que prevu</p>
+              <p className="text-xs text-amber-400/70 mt-1">
+                Rechargez la page dans quelques minutes. Si le probleme persiste, contactez le support.
+              </p>
+            </div>
+            <button
+              onClick={() => { setPollTimeout(false); window.location.reload(); }}
+              className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition-colors text-sm whitespace-nowrap"
+            >
+              <RefreshCw className="w-4 h-4" /> Recharger
+            </button>
           </div>
         </div>
       )}
