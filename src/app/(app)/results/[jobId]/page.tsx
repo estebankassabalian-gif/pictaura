@@ -20,11 +20,6 @@ import {
   Clock,
   ArrowLeft,
   Send,
-  Copy,
-  Check,
-  Globe,
-  FileText,
-  Hash,
 } from "lucide-react";
 
 // Types
@@ -61,87 +56,6 @@ type RetoucheState =
   | { step: "validated"; resultUrl: string; inpaintingJobId: string };
 
 const PRESETS = ["AIRBNB", "IMMOBILIER", "INSTAGRAM", "VINTED", "SHOPIFY"] as const;
-
-// Copy helper
-function CopyBtn({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      className="text-[10px] text-violet-400 hover:text-violet-300 ml-1.5 inline-flex items-center gap-0.5 flex-shrink-0"
-    >
-      {copied ? <><Check className="w-2.5 h-2.5" /> OK</> : <><Copy className="w-2.5 h-2.5" /> Copier</>}
-    </button>
-  );
-}
-
-// SEO optimization panel
-function SeoPanel({ photo, preset }: { photo: Photo; preset: string }) {
-  if (photo.status !== "COMPLETED") return null;
-  const hasSeo = photo.seoAltText || photo.seoFileName || photo.seoDescription;
-  if (!hasSeo) return null;
-
-  const platformTips: Record<string, string> = {
-    IMMOBILIER: "Utilisez le alt text dans votre annonce immobiliere et le nom de fichier SEO pour un meilleur referencement sur LeBonCoin, SeLoger, etc.",
-    AIRBNB: "Ajoutez la description dans votre annonce Airbnb. Le alt text et le nom de fichier ameliorent votre visibilite sur Google Images.",
-    INSTAGRAM: "Utilisez la description comme legende et les hashtags pour maximiser votre portee.",
-    VINTED: "Le titre et la description optimises aident vos articles a apparaitre en haut des recherches Vinted.",
-    SHOPIFY: "Collez le alt text dans le champ 'Texte alternatif' de Shopify. Renommez le fichier avec le nom SEO avant import.",
-  };
-
-  return (
-    <div className="mt-4 border-t border-white/5 pt-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Globe className="w-4 h-4 text-emerald-400" />
-        <h3 className="text-sm font-semibold text-white">Optimisation SEO</h3>
-      </div>
-
-      <p className="text-xs text-zinc-400 mb-3">
-        {platformTips[preset] ?? "Les metadonnees SEO sont integrees dans le fichier image (EXIF). Vous pouvez aussi les copier ci-dessous."}
-      </p>
-
-      <div className="bg-[var(--surface-2)] rounded-xl p-3 space-y-2.5">
-        {photo.seoFileName && (
-          <div className="flex items-start gap-2">
-            <FileText className="w-3.5 h-3.5 text-zinc-500 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Nom de fichier SEO</span>
-              <div className="flex items-center gap-1">
-                <code className="text-xs text-emerald-400 font-mono truncate">{photo.seoFileName}</code>
-                <CopyBtn text={photo.seoFileName} />
-              </div>
-            </div>
-          </div>
-        )}
-        {photo.seoAltText && (
-          <div className="flex items-start gap-2">
-            <FileText className="w-3.5 h-3.5 text-zinc-500 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Alt text (referencement images)</span>
-              <p className="text-xs text-zinc-300">{photo.seoAltText}</p>
-              <CopyBtn text={photo.seoAltText} />
-            </div>
-          </div>
-        )}
-        {photo.seoDescription && (
-          <div className="flex items-start gap-2">
-            <Hash className="w-3.5 h-3.5 text-zinc-500 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Description / legende</span>
-              <p className="text-xs text-zinc-300">{photo.seoDescription}</p>
-              <CopyBtn text={photo.seoDescription} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <p className="text-[10px] text-zinc-600 mt-2 flex items-center gap-1">
-        <CheckCircle2 className="w-3 h-3 text-emerald-500/50" />
-        Metadonnees EXIF integrees dans le fichier — actives automatiquement a l'import
-      </p>
-    </div>
-  );
-}
 
 // RetoucheChat
 function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
@@ -794,9 +708,6 @@ export default function ResultsPage() {
 
             </div>
           )}
-
-          {/* SEO optimization panel */}
-          <SeoPanel photo={currentPhoto} preset={job.preset} />
 
           {/* Retouche IA inline */}
           <RetoucheChat photo={currentPhoto} preset={job.preset} />
