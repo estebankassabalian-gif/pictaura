@@ -139,6 +139,7 @@ model ProcessedPhoto {
   originalKey        String        // Clé R2 permanente du fichier original
   processedKey       String?       // Clé R2 permanente du fichier traité
   fileName           String        // Nom original du fichier
+  instruction        String?       @db.Text // Prompt de retouche spécifique à cette photo
   fileSizeOriginal   Int?          // Octets
   fileSizeProcessed  Int?
   status             JobStatus     @default(PENDING)

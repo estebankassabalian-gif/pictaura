@@ -55,8 +55,8 @@ export async function processJob(jobId: string): Promise<void> {
         if (!response.ok) throw new Error("Impossible de telecharger l'original");
         const inputBuffer = Buffer.from(await response.arrayBuffer());
 
-        // Build instruction from subOption
-        const instruction = job.subOption || "Improve the overall quality of the photo: brightness, contrast, sharpness, colors.";
+        // Per-photo instruction (priority) or fallback to job-level subOption
+        const instruction = photo.instruction || job.subOption || "Improve the overall quality of the photo: brightness, contrast, sharpness, colors.";
 
         // Retouch via Gemini (has built-in retry with backoff)
         const imageBase64 = inputBuffer.toString("base64");

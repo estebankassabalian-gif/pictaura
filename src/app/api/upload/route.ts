@@ -31,6 +31,12 @@ export async function POST(req: NextRequest) {
     const preset = formData.get("preset") as string;
     const subOption = (formData.get("subOption") as string | null) ?? undefined;
     const files = formData.getAll("photos") as File[];
+    // Per-photo instructions: JSON array matching files order, or empty for global subOption
+    let photoInstructions: string[] = [];
+    const instructionsRaw = formData.get("instructions") as string | null;
+    if (instructionsRaw) {
+      try { photoInstructions = JSON.parse(instructionsRaw); } catch { /* ignore */ }
+    }
 
     // ── Validation ────────────────────────────────────────────
     if (!Object.values(Preset).includes(preset as Preset)) {
@@ -134,7 +140,8 @@ export async function POST(req: NextRequest) {
     const blurWarnings: string[] = [];
 
     try {
-      for (const file of files) {
+      for (let idx = 0; idx < files.length; idx++) {
+        const file = files[idx];
         const buffer = Buffer.from(await file.arrayBuffer());
 
         // Détection de flou (non bloquant — juste un warning)
@@ -152,12 +159,16 @@ export async function POST(req: NextRequest) {
         );
         uploadedKeys.push(key);
 
+        // Per-photo instruction, or fallback to global subOption
+        const photoInstruction = photoInstructions[idx] || subOption || null;
+
         const photo = await prisma.processedPhoto.create({
           data: {
             jobId,
             originalKey: key,
             fileName: file.name,
             fileSizeOriginal: file.size,
+            instruction: photoInstruction,
             status: "PENDING",
           },
         });

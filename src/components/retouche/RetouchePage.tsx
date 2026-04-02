@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useDropzone } from "react-dropzone";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -10,18 +10,25 @@ import {
   Loader2,
   CheckCircle2,
   ArrowLeft,
+  ArrowRight,
   Send,
   ImageIcon,
   X,
+  Copy,
+  Check,
 } from "lucide-react";
 import { MAX_PHOTOS_PER_BATCH, MAX_FILE_SIZE_MB } from "@/config/plans";
 import { AGENTS, type AgentSuggestion } from "@/config/agents";
 
-type Step = "upload" | "analyze" | "confirm";
+type Step = "upload" | "configure" | "confirm";
 
-interface AISuggestion {
-  text: string;
-  checked: boolean;
+interface PhotoConfig {
+  file: File;
+  previewUrl: string;
+  suggestions: { text: string; checked: boolean }[];
+  customInstruction: string;
+  aiAnalysis: string;
+  analyzed: boolean;
 }
 
 export function RetouchePage({ agentKey }: { agentKey: string }) {
@@ -32,11 +39,10 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
   const [step, setStep] = useState<Step>("upload");
   const [files, setFiles] = useState<File[]>([]);
+  const [photoConfigs, setPhotoConfigs] = useState<PhotoConfig[]>([]);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [applyToAll, setApplyToAll] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState("");
-  const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
-  const [customInstruction, setCustomInstruction] = useState("");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,9 +53,6 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
     setError("");
     const newFiles = [...files, ...acceptedFiles].slice(0, MAX_PHOTOS_PER_BATCH);
     setFiles(newFiles);
-    if (newFiles[0]) {
-      setPreviewUrl(URL.createObjectURL(newFiles[0]));
-    }
   }, [files]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -67,14 +70,10 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
   function removeFile(index: number) {
     const newFiles = files.filter((_, i) => i !== index);
     setFiles(newFiles);
-    if (newFiles[0]) {
-      setPreviewUrl(URL.createObjectURL(newFiles[0]));
-    } else {
-      setPreviewUrl(null);
-    }
   }
 
-  async function handleAnalyze() {
+  // Initialize photo configs and analyze first photo
+  async function handleStartConfigure() {
     if (files.length === 0) {
       setError("Ajoutez au moins une photo");
       return;
@@ -82,66 +81,177 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
     setAnalyzing(true);
     setError("");
 
+    // Create configs for all photos
+    const configs: PhotoConfig[] = files.map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      suggestions: [],
+      customInstruction: "",
+      aiAnalysis: "",
+      analyzed: false,
+    }));
+
+    // Analyze first photo with AI
     try {
       const fd = new FormData();
       fd.append("photo", files[0]);
       fd.append("preset", agent.id);
-
       const res = await fetch("/api/analyze-ai", { method: "POST", body: fd });
       const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.error ?? "Erreur lors de l'analyse");
-        return;
+      if (res.ok && !data.fallback) {
+        configs[0].aiAnalysis = data.analysis;
+        configs[0].suggestions = (data.suggestions as string[]).map((s: string) => ({
+          text: s,
+          checked: true,
+        }));
+      } else {
+        configs[0].aiAnalysis = "Suggestions adaptees a votre secteur";
       }
-
-      setAiAnalysis(data.analysis);
-      setSuggestions(
-        (data.suggestions as string[]).map((s: string) => ({ text: s, checked: true }))
-      );
-      setStep("analyze");
+      configs[0].analyzed = true;
     } catch {
-      setError("Erreur reseau. Reessayez.");
+      configs[0].aiAnalysis = "Suggestions adaptees a votre secteur";
+      configs[0].analyzed = true;
+    }
+
+    setPhotoConfigs(configs);
+    setActivePhotoIndex(0);
+    setStep("configure");
+    setAnalyzing(false);
+  }
+
+  // Analyze a specific photo when navigating to it
+  async function analyzePhoto(index: number) {
+    if (photoConfigs[index]?.analyzed) return;
+
+    setAnalyzing(true);
+    try {
+      const fd = new FormData();
+      fd.append("photo", files[index]);
+      fd.append("preset", agent.id);
+      const res = await fetch("/api/analyze-ai", { method: "POST", body: fd });
+      const data = await res.json();
+
+      setPhotoConfigs((prev) => {
+        const next = [...prev];
+        if (res.ok && !data.fallback) {
+          next[index] = {
+            ...next[index],
+            aiAnalysis: data.analysis,
+            suggestions: (data.suggestions as string[]).map((s: string) => ({
+              text: s,
+              checked: true,
+            })),
+            analyzed: true,
+          };
+        } else {
+          next[index] = {
+            ...next[index],
+            aiAnalysis: "Suggestions adaptees a votre secteur",
+            analyzed: true,
+          };
+        }
+        return next;
+      });
+    } catch {
+      setPhotoConfigs((prev) => {
+        const next = [...prev];
+        next[index] = {
+          ...next[index],
+          aiAnalysis: "Suggestions adaptees a votre secteur",
+          analyzed: true,
+        };
+        return next;
+      });
     } finally {
       setAnalyzing(false);
     }
   }
 
-  function toggleSuggestion(index: number) {
-    setSuggestions((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, checked: !s.checked } : s))
-    );
+  async function goToPhoto(index: number) {
+    setActivePhotoIndex(index);
+    await analyzePhoto(index);
   }
 
-  function applyPresetSuggestion(suggestion: AgentSuggestion) {
-    setCustomInstruction((prev) => {
-      const trimmed = prev.trim();
-      if (trimmed) return `${trimmed}. ${suggestion.prompt}`;
-      return suggestion.prompt;
+  function toggleSuggestion(photoIndex: number, suggIndex: number) {
+    setPhotoConfigs((prev) => {
+      const next = [...prev];
+      const suggestions = [...next[photoIndex].suggestions];
+      suggestions[suggIndex] = { ...suggestions[suggIndex], checked: !suggestions[suggIndex].checked };
+      next[photoIndex] = { ...next[photoIndex], suggestions };
+      return next;
     });
   }
 
-  function buildInstruction(): string {
+  function setCustomInstruction(photoIndex: number, value: string) {
+    setPhotoConfigs((prev) => {
+      const next = [...prev];
+      next[photoIndex] = { ...next[photoIndex], customInstruction: value };
+      return next;
+    });
+  }
+
+  function applyPresetSuggestion(photoIndex: number, suggestion: AgentSuggestion) {
+    setPhotoConfigs((prev) => {
+      const next = [...prev];
+      const trimmed = next[photoIndex].customInstruction.trim();
+      next[photoIndex] = {
+        ...next[photoIndex],
+        customInstruction: trimmed ? `${trimmed}. ${suggestion.prompt}` : suggestion.prompt,
+      };
+      return next;
+    });
+  }
+
+  function buildInstructionForPhoto(config: PhotoConfig): string {
     const parts: string[] = [];
-    const checked = suggestions.filter((s) => s.checked).map((s) => s.text);
+    const checked = config.suggestions.filter((s) => s.checked).map((s) => s.text);
     if (checked.length > 0) parts.push(checked.join(". "));
-    if (customInstruction.trim()) parts.push(customInstruction.trim());
+    if (config.customInstruction.trim()) parts.push(config.customInstruction.trim());
     return parts.join(". ") || "Improve the overall quality of the photo.";
   }
+
+  // Build instructions array for all photos
+  const allInstructions = useMemo(() => {
+    if (photoConfigs.length === 0) return [];
+    if (applyToAll) {
+      const firstInstruction = buildInstructionForPhoto(photoConfigs[0]);
+      return photoConfigs.map(() => firstInstruction);
+    }
+    return photoConfigs.map((config) => buildInstructionForPhoto(config));
+  }, [photoConfigs, applyToAll]);
+
+  const currentConfig = photoConfigs[activePhotoIndex];
+  const hasInstruction = currentConfig
+    ? currentConfig.suggestions.some((s) => s.checked) || currentConfig.customInstruction.trim().length > 0
+    : false;
+
+  // Check if all photos have at least one instruction
+  const allConfigured = useMemo(() => {
+    if (photoConfigs.length === 0) return false;
+    if (applyToAll) return hasInstruction; // first photo needs instruction
+    return photoConfigs.every(
+      (c) => c.suggestions.some((s) => s.checked) || c.customInstruction.trim().length > 0
+    );
+  }, [photoConfigs, applyToAll, hasInstruction]);
 
   async function handleProcess() {
     if (!isAdmin && credits < files.length) {
       setError(`Credits insuffisants : ${files.length} requis, ${credits} disponibles`);
       return;
     }
+    if (!allConfigured) {
+      setError("Configurez les retouches pour chaque photo avant de lancer.");
+      return;
+    }
     setLoading(true);
     setError("");
 
     try {
-      const instruction = buildInstruction();
       const formData = new FormData();
       formData.append("preset", agent.id);
-      formData.append("subOption", instruction);
+      // Send per-photo instructions as JSON array
+      formData.append("instructions", JSON.stringify(allInstructions));
       files.forEach((file) => formData.append("photos", file));
 
       const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
@@ -168,9 +278,9 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
     }
   }
 
-  const steps = [
-    { key: "upload", label: "Photo" },
-    { key: "analyze", label: "Analyse IA" },
+  const progressSteps = [
+    { key: "upload", label: "Photos" },
+    { key: "configure", label: "Instructions" },
     { key: "confirm", label: "Retouche" },
   ];
 
@@ -189,8 +299,8 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
       {/* Progress bar */}
       <div className="flex items-center gap-2 mb-8">
-        {steps.map((s, i) => {
-          const isDone = (s.key === "upload" && step !== "upload") || (s.key === "analyze" && step === "confirm");
+        {progressSteps.map((s, i) => {
+          const isDone = (s.key === "upload" && step !== "upload") || (s.key === "configure" && step === "confirm");
           const isCurrent = s.key === step;
           return (
             <div key={s.key} className="flex items-center gap-2 flex-1">
@@ -275,7 +385,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           )}
 
           <button
-            onClick={handleAnalyze}
+            onClick={handleStartConfigure}
             disabled={analyzing || files.length === 0}
             className="btn-primary w-full py-4 text-base"
           >
@@ -287,15 +397,15 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
             ) : (
               <>
                 <Sparkles className="w-5 h-5" />
-                Analyser avec l'IA
+                {files.length > 1 ? "Configurer les retouches" : "Analyser avec l'IA"}
               </>
             )}
           </button>
         </div>
       )}
 
-      {/* STEP 2: AI Analysis + Suggestions */}
-      {step === "analyze" && (
+      {/* STEP 2: Configure per-photo instructions */}
+      {step === "configure" && currentConfig && (
         <div className="animate-fade-in">
           <button
             onClick={() => setStep("upload")}
@@ -305,62 +415,121 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
             Retour
           </button>
 
+          {/* Photo navigation */}
+          {files.length > 1 && (
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-[var(--text)]">
+                  Photo {activePhotoIndex + 1} / {files.length}
+                </h2>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={applyToAll}
+                    onChange={(e) => setApplyToAll(e.target.checked)}
+                    className="rounded border-white/20"
+                  />
+                  <span className="text-xs text-[var(--muted)]">Appliquer a toutes les photos</span>
+                </label>
+              </div>
+
+              {/* Thumbnails */}
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {photoConfigs.map((config, idx) => {
+                  const hasConfig = config.suggestions.some((s) => s.checked) || config.customInstruction.trim().length > 0;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => goToPhoto(idx)}
+                      disabled={applyToAll && idx !== 0}
+                      className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                        activePhotoIndex === idx
+                          ? "border-violet-500 ring-2 ring-violet-500/20"
+                          : applyToAll && idx !== 0
+                          ? "border-white/5 opacity-40"
+                          : "border-white/8 hover:border-white/20"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={config.previewUrl} alt={config.file.name} className="w-full h-full object-cover" />
+                      {hasConfig && (
+                        <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5 text-white" />
+                        </div>
+                      )}
+                      {applyToAll && idx > 0 && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Copy className="w-3.5 h-3.5 text-white/70" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Photo preview */}
             <div>
-              {previewUrl && (
-                <div className="rounded-xl overflow-hidden border border-[var(--border)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="w-full h-auto max-h-[400px] object-contain bg-black"
-                  />
-                </div>
-              )}
-              {files.length > 1 && (
-                <p className="text-xs text-[var(--muted)] mt-2">
-                  + {files.length - 1} autre(s) photo(s) — memes retouches appliquees
-                </p>
-              )}
+              <div className="rounded-xl overflow-hidden border border-[var(--border)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={currentConfig.previewUrl}
+                  alt={currentConfig.file.name}
+                  className="w-full h-auto max-h-[400px] object-contain bg-black"
+                />
+              </div>
+              <p className="text-xs text-[var(--muted)] mt-2 truncate">{currentConfig.file.name}</p>
             </div>
 
             {/* Suggestions + Custom */}
             <div>
-              {/* AI Analysis */}
-              <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-4 h-4 text-[var(--accent)]" />
-                  <span className="text-sm font-semibold text-[var(--text)]">Analyse</span>
+              {analyzing ? (
+                <div className="bg-blue-500/10 rounded-xl p-4 flex items-center gap-3 mb-4">
+                  <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+                  <p className="text-sm text-blue-400">Analyse IA en cours...</p>
                 </div>
-                <p className="text-sm text-[var(--muted)]">{aiAnalysis}</p>
-              </div>
+              ) : (
+                <>
+                  {/* AI Analysis */}
+                  {currentConfig.aiAnalysis && (
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-4 h-4 text-[var(--accent)]" />
+                        <span className="text-sm font-semibold text-[var(--text)]">Analyse</span>
+                      </div>
+                      <p className="text-sm text-[var(--muted)]">{currentConfig.aiAnalysis}</p>
+                    </div>
+                  )}
 
-              {/* AI Suggestions (checkboxes) */}
-              {suggestions.length > 0 && (
-                <div className="space-y-2 mb-4">
-                  <h3 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">Retouches recommandees</h3>
-                  {suggestions.map((s, i) => (
-                    <label
-                      key={i}
-                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                        s.checked
-                          ? "border-[var(--accent)]/30 bg-[var(--accent-dim)]"
-                          : "border-[var(--border)] hover:border-[var(--border)]"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={s.checked}
-                        onChange={() => toggleSuggestion(i)}
-                        className="mt-0.5"
-                      />
-                      <span className={`text-sm ${s.checked ? "text-[var(--text)]" : "text-[var(--muted)]"}`}>
-                        {s.text}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                  {/* AI Suggestions (checkboxes) */}
+                  {currentConfig.suggestions.length > 0 && (
+                    <div className="space-y-2 mb-4">
+                      <h3 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">Retouches recommandees</h3>
+                      {currentConfig.suggestions.map((s, i) => (
+                        <label
+                          key={i}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                            s.checked
+                              ? "border-[var(--accent)]/30 bg-[var(--accent-dim)]"
+                              : "border-[var(--border)] hover:border-[var(--border)]"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={s.checked}
+                            onChange={() => toggleSuggestion(activePhotoIndex, i)}
+                            className="mt-0.5"
+                          />
+                          <span className={`text-sm ${s.checked ? "text-[var(--text)]" : "text-[var(--muted)]"}`}>
+                            {s.text}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Preset suggestions (quick buttons) */}
@@ -372,7 +541,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                     return (
                       <button
                         key={s.label}
-                        onClick={() => applyPresetSuggestion(s)}
+                        onClick={() => applyPresetSuggestion(activePhotoIndex, s)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)]/30 hover:bg-[var(--accent-dim)] transition-all"
                       >
                         <SIcon className="w-3 h-3" />
@@ -383,20 +552,20 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                 </div>
               </div>
 
-              {/* Custom instruction bar */}
+              {/* Custom instruction */}
               <div className="mb-4">
                 <h3 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2">Vos instructions</h3>
                 <div className="relative">
                   <textarea
-                    value={customInstruction}
-                    onChange={(e) => setCustomInstruction(e.target.value)}
+                    value={currentConfig.customInstruction}
+                    onChange={(e) => setCustomInstruction(activePhotoIndex, e.target.value)}
                     placeholder="Ex: Retirer le poteau electrique, ajouter un ciel bleu..."
                     className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-3 pr-10 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent-dim)] focus:outline-none resize-none transition-colors"
                     rows={3}
                     maxLength={300}
                   />
                   <div className="absolute bottom-2 right-3 text-[10px] text-[var(--muted)]">
-                    {customInstruction.length}/300
+                    {currentConfig.customInstruction.length}/300
                   </div>
                 </div>
               </div>
@@ -409,33 +578,50 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
             </div>
           )}
 
-          {/* Actions */}
+          {/* Navigation + Actions */}
           <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => setStep("upload")}
-              className="btn-outline px-6 py-3.5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Modifier
-            </button>
-            <button
-              onClick={handleProcess}
-              disabled={loading || (suggestions.every((s) => !s.checked) && !customInstruction.trim()) || (!isAdmin && credits < files.length)}
-              className="btn-primary flex-1 py-3.5 text-base"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Retouche en cours...
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  Lancer la retouche — {files.length} credit(s)
-                </>
-              )}
-            </button>
+            {/* Previous photo */}
+            {files.length > 1 && activePhotoIndex > 0 && !applyToAll && (
+              <button
+                onClick={() => goToPhoto(activePhotoIndex - 1)}
+                className="btn-outline px-4 py-3.5"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Precedente
+              </button>
+            )}
+
+            {/* Next photo or Launch */}
+            {files.length > 1 && activePhotoIndex < files.length - 1 && !applyToAll ? (
+              <button
+                onClick={() => goToPhoto(activePhotoIndex + 1)}
+                disabled={!hasInstruction}
+                className="btn-primary flex-1 py-3.5 text-base"
+              >
+                Photo suivante ({activePhotoIndex + 2}/{files.length})
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                onClick={handleProcess}
+                disabled={loading || !allConfigured || (!isAdmin && credits < files.length)}
+                className="btn-primary flex-1 py-3.5 text-base"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Envoi en cours...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    Lancer la retouche — {files.length} credit(s)
+                  </>
+                )}
+              </button>
+            )}
           </div>
+
           {!isAdmin && credits < files.length && (
             <p className="text-sm text-red-400 mt-2 text-center">
               Credits insuffisants ({credits} disponible(s), {files.length} requis).{" "}
