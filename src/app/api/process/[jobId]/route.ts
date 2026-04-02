@@ -31,10 +31,13 @@ export async function POST(
   }
 
   // Lancer le traitement de façon asynchrone (non bloquant)
-  // Note MVP: processJob est synchrone et peut prendre 30-60s/photo
-  // Phase 3: migrer vers BullMQ pour jobs vraiment asynchrones
-  processJob(jobId).catch((error) => {
+  processJob(jobId).catch(async (error) => {
     console.error(`Job ${jobId} failed:`, error);
+    // Ensure job is marked FAILED in DB even on unexpected crash
+    await prisma.processingJob.update({
+      where: { id: jobId },
+      data: { status: "FAILED", completedAt: new Date(), errorMsg: "Erreur interne du traitement" },
+    }).catch(console.error);
   });
 
   return NextResponse.json({ message: "Traitement lancé", jobId }, { status: 202 });

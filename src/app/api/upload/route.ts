@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Preset } from "@prisma/client";
-import { deductCreditsAtomic } from "@/services/credits";
+import { deductCreditsAtomic, refundCredits } from "@/services/credits";
 import { uploadOriginalPhoto, validateImageFile, detectMimeFromMagicBytes } from "@/services/storage";
 import {
   MAX_PHOTOS_PER_BATCH,
@@ -176,6 +176,7 @@ export async function POST(req: NextRequest) {
         where: { id: jobId },
         data: { status: "FAILED", errorMsg: "Échec de l'upload" },
       });
+      await refundCredits(userId, creditsCost, jobId).catch(console.error);
       throw uploadError;
     }
 

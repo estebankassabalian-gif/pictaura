@@ -103,35 +103,59 @@ export async function retouchPhoto(
 
   const editPrompt = buildEditPrompt(systemPrompt, cleanInstruction);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const model = getGenAI().getGenerativeModel({
-    model: "gemini-3.1-flash-image-preview",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    generationConfig: { responseModalities: ["image"] } as any,
-  });
+  const MAX_RETRIES = 3;
+  let lastError: Error | null = null;
 
-  const result = await model.generateContent({
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-          { text: editPrompt },
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        // Exponential backoff: 2s, 4s
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`Gemini retry ${attempt}/${MAX_RETRIES} after ${delay}ms...`);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const model = getGenAI().getGenerativeModel({
+        model: "gemini-3.1-flash-image-preview",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        generationConfig: { responseModalities: ["image"] } as any,
+      });
+
+      const result = await model.generateContent({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+              { text: editPrompt },
+            ],
+          },
         ],
-      },
-    ],
-  });
+      });
 
-  const parts = result.response.candidates?.[0]?.content?.parts ?? [];
-  for (const part of parts) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const inlineData = (part as any).inlineData;
-    if (inlineData?.data) {
-      return Buffer.from(inlineData.data, "base64");
+      const parts = result.response.candidates?.[0]?.content?.parts ?? [];
+      for (const part of parts) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const inlineData = (part as any).inlineData;
+        if (inlineData?.data) {
+          return Buffer.from(inlineData.data, "base64");
+        }
+      }
+
+      throw new Error("Gemini : aucune image retournée par l'API");
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const msg = lastError.message.toLowerCase();
+      // Don't retry on prompt injection or non-retryable errors
+      if (msg.includes("refusée") || msg.includes("blocked") || msg.includes("safety")) {
+        throw lastError;
+      }
+      console.error(`Gemini attempt ${attempt + 1}/${MAX_RETRIES} failed:`, lastError.message);
     }
   }
 
-  throw new Error("Nano Banana 2 : aucune image retournée par l'API");
+  throw lastError ?? new Error("Gemini : échec après 3 tentatives");
 }
 
 /**
