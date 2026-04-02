@@ -420,7 +420,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
             </button>
             <button
               onClick={handleProcess}
-              disabled={loading || (suggestions.every((s) => !s.checked) && !customInstruction.trim())}
+              disabled={loading || (suggestions.every((s) => !s.checked) && !customInstruction.trim()) || (!isAdmin && credits < files.length)}
               className="btn-primary flex-1 py-3.5 text-base"
             >
               {loading ? (
@@ -436,6 +436,12 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
               )}
             </button>
           </div>
+          {!isAdmin && credits < files.length && (
+            <p className="text-sm text-red-400 mt-2 text-center">
+              Credits insuffisants ({credits} disponible(s), {files.length} requis).{" "}
+              <a href="/billing" className="underline text-violet-400">Acheter des credits</a>
+            </p>
+          )}
         </div>
       )}
     </div>

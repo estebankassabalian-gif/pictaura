@@ -36,21 +36,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   callbacks: {
     async jwt({ token, user }) {
-      // Only set data on login (user object is only present on sign-in)
       if (user) {
         token.id = user.id;
-        // Fetch role and credits once on login — runs in Node.js runtime
+      }
+      // Refresh credits/role/subscription from DB on every request
+      // so session always reflects current state (after Stripe payment, admin grant, etc.)
+      if (token.id) {
         const dbUser = await prisma.user.findUnique({
-          where: { id: user.id as string },
-          select: { role: true, credits: true, isSubscribed: true },
+          where: { id: token.id as string },
+          select: { role: true, credits: true, isSubscribed: true, passwordHash: true },
         });
         if (dbUser) {
+          // Invalidate session if password changed (hash differs from login)
+          if (token.passwordHash && token.passwordHash !== dbUser.passwordHash) {
+            return { ...token, id: undefined }; // forces re-login
+          }
           token.role = dbUser.role;
           token.credits = dbUser.credits;
           token.isSubscribed = dbUser.isSubscribed;
+          // Store password hash on first login to detect changes
+          if (!token.passwordHash) {
+            token.passwordHash = dbUser.passwordHash;
+          }
         }
       }
       return token;

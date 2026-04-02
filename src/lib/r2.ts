@@ -26,7 +26,7 @@ function getR2Client(): S3Client {
 export { getR2Client as getR2 };
 
 const BUCKET = () => env.R2_BUCKET_NAME;
-const SIGNED_URL_EXPIRY_SECONDS = 3600; // 1 heure
+const SIGNED_URL_EXPIRY_SECONDS = 900; // 15 minutes
 
 /**
  * Upload un buffer vers R2.
@@ -50,7 +50,7 @@ export async function uploadToR2(
 }
 
 /**
- * Génère une URL signée temporaire (1h) pour accéder à un fichier privé.
+ * Génère une URL signée temporaire (15 min) pour accéder à un fichier privé.
  * Toujours régénérer depuis la clé, ne jamais stocker l'URL.
  */
 export async function getSignedDownloadUrl(key: string): Promise<string> {
