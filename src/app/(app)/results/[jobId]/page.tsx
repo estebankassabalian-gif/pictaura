@@ -16,8 +16,6 @@ import {
   XCircle,
   Download,
   Pencil,
-  Copy,
-  Check,
   RefreshCw,
   Clock,
   ArrowLeft,
@@ -58,26 +56,6 @@ type RetoucheState =
   | { step: "validated"; resultUrl: string; inpaintingJobId: string };
 
 const PRESETS = ["AIRBNB", "IMMOBILIER", "INSTAGRAM", "VINTED", "SHOPIFY"] as const;
-
-// Helpers
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="text-xs text-violet-400 hover:text-violet-300 font-medium ml-2 transition-colors inline-flex items-center gap-1"
-    >
-      {copied ? <><Check className="w-3 h-3" /> Copie</> : <><Copy className="w-3 h-3" /> Copier</>}
-    </button>
-  );
-}
 
 // RetoucheChat
 function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
@@ -728,32 +706,6 @@ export default function ResultsPage() {
                 </div>
               )}
 
-              {(currentPhoto.seoAltText || currentPhoto.seoFileName || currentPhoto.seoDescription) && (
-                <div className="bg-[var(--surface-2)] rounded-xl p-4 space-y-2">
-                  <p className="text-xs font-semibold text-zinc-300">SEO</p>
-                  {currentPhoto.seoAltText && (
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs text-zinc-500 w-20 flex-shrink-0">Alt text</span>
-                      <span className="text-xs text-zinc-300 flex-1">{currentPhoto.seoAltText}</span>
-                      <CopyButton text={currentPhoto.seoAltText} />
-                    </div>
-                  )}
-                  {currentPhoto.seoFileName && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-zinc-500 w-20 flex-shrink-0">Fichier</span>
-                      <span className="text-xs text-[var(--muted)] font-mono flex-1">{currentPhoto.seoFileName}</span>
-                      <CopyButton text={currentPhoto.seoFileName} />
-                    </div>
-                  )}
-                  {currentPhoto.seoDescription && (
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs text-zinc-500 w-20 flex-shrink-0">Description</span>
-                      <span className="text-xs text-zinc-300 flex-1">{currentPhoto.seoDescription}</span>
-                      <CopyButton text={currentPhoto.seoDescription} />
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
