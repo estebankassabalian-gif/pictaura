@@ -66,8 +66,11 @@ const _parsed = envSchema.safeParse(process.env);
 if (!_parsed.success) {
   console.error("❌ Variables d'environnement invalides ou manquantes:");
   console.error(_parsed.error.flatten().fieldErrors);
-  // Warn only — never throw. Env vars may be absent during Docker build
-  // but present at runtime via Coolify env injection.
+  // During Docker build (next build): warn only, env vars injected at runtime by Coolify.
+  // In production runtime: crash immediately to prevent silent failures.
+  if (process.env.NODE_ENV === "production" && !process.env.NEXT_PHASE) {
+    throw new Error("Variables d'environnement manquantes en production. Vérifiez la configuration Coolify.");
+  }
 }
 
 export const env = (_parsed.success ? _parsed.data : process.env) as z.infer<

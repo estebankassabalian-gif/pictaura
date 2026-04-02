@@ -111,6 +111,53 @@ export async function sendJobCompletedEmail({
 }
 
 /**
+ * Envoie un email de réinitialisation de mot de passe.
+ */
+export async function sendPasswordResetEmail({
+  to,
+  token,
+}: {
+  to: string;
+  token: string;
+}): Promise<void> {
+  const resetUrl = `${APP_URL()}/reset-password?token=${token}`;
+
+  await getResend().emails.send({
+    from: `Pictaura <${FROM()}>`,
+    to,
+    subject: "Réinitialisez votre mot de passe Pictaura",
+    html: `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; margin: 0; padding: 20px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #0f0f1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(124,58,237,0.15);">
+    <div style="background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%); padding: 32px 32px 28px;">
+      <p style="color: white; font-size: 24px; font-weight: 800; margin: 0;">Pictaura</p>
+    </div>
+    <div style="padding: 32px;">
+      <h1 style="font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 12px;">Mot de passe oublie ?</h1>
+      <p style="color: #a1a1aa; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
+        Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien expire dans 1 heure.
+      </p>
+      <a href="${resetUrl}" style="display: block; background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%); color: white; text-decoration: none; text-align: center; padding: 15px 24px; border-radius: 12px; font-weight: 700; font-size: 15px;">
+        Reinitialiser mon mot de passe
+      </a>
+      <p style="color: #3f3f46; font-size: 12px; margin: 24px 0 0; text-align: center;">
+        Si vous n'avez pas demande cette reinitialisation, ignorez cet email.
+      </p>
+    </div>
+    <div style="border-top: 1px solid rgba(255,255,255,0.05); padding: 16px 32px; text-align: center;">
+      <p style="color: #3f3f46; font-size: 11px; margin: 0;">Pictaura · <a href="${APP_URL()}" style="color: #3f3f46; text-decoration: none;">pictaura.app</a></p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim(),
+  });
+}
+
+/**
  * Envoie un email de bienvenue après la création d'un compte.
  */
 export async function sendWelcomeEmail({

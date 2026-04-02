@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Valider chaque fichier (MIME déclaré + taille + magic bytes)
+    // Valider chaque fichier et lire les buffers une seule fois
+    const fileBuffers: Buffer[] = [];
     for (const file of files) {
       if (!ALLOWED_IMAGE_TYPES.includes(file.type as typeof ALLOWED_IMAGE_TYPES[number])) {
         return NextResponse.json(
@@ -68,15 +69,16 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      // Magic bytes validation — vérifie le contenu réel du fichier
-      const fileBuffer = Buffer.from(await file.arrayBuffer());
-      const detectedMime = detectMimeFromMagicBytes(fileBuffer);
+      // Read buffer once — reused for magic bytes validation AND upload
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const detectedMime = detectMimeFromMagicBytes(buffer);
       if (!detectedMime) {
         return NextResponse.json(
           { error: "Fichier invalide : type d'image non reconnu" },
           { status: 400 }
         );
       }
+      fileBuffers.push(buffer);
     }
 
     // ── Vérifier crédits ──────────────────────────────────────
@@ -142,7 +144,7 @@ export async function POST(req: NextRequest) {
     try {
       for (let idx = 0; idx < files.length; idx++) {
         const file = files[idx];
-        const buffer = Buffer.from(await file.arrayBuffer());
+        const buffer = fileBuffers[idx];
 
         // Détection de flou (non bloquant — juste un warning)
         const blurResult = await detectBlur(buffer);

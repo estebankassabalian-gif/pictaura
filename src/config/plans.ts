@@ -77,7 +77,7 @@ export const FREE_SIGNUP_CREDITS = 5;
 
 export const INPAINTING_CREDITS_COST = 1; // 1 crédit/retouche — débité uniquement à la validation
 export const INSTAGRAM_HD_CREDITS_COST = 2; // Toggle HD = +1 crédit sur base
-export const MAX_PHOTOS_PER_BATCH = 10;
+export const MAX_PHOTOS_PER_BATCH = 5;
 export const MAX_FILE_SIZE_MB = 20;
 export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
