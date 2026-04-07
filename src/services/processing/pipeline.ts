@@ -67,16 +67,7 @@ export async function processJob(jobId: string): Promise<void> {
           outputBuffer = await applyWatermark(outputBuffer);
         }
 
-        // Upload result
-        const photoUuid = photo.originalKey.split("/").pop()?.split(".")[0] ?? photo.id;
-        const processedKey = await uploadProcessedPhoto(
-          outputBuffer,
-          job.userId,
-          jobId,
-          photoUuid
-        );
-
-        // SEO + Score (parallel, non-blocking)
+        // SEO + Score (parallel, non-blocking) — AVANT upload pour injecter EXIF
         let seoData = {
           altText: "", seoFileName: "", description: "",
           keywords: "", metaTitle: "", hashtags: "", seoSchemaJson: "",
@@ -93,7 +84,7 @@ export async function processJob(jobId: string): Promise<void> {
           console.error("SEO/score error (non-blocking):", e);
         }
 
-        // Injecter les métadonnées SEO dans les EXIF du fichier image
+        // Injecter les métadonnées SEO dans les EXIF AVANT upload
         if (seoData.altText || seoData.seoFileName) {
           outputBuffer = await injectExifMetadata(outputBuffer, {
             altText: seoData.altText,
@@ -103,6 +94,15 @@ export async function processJob(jobId: string): Promise<void> {
             preset: job.preset,
           });
         }
+
+        // Upload result (now includes EXIF metadata)
+        const photoUuid = photo.originalKey.split("/").pop()?.split(".")[0] ?? photo.id;
+        const processedKey = await uploadProcessedPhoto(
+          outputBuffer,
+          job.userId,
+          jobId,
+          photoUuid
+        );
 
         await prisma.processedPhoto.update({
           where: { id: photo.id },
