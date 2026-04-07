@@ -62,8 +62,8 @@ export default async function AdminPage() {
       <div className="grid grid-cols-4 gap-4 mb-10">
         <AdminStat label="Utilisateurs" value={totalUsers} icon={Users} />
         <AdminStat label="Jobs total" value={totalJobs} icon={FolderOpen} />
-        <AdminStat label="Photos traitees" value={totalPhotos} icon={ImageIcon} />
-        <AdminStat label="Credits vendus" value={totalCreditsSOLD} icon={CreditCard} />
+        <AdminStat label="Photos traitées" value={totalPhotos} icon={ImageIcon} />
+        <AdminStat label="Crédits vendus" value={totalCreditsSOLD} icon={CreditCard} />
       </div>
 
       {/* Recent users */}

@@ -16,6 +16,7 @@ import {
   X,
   Copy,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import { MAX_PHOTOS_PER_BATCH, MAX_FILE_SIZE_MB } from "@/config/plans";
 import { AGENTS, type AgentSuggestion } from "@/config/agents";
@@ -45,6 +46,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [analyzeWarning, setAnalyzeWarning] = useState("");
 
   const credits = session?.user?.credits ?? 0;
   const isAdmin = session?.user?.role === "ADMIN";
@@ -105,13 +107,16 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           text: s,
           checked: true,
         }));
+        setAnalyzeWarning("");
       } else {
-        configs[0].aiAnalysis = "Suggestions adaptees a votre secteur";
+        configs[0].aiAnalysis = "Suggestions adaptées à votre secteur";
+        setAnalyzeWarning("L'analyse IA est temporairement indisponible. Utilisez les suggestions rapides ou écrivez vos instructions.");
       }
       configs[0].analyzed = true;
     } catch {
-      configs[0].aiAnalysis = "Suggestions adaptees a votre secteur";
+      configs[0].aiAnalysis = "Suggestions adaptées à votre secteur";
       configs[0].analyzed = true;
+      setAnalyzeWarning("L'analyse IA est temporairement indisponible. Utilisez les suggestions rapides ou écrivez vos instructions.");
     }
 
     setPhotoConfigs(configs);
@@ -144,12 +149,14 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
             })),
             analyzed: true,
           };
+          setAnalyzeWarning("");
         } else {
           next[index] = {
             ...next[index],
-            aiAnalysis: "Suggestions adaptees a votre secteur",
+            aiAnalysis: "Suggestions adaptées à votre secteur",
             analyzed: true,
           };
+          setAnalyzeWarning("L'analyse IA est temporairement indisponible. Utilisez les suggestions rapides ou écrivez vos instructions.");
         }
         return next;
       });
@@ -158,11 +165,12 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
         const next = [...prev];
         next[index] = {
           ...next[index],
-          aiAnalysis: "Suggestions adaptees a votre secteur",
+          aiAnalysis: "Suggestions adaptées à votre secteur",
           analyzed: true,
         };
         return next;
       });
+      setAnalyzeWarning("L'analyse IA est temporairement indisponible. Utilisez les suggestions rapides ou écrivez vos instructions.");
     } finally {
       setAnalyzing(false);
     }
@@ -237,11 +245,11 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
   async function handleProcess() {
     if (!isAdmin && credits < files.length) {
-      setError(`Credits insuffisants : ${files.length} requis, ${credits} disponibles`);
+      setError(`Crédits insuffisants : ${files.length} requis, ${credits} disponibles`);
       return;
     }
     if (!allConfigured) {
-      setError("Configurez les retouches pour chaque photo avant de lancer.");
+      setError("Configurez les retouches pour chaque photo avant de lancer le traitement.");
       return;
     }
     setLoading(true);
@@ -272,7 +280,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
       router.push(`/results/${jobId}`);
     } catch {
-      setError("Erreur reseau. Reessayez.");
+      setError("Erreur réseau. Réessayez.");
     } finally {
       setLoading(false);
     }
@@ -330,7 +338,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-sm font-semibold text-[var(--muted)] uppercase tracking-wider">Ajoutez vos photos</h2>
             <span className="text-xs text-[var(--muted)]">
-              {isAdmin ? "Credits illimites" : `${credits} credit(s)`}
+              {isAdmin ? "Crédits illimités" : `${credits} crédit(s)`}
             </span>
           </div>
 
@@ -345,7 +353,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
             <input {...getInputProps()} />
             <Upload className="w-8 h-8 text-[var(--muted)] mx-auto mb-3" />
             <p className="text-[var(--text)] font-medium text-sm">
-              {isDragActive ? "Deposez vos photos ici..." : "Glissez vos photos ici, ou cliquez pour selectionner"}
+              {isDragActive ? "Déposez vos photos ici..." : "Glissez vos photos ici, ou cliquez pour sélectionner"}
             </p>
             <p className="text-xs text-[var(--muted)] mt-2">
               JPEG, PNG, WEBP, HEIC — Max {MAX_FILE_SIZE_MB} Mo — Max {MAX_PHOTOS_PER_BATCH} photos
@@ -373,7 +381,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                 </div>
               ))}
               <div className="text-xs text-[var(--accent)] font-medium pl-1">
-                {files.length} photo(s) — {files.length} credit(s)
+                {files.length} photo(s) — {files.length} crédit(s)
               </div>
             </div>
           )}
@@ -429,7 +437,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                     onChange={(e) => setApplyToAll(e.target.checked)}
                     className="rounded border-white/20"
                   />
-                  <span className="text-xs text-[var(--muted)]">Appliquer a toutes les photos</span>
+                  <span className="text-xs text-[var(--muted)]">Appliquer à toutes les photos</span>
                 </label>
               </div>
 
@@ -485,6 +493,14 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
             {/* Suggestions + Custom */}
             <div>
+              {/* Warning banner when AI analysis fails */}
+              {analyzeWarning && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center gap-3 mb-4">
+                  <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                  <p className="text-sm text-amber-300">{analyzeWarning}</p>
+                </div>
+              )}
+
               {analyzing ? (
                 <div className="bg-blue-500/10 rounded-xl p-4 flex items-center gap-3 mb-4">
                   <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
@@ -506,7 +522,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                   {/* AI Suggestions (checkboxes) */}
                   {currentConfig.suggestions.length > 0 && (
                     <div className="space-y-2 mb-4">
-                      <h3 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">Retouches recommandees</h3>
+                      <h3 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">Retouches recommandées</h3>
                       {currentConfig.suggestions.map((s, i) => (
                         <label
                           key={i}
@@ -559,7 +575,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                   <textarea
                     value={currentConfig.customInstruction}
                     onChange={(e) => setCustomInstruction(activePhotoIndex, e.target.value)}
-                    placeholder="Ex: Retirer le poteau electrique, ajouter un ciel bleu..."
+                    placeholder="Ex: Retirer le poteau électrique, ajouter un ciel bleu..."
                     className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-3 pr-10 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent-dim)] focus:outline-none resize-none transition-colors"
                     rows={3}
                     maxLength={300}
@@ -587,7 +603,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                 className="btn-outline px-4 py-3.5"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Precedente
+                Précédente
               </button>
             )}
 
@@ -615,7 +631,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    Lancer la retouche — {files.length} credit(s)
+                    Lancer la retouche — {files.length} crédit(s)
                   </>
                 )}
               </button>
@@ -624,8 +640,8 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
           {!isAdmin && credits < files.length && (
             <p className="text-sm text-red-400 mt-2 text-center">
-              Credits insuffisants ({credits} disponible(s), {files.length} requis).{" "}
-              <a href="/billing" className="underline text-violet-400">Acheter des credits</a>
+              Crédits insuffisants ({credits} disponible(s), {files.length} requis).{" "}
+              <a href="/billing" className="underline text-violet-400">Acheter des crédits</a>
             </p>
           )}
         </div>

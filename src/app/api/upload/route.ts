@@ -35,7 +35,15 @@ export async function POST(req: NextRequest) {
     let photoInstructions: string[] = [];
     const instructionsRaw = formData.get("instructions") as string | null;
     if (instructionsRaw) {
-      try { photoInstructions = JSON.parse(instructionsRaw); } catch { /* ignore */ }
+      try {
+        const parsed = JSON.parse(instructionsRaw);
+        if (!Array.isArray(parsed) || !parsed.every((v: unknown) => typeof v === "string")) {
+          return NextResponse.json({ error: "Format d'instructions invalide" }, { status: 400 });
+        }
+        photoInstructions = parsed;
+      } catch {
+        return NextResponse.json({ error: "Format d'instructions invalide" }, { status: 400 });
+      }
     }
 
     // ── Validation ────────────────────────────────────────────

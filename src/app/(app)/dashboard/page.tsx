@@ -49,7 +49,7 @@ export default async function DashboardPage({
               Bienvenue sur Pictaura, {session.user.name?.split(" ")[0]} !
             </p>
             <p className="text-violet-100 text-sm">
-              Vous avez recu <strong>{session.user.credits} credits gratuits</strong> pour tester le service. Commencez par optimiser vos photos.
+              Vous avez reçu <strong>{session.user.credits} crédits gratuits</strong> pour tester le service. Commencez par optimiser vos photos.
             </p>
           </div>
           <Link
@@ -69,8 +69,8 @@ export default async function DashboardPage({
           </h1>
           <p className="text-zinc-400 mt-1">
             {isAdmin
-              ? "Compte administrateur — credits illimites"
-              : `${session.user.credits} credit(s) disponible(s)`}
+              ? "Compte administrateur — crédits illimités"
+              : `${session.user.credits} crédit(s) disponible(s)`}
           </p>
         </div>
         <Link
@@ -83,8 +83,8 @@ export default async function DashboardPage({
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-6 mb-8">
-        <StatCard label="Photos traitees" value={String(totalPhotos)} icon={ImageIcon} />
-        <StatCard label="Credits restants" value={isAdmin ? "\u221E" : String(session.user.credits)} icon={CreditCard} />
+        <StatCard label="Photos traitées" value={String(totalPhotos)} icon={ImageIcon} />
+        <StatCard label="Crédits restants" value={isAdmin ? "\u221E" : String(session.user.credits)} icon={CreditCard} />
         <StatCard label="Jobs total" value={String(totalJobs)} icon={FolderOpen} />
       </div>
 
@@ -95,10 +95,10 @@ export default async function DashboardPage({
             <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
             <div>
               <p className="font-semibold text-amber-300">
-                Il vous reste seulement {session.user.credits} credit(s) !
+                Il vous reste seulement {session.user.credits} crédit(s) !
               </p>
               <p className="text-sm text-amber-400/70 mt-0.5">
-                Rechargez votre compte pour continuer a optimiser vos photos.
+                Rechargez votre compte pour continuer à optimiser vos photos.
               </p>
             </div>
           </div>

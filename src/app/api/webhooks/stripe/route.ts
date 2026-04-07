@@ -3,10 +3,8 @@ import { stripe } from "@/lib/stripe";
 import { env } from "@/config/env";
 import { prisma } from "@/lib/prisma";
 import { addCreditsFromPurchase } from "@/services/credits";
-import { CREDIT_PACKS } from "@/config/plans";
+import { PRO_PLAN } from "@/config/plans";
 
-// Important: désactiver le body parser pour avoir le raw body
-// nécessaire pour la vérification de signature Stripe
 export const config = { api: { bodyParser: false } };
 
 export async function POST(req: NextRequest) {
@@ -36,28 +34,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── Traiter les événements ────────────────────────────────
-
   switch (event.type) {
+    // ── Nouvel abonnement créé via Checkout ──────────────────
     case "checkout.session.completed": {
       const session = event.data.object as unknown as {
-        metadata: { userId: string; packId: string; credits: string };
-        payment_intent: string;
+        metadata: { userId: string; planId: string };
+        subscription: string;
         customer: string;
-        customer_details?: { email?: string };
+        mode: string;
       };
 
-      const { packId, credits } = session.metadata ?? {};
-      const paymentIntentId = String(session.payment_intent);
-      const creditAmount = parseInt(credits, 10);
+      if (session.mode !== "subscription") break;
 
-      if (!credits || isNaN(creditAmount)) {
-        console.error("Metadata manquante dans checkout.session.completed");
-        break;
-      }
-
-      // Résoudre l'userId UNIQUEMENT via le stripeCustomerId stocké en BDD (sécurisé)
-      // On ne fait PAS de fallback vers metadata.userId (manipulable côté client)
       const dbUser = session.customer
         ? await prisma.user.findFirst({ where: { stripeCustomerId: session.customer }, select: { id: true } })
         : null;
@@ -68,32 +56,112 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      const pack = CREDIT_PACKS.find((p) => p.id === packId);
+      // Récupérer les détails de la subscription pour la date de fin
+      const subscription = await stripe.subscriptions.retrieve(session.subscription);
+      const periodEnd = new Date(subscription.current_period_end * 1000);
+
+      // Activer l'abonnement + créditer les photos mensuelles
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          isSubscribed: true,
+          stripeSubscriptionId: session.subscription,
+          subscriptionEndsAt: periodEnd,
+        },
+      });
 
       try {
         await addCreditsFromPurchase(
           userId,
-          creditAmount,
-          paymentIntentId,
-          `Achat ${pack?.name ?? packId} — ${creditAmount} crédits`
+          PRO_PLAN.creditsPerMonth,
+          `sub_initial_${session.subscription}`,
+          `Abonnement Pro — ${PRO_PLAN.creditsPerMonth} crédits`
         );
-        console.log(`✅ ${creditAmount} crédits ajoutés à l'utilisateur ${userId}`);
+        console.log(`✅ Abonnement Pro activé pour ${userId} — ${PRO_PLAN.creditsPerMonth} crédits ajoutés`);
       } catch (err) {
-        console.error("Erreur ajout crédits:", err);
-        // Retourner 200 quand même pour éviter que Stripe retente indéfiniment
-        // L'idempotence dans addCreditsFromPurchase gère les doublons
+        console.error("Erreur ajout crédits abonnement:", err);
       }
       break;
     }
 
+    // ── Renouvellement mensuel (facture payée) ───────────────
+    case "invoice.payment_succeeded": {
+      const invoice = event.data.object as unknown as {
+        subscription: string;
+        customer: string;
+        billing_reason: string;
+      };
+
+      // Ignorer la première facture (déjà gérée par checkout.session.completed)
+      if (invoice.billing_reason === "subscription_create") break;
+
+      const dbUser = invoice.customer
+        ? await prisma.user.findFirst({ where: { stripeCustomerId: invoice.customer }, select: { id: true } })
+        : null;
+      const userId = dbUser?.id;
+
+      if (!userId) {
+        console.error("Impossible de résoudre l'utilisateur pour le renouvellement:", invoice.customer);
+        break;
+      }
+
+      // Récupérer la nouvelle période
+      const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+      const periodEnd = new Date(subscription.current_period_end * 1000);
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { subscriptionEndsAt: periodEnd },
+      });
+
+      try {
+        await addCreditsFromPurchase(
+          userId,
+          PRO_PLAN.creditsPerMonth,
+          `sub_renew_${invoice.subscription}_${Date.now()}`,
+          `Renouvellement Pro — ${PRO_PLAN.creditsPerMonth} crédits`
+        );
+        console.log(`✅ Renouvellement Pro pour ${userId} — ${PRO_PLAN.creditsPerMonth} crédits ajoutés`);
+      } catch (err) {
+        console.error("Erreur ajout crédits renouvellement:", err);
+      }
+      break;
+    }
+
+    // ── Abonnement annulé ────────────────────────────────────
+    case "customer.subscription.deleted": {
+      const subscription = event.data.object as unknown as {
+        id: string;
+        customer: string;
+      };
+
+      const dbUser = subscription.customer
+        ? await prisma.user.findFirst({ where: { stripeCustomerId: subscription.customer }, select: { id: true } })
+        : null;
+      const userId = dbUser?.id;
+
+      if (!userId) {
+        console.error("Impossible de résoudre l'utilisateur pour l'annulation:", subscription.customer);
+        break;
+      }
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          isSubscribed: false,
+          stripeSubscriptionId: null,
+        },
+      });
+      console.log(`⚠️ Abonnement annulé pour ${userId}`);
+      break;
+    }
+
     case "payment_intent.payment_failed": {
-      // Log uniquement — le user n'est pas débité (checkout n'a pas complété)
       console.log("Paiement échoué:", event.data.object);
       break;
     }
 
     default:
-      // Ignorer les autres événements
       break;
   }
 

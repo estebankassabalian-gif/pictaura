@@ -48,8 +48,10 @@ model User {
   role             Role      @default(USER)
   credits          Int       @default(0)
   isActive         Boolean   @default(true)
-  isSubscribed     Boolean   @default(false) // true = watermark retiré + features premium
-  stripeCustomerId String?   @unique
+  isSubscribed         Boolean   @default(false) // true = watermark retiré + features premium
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  subscriptionEndsAt   DateTime? // Fin de période courante (pour ne pas couper avant expiration)
   referredById     String?
   referredBy       User?     @relation("Referrals", fields: [referredById], references: [id])
   referrals        User[]    @relation("Referrals")

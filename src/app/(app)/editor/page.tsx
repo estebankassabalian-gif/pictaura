@@ -124,11 +124,11 @@ export default function DirectEditorPage() {
     e.preventDefault();
     if (!file) { setError("Ajoutez une photo"); return; }
     if (!instruction.trim() || instruction.length < 5) {
-      setError("Decrivez ce que vous souhaitez modifier (min 5 caracteres)");
+      setError("Décrivez ce que vous souhaitez modifier (min 5 caractères)");
       return;
     }
     if (!isAdmin && credits < INPAINTING_CREDITS_COST) {
-      setError(`${INPAINTING_CREDITS_COST} credits requis (vous en avez ${credits})`);
+      setError(`${INPAINTING_CREDITS_COST} crédits requis (vous en avez ${credits})`);
       return;
     }
 
@@ -157,7 +157,7 @@ export default function DirectEditorPage() {
       setProgress(100);
       setTimeout(() => setResult(data.resultUrl), 300);
     } catch {
-      setError("Erreur reseau. Reessayez.");
+      setError("Erreur réseau. Réessayez.");
     } finally {
       if (progressRef.current) clearInterval(progressRef.current);
       setLoading(false);
@@ -187,7 +187,7 @@ export default function DirectEditorPage() {
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold text-white mb-2">Retouche sur instruction</h1>
       <p className="text-zinc-400 mb-8">
-        Decrivez ce que vous souhaitez modifier — l'IA s'en charge.{" "}
+        Décrivez ce que vous souhaitez modifier — l'IA s'en charge.{" "}
         <span className="text-violet-400 font-medium">{INPAINTING_CREDITS_COST} credits</span>
       </p>
 
@@ -217,7 +217,7 @@ export default function DirectEditorPage() {
               <input {...getInputProps()} />
               <Upload className="w-8 h-8 text-[var(--muted)] mx-auto mb-2" />
               <p className="text-zinc-300 font-medium text-sm">
-                {isDragActive ? "Deposez ici..." : "Glissez votre photo ou cliquez"}
+                {isDragActive ? "Déposez ici..." : "Glissez votre photo ou cliquez"}
               </p>
               <p className="text-xs text-[var(--muted)] mt-1">JPEG, PNG, WEBP · Max 20 Mo</p>
             </div>
@@ -306,7 +306,7 @@ export default function DirectEditorPage() {
       {/* Result with before/after slider */}
       {result && preview && (
         <div className="mt-8 bg-[var(--surface)] rounded-2xl border border-white/8 p-6">
-          <h2 className="font-semibold text-white mb-1">Resultat</h2>
+          <h2 className="font-semibold text-white mb-1">Résultat</h2>
           <p className="text-xs text-zinc-500 mb-4">Glissez le curseur pour comparer avant / apres</p>
           <BeforeAfterSlider before={preview} after={result} />
           <button

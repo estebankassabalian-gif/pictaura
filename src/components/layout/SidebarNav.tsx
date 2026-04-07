@@ -244,7 +244,7 @@ export function SidebarNav({ userName, userEmail, userInitial, credits, isAdmin 
             {credits === -1 ? "\u221E" : credits}
           </div>
           <div className="text-[10px] text-violet-300/70 font-semibold uppercase tracking-wider">
-            credits disponibles
+            crédits disponibles
           </div>
         </div>
 

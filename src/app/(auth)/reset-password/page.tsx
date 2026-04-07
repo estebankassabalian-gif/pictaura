@@ -26,7 +26,7 @@ function ResetPasswordForm() {
     setError("");
 
     if (password.length < 8) {
-      setError("Le mot de passe doit contenir au moins 8 caracteres.");
+      setError("Le mot de passe doit contenir au moins 8 caractères.");
       return;
     }
     if (password !== confirm) {
@@ -44,13 +44,13 @@ function ResetPasswordForm() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Erreur. Reessayez.");
+        setError(data.error ?? "Erreur. Réessayez.");
         return;
       }
 
       setSuccess(true);
     } catch {
-      setError("Erreur reseau. Reessayez.");
+      setError("Erreur réseau. Réessayez.");
     } finally {
       setLoading(false);
     }
@@ -115,7 +115,7 @@ function ResetPasswordForm() {
                 maxLength={128}
                 autoComplete="new-password"
                 className="w-full border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                placeholder="Minimum 8 caracteres"
+                placeholder="Minimum 8 caractères"
               />
             </div>
 

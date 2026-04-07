@@ -17,23 +17,9 @@ export function getStripe(): Stripe {
   return _stripe;
 }
 
-/** @deprecated Use getStripe() instead — kept for compat */
+/** Proxy for backward compatibility */
 export const stripe = new Proxy({} as Stripe, {
   get(_target, prop) {
     return (getStripe() as any)[prop];
   },
 });
-
-/**
- * Returns the Stripe Price ID for a given pack.
- */
-export function getStripePriceId(
-  packId: "starter" | "pro" | "studio"
-): string {
-  const map = {
-    starter: env.STRIPE_PRICE_STARTER,
-    pro: env.STRIPE_PRICE_PRO,
-    studio: env.STRIPE_PRICE_STUDIO,
-  };
-  return map[packId];
-}

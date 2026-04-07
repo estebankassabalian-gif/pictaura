@@ -3,8 +3,8 @@ import { SoftwareApplicationJsonLd, FaqJsonLd, OrganizationJsonLd } from "@/comp
 import LandingClient from "@/components/landing/LandingClient";
 
 export const metadata: Metadata = {
-  title: "Pictaura — Retouche photo IA pour Airbnb, Vinted, Instagram & Shopify",
-  description: "Optimisez vos photos Airbnb, Vinted, Instagram et Shopify en 30 secondes. Upscaling IA, fond blanc automatique, SEO des images. 5 crédits gratuits, sans engagement.",
+  title: "Pictaura — Retouche photo IA professionnelle | Immobilier, E-commerce, Réseaux sociaux",
+  description: "Optimisez automatiquement vos photos pro en 30 secondes. Retouche IA, upscaling, fond blanc, métadonnées SEO. 200 photos/mois à 29€. Essai gratuit.",
   alternates: { canonical: "/" },
 };
 

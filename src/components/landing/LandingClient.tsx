@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { motion, useInView, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { CREDIT_PACKS, FREE_SIGNUP_CREDITS } from "@/config/plans";
+import { PRO_PLAN, FREE_SIGNUP_CREDITS } from "@/config/plans";
 import BeforeAfterHero from "@/components/landing/BeforeAfterHero";
 import {
   Upload,
@@ -16,6 +16,7 @@ import {
   Search,
   Film,
   Gift,
+  Check,
 } from "lucide-react";
 
 /* ── Fade-up animation variant ─────────────────────────────── */
@@ -322,7 +323,7 @@ export default function LandingClient() {
               <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
                 <span className="tag mb-8 block w-fit">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-                  {FREE_SIGNUP_CREDITS} crédits offerts · sans carte bancaire
+                  Pour les professionnels · {FREE_SIGNUP_CREDITS} photos offertes
                 </span>
               </motion.div>
 
@@ -330,21 +331,21 @@ export default function LandingClient() {
                 className="text-display-xl font-black tracking-[-0.04em] leading-[1.03] mb-6"
                 variants={fadeUp} initial="hidden" animate="visible" custom={0.1}
               >
-                <span className="gradient-text-white">Photos pro</span>
+                <span className="gradient-text-white">Retouche photo</span>
                 <br />
-                <span className="text-brand-400">Airbnb, Vinted</span>
+                <span className="text-brand-400">pro & automatisée</span>
                 <br />
-                <span className="gradient-text-white">& Instagram</span>
+                <span className="gradient-text-white">pour votre business</span>
                 <br />
-                <span className="text-ink-muted text-[0.7em] font-semibold tracking-normal">en 30 secondes.</span>
+                <span className="text-ink-muted text-[0.7em] font-semibold tracking-normal">en 30 secondes, par l&apos;IA.</span>
               </motion.h1>
 
               <motion.p
                 className="text-ink-muted text-base leading-relaxed max-w-md mb-10"
                 variants={fadeUp} initial="hidden" animate="visible" custom={0.2}
               >
-                Uploadez vos photos — Pictaura les optimise selon la plateforme.
-                Luminosité, couleurs, fond blanc, upscaling IA, SEO intégré.
+                Immobilier, e-commerce, réseaux sociaux — Pictaura optimise automatiquement
+                vos photos pro : luminosité, couleurs, fond blanc, upscaling IA et métadonnées SEO.
               </motion.p>
 
               <motion.div
@@ -364,7 +365,7 @@ export default function LandingClient() {
                 className="flex flex-wrap gap-5"
                 variants={fadeUp} initial="hidden" animate="visible" custom={0.4}
               >
-                {["5 crédits gratuits", "Sans engagement", "Stripe sécurisé", "Crédits permanents"].map((t) => (
+                {["5 photos offertes", "Résiliable à tout moment", "Paiement Stripe sécurisé", "200 photos/mois"].map((t) => (
                   <span key={t} className="flex items-center gap-1.5 text-xs text-ink-muted font-medium">
                     <svg className="w-3.5 h-3.5 text-brand-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -670,54 +671,57 @@ export default function LandingClient() {
 
         <div className="relative max-w-7xl mx-auto px-6">
           <FadeUp className="text-center mb-16">
-            <span className="tag mb-5 block w-fit mx-auto">Tarifs</span>
-            <h2 className="text-display-lg font-black gradient-text-white mb-4">Simple, sans engagement</h2>
-            <p className="text-ink-muted">1 crédit = 1 photo optimisée. Les crédits n&apos;expirent jamais.</p>
+            <span className="tag mb-5 block w-fit mx-auto">Tarif unique</span>
+            <h2 className="text-display-lg font-black gradient-text-white mb-4">Un seul plan, tout inclus</h2>
+            <p className="text-ink-muted">{FREE_SIGNUP_CREDITS} crédits offerts à l&apos;inscription pour tester. Puis un abonnement Pro tout-en-un.</p>
           </FadeUp>
 
-          {/* Free pack */}
-          <FadeUp className="max-w-sm mx-auto mb-10">
-            <div className="glass rounded-3xl p-8 text-center border border-brand-500/20 shadow-glow-sm">
-              <Gift className="w-8 h-8 text-brand-400 mx-auto mb-3" />
-              <h3 className="font-black text-white mb-2 text-lg">À l&apos;inscription</h3>
-              <div className="text-6xl font-black gradient-text my-3">{FREE_SIGNUP_CREDITS}</div>
-              <div className="text-brand-300 font-bold mb-1">crédits gratuits</div>
-              <p className="text-xs text-ink-muted">Sans carte bancaire · Immédiatement</p>
-            </div>
-          </FadeUp>
+          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            {/* Free trial */}
+            <FadeUp>
+              <div className="glass rounded-3xl p-8 text-center border border-white/8">
+                <Gift className="w-8 h-8 text-brand-400 mx-auto mb-3" />
+                <h3 className="font-black text-white mb-2 text-lg">Essai gratuit</h3>
+                <div className="text-5xl font-black gradient-text my-4">{FREE_SIGNUP_CREDITS}</div>
+                <div className="text-brand-300 font-bold mb-1">photos offertes</div>
+                <p className="text-xs text-ink-muted mb-8">Sans carte bancaire · Immédiatement</p>
+                <Link
+                  href="/register"
+                  className="block w-full py-3.5 rounded-xl font-bold text-sm bg-white/5 text-ink hover:bg-white/10 border border-white/8 transition-all"
+                >
+                  Essayer gratuitement
+                </Link>
+              </div>
+            </FadeUp>
 
-          <div className="grid md:grid-cols-3 gap-5 max-w-3xl mx-auto">
-            {CREDIT_PACKS.map((pack, i) => (
-              <FadeUp key={pack.id} delay={i * 0.1}>
-                <div className={`glass glass-hover rounded-3xl p-8 text-center relative transition-all hover:-translate-y-2 ${
-                  pack.popular
-                    ? "border-brand-500/40 shadow-glow-md"
-                    : "border-white/7"
-                }`}>
-                  {pack.popular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-brand-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-glow-sm">
-                      LE PLUS POPULAIRE
-                    </div>
-                  )}
-                  <h3 className="text-base font-bold text-white mb-3 mt-2">{pack.name}</h3>
-                  <div className="text-5xl font-black gradient-text-white my-4">{pack.priceDisplay}</div>
-                  <div className="text-xl font-bold text-brand-400 mb-1">{pack.credits} crédits</div>
-                  <div className="text-xs text-ink-muted mb-8">{pack.pricePerPhoto}</div>
-                  <Link
-                    href="/register"
-                    className={`block w-full py-3.5 rounded-xl font-bold text-sm transition-all ${
-                      pack.popular
-                        ? "bg-brand-500 text-white hover:bg-brand-600 shadow-glow-sm hover:shadow-glow-md"
-                        : "bg-white/5 text-ink hover:bg-white/10 border border-white/8"
-                    }`}
-                  >
-                    Commencer
-                  </Link>
+            {/* Pro plan */}
+            <FadeUp delay={0.1}>
+              <div className="glass glass-hover rounded-3xl p-8 text-center relative border-brand-500/40 shadow-glow-md transition-all hover:-translate-y-2">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-brand-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-glow-sm">
+                  RECOMMANDÉ
                 </div>
-              </FadeUp>
-            ))}
+                <h3 className="text-base font-bold text-white mb-3 mt-2">{PRO_PLAN.name}</h3>
+                <div className="text-5xl font-black gradient-text-white my-4">{PRO_PLAN.priceDisplay}</div>
+                <div className="text-xl font-bold text-brand-400 mb-1">{PRO_PLAN.creditsPerMonth} photos/mois</div>
+                <div className="text-xs text-ink-muted mb-4">{PRO_PLAN.pricePerPhoto}/photo</div>
+                <ul className="text-left space-y-2 mb-8 text-sm text-zinc-300 max-w-xs mx-auto">
+                  {PRO_PLAN.features.map((f) => (
+                    <li key={f} className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-brand-400 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/register"
+                  className="block w-full py-3.5 rounded-xl font-bold text-sm bg-brand-500 text-white hover:bg-brand-600 shadow-glow-sm hover:shadow-glow-md transition-all"
+                >
+                  Commencer
+                </Link>
+              </div>
+            </FadeUp>
           </div>
-          <p className="text-center text-xs text-ink-faint mt-8">Crédits sans expiration · Remboursement automatique si échec</p>
+          <p className="text-center text-xs text-ink-faint mt-8">Résiliable à tout moment · Remboursement automatique si échec de traitement</p>
         </div>
       </section>
 
@@ -733,7 +737,7 @@ export default function LandingClient() {
             {[
               { q: "Comment optimiser ses photos pour Airbnb avec Pictaura ?", a: "Inscrivez-vous, uploadez vos photos et sélectionnez le preset Airbnb. Pictaura redimensionne à 1920×1280px, améliore la luminosité, le contraste, et applique l'upscaling IA Real-ESRGAN. Téléchargez le ZIP en un clic." },
               { q: "Comment mettre un fond blanc sur ses photos Vinted ?", a: "Sélectionnez le preset Vinted. Pictaura détecte et supprime automatiquement le fond, puis place votre produit sur fond blanc parfait 1000×1000px avec une ombre douce." },
-              { q: "Les crédits ont-ils une date d'expiration ?", a: "Non, jamais. Vos crédits restent disponibles indéfiniment. Pas d'abonnement, payez seulement quand vous avez besoin." },
+              { q: "Comment fonctionne l'abonnement Pro ?", a: "29€/mois pour 200 photos optimisées. Les crédits non utilisés ne sont pas reportés. Résiliable à tout moment depuis votre espace. 5 photos offertes à l'inscription pour tester." },
               { q: "Qu'est-ce que la retouche sur instruction ?", a: 'Après traitement, écrivez ce que vous voulez modifier : "Retire le canapé rouge", "Débâche la piscine". Pictaura utilise Gemini pour exécuter en 60s. Coût : 1 crédit.' },
               { q: "Quels formats sont acceptés ?", a: "JPEG, PNG, WEBP et HEIC (iPhone). Taille maximale 20 Mo par photo, jusqu'à 10 photos par lot." },
               { q: "Qu'est-ce qu'un Reel Ken Burns ?", a: "Pictaura transforme votre photo en vidéo MP4 9:16 animée avec un léger zoom ou panoramique. Les Reels ont 3-5× plus de reach que les photos statiques sur Instagram." },

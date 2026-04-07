@@ -52,7 +52,7 @@ export default function ReelPage() {
   async function handleGenerate() {
     if (!file) { setError("Ajoutez une photo"); return; }
     if (!isAdmin && credits < REEL_CREDITS_COST) {
-      setError(`${REEL_CREDITS_COST} credits requis (vous en avez ${credits})`);
+      setError(`${REEL_CREDITS_COST} crédits requis (vous en avez ${credits})`);
       return;
     }
 
@@ -71,13 +71,13 @@ export default function ReelPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "Erreur lors de la generation");
+        setError(data.error ?? "Erreur lors de la génération");
         return;
       }
 
       setResult(data);
     } catch {
-      setError("Erreur reseau. Reessayez.");
+      setError("Erreur réseau. Réessayez.");
     } finally {
       setLoading(false);
     }
@@ -87,15 +87,15 @@ export default function ReelPage() {
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold text-white mb-1">Reel Instagram — Effet Ken Burns</h1>
       <p className="text-[var(--muted)] text-sm mb-6">
-        Transformez une photo en video MP4 animee 9:16 · {REEL_CREDITS_COST} credits ·{" "}
-        {isAdmin ? "Admin — credits illimites" : `${credits} credit(s) disponibles`}
+        Transformez une photo en vidéo MP4 animée 9:16 · {REEL_CREDITS_COST} crédits ·{" "}
+        {isAdmin ? "Admin — crédits illimités" : `${credits} crédit(s) disponibles`}
       </p>
 
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 mb-6 text-sm text-blue-300 flex items-start gap-2.5">
         <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
         <div>
           <strong>Pourquoi un Reel ?</strong> Les Reels ont 3-5x plus de reach que les photos statiques
-          sur Instagram (algo 2025). Le mouvement arrete le scroll en &lt;200ms.
+          sur Instagram (algo 2025). Le mouvement arrête le scroll en &lt;200ms.
         </div>
       </div>
 
@@ -121,7 +121,7 @@ export default function ReelPage() {
           <div>
             <Upload className="w-8 h-8 text-[var(--muted)] mx-auto mb-3" />
             <p className="text-zinc-300 font-medium">
-              {isDragActive ? "Deposez la photo ici..." : "Glissez ou cliquez pour selectionner une photo"}
+              {isDragActive ? "Déposez la photo ici..." : "Glissez ou cliquez pour sélectionner une photo"}
             </p>
             <p className="text-xs text-[var(--muted)] mt-1">JPEG, PNG, WEBP · Max 20 Mo</p>
           </div>

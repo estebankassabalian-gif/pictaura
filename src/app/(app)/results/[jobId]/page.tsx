@@ -87,7 +87,7 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
       if (!res.ok || data.fallback) {
         setState({
           step: "ready",
-          analysis: "Suggestions adaptees a votre secteur",
+          analysis: "Suggestions adaptées à votre secteur",
           suggestions: presetSuggestions.map((s) => s.label),
           presetSuggestions,
         });
@@ -104,7 +104,7 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
       const presetSuggestions = DEFAULT_SUGGESTIONS[preset] ?? [];
       setState({
         step: "ready",
-        analysis: "Suggestions adaptees a votre secteur",
+        analysis: "Suggestions adaptées à votre secteur",
         suggestions: presetSuggestions.map((s) => s.label),
         presetSuggestions,
       });
@@ -113,7 +113,7 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
 
   async function handleRetouche(instructionText: string) {
     if (!instructionText.trim() || instructionText.trim().length < 3) {
-      setError("Decrivez la retouche souhaitee (minimum 3 caracteres)");
+      setError("Décrivez la retouche souhaitée (minimum 3 caractères)");
       return;
     }
 
@@ -134,7 +134,7 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
         const presetSuggestions = DEFAULT_SUGGESTIONS[preset] ?? [];
         setState({
           step: "ready",
-          analysis: "Retouche echouee. Reessayez avec une autre instruction.",
+          analysis: "Retouche échouée. Réessayez avec une autre instruction.",
           suggestions: presetSuggestions.map((s) => s.label),
           presetSuggestions,
         });
@@ -148,7 +148,7 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
         originalUrl: photo.processedUrl ?? "",
       });
     } catch {
-      setError("Erreur reseau. Reessayez.");
+      setError("Erreur réseau. Réessayez.");
       const presetSuggestions = DEFAULT_SUGGESTIONS[preset] ?? [];
       setState({
         step: "ready",
@@ -185,7 +185,7 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
       const presetSuggestions = DEFAULT_SUGGESTIONS[preset] ?? [];
       setState({
         step: "ready",
-        analysis: "Resultat rejete. Decrivez une autre retouche.",
+        analysis: "Résultat rejeté. Décrivez une autre retouche.",
         suggestions: presetSuggestions.map((s) => s.label),
         presetSuggestions,
       });
@@ -204,8 +204,8 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
     const presetSuggestions = DEFAULT_SUGGESTIONS[preset] ?? [];
     setState({
       step: "ready",
-      analysis: "Photo validee. Souhaitez-vous affiner davantage ?",
-      suggestions: ["Ameliorer encore l'eclairage", "Ajouter plus de details", "Retouche complementaire"],
+      analysis: "Photo validée. Souhaitez-vous affiner davantage ?",
+      suggestions: ["Améliorer encore l'éclairage", "Ajouter plus de détails", "Retouche complémentaire"],
       presetSuggestions,
     });
     setInstruction("");
@@ -259,7 +259,7 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
 
           <div>
             <p className="text-xs text-[var(--muted)] font-medium mb-1 flex items-center gap-1">
-              <MessageSquare className="w-3 h-3" /> Ou decrivez votre retouche
+              <MessageSquare className="w-3 h-3" /> Ou décrivez votre retouche
             </p>
             <div className="flex gap-2">
               <textarea
@@ -283,11 +283,11 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
                 className="px-4 py-2 bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-xl text-sm font-semibold hover:from-violet-700 hover:to-blue-700 disabled:opacity-40 transition-all self-end"
               >
                 <Send className="w-4 h-4 sm:hidden" />
-                <span className="hidden sm:inline">{INPAINTING_CREDITS_COST} credit</span>
+                <span className="hidden sm:inline">{INPAINTING_CREDITS_COST} crédit</span>
               </button>
             </div>
             <p className="text-xs text-[var(--muted)] mt-1">
-              Le credit est debite uniquement si vous validez le resultat.
+              Le crédit est débité uniquement si vous validez le résultat.
             </p>
           </div>
         </div>
@@ -308,7 +308,7 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
       {state.step === "validating" && (
         <div className="space-y-3">
           <p className="text-sm text-zinc-400">
-            Resultat pret — <strong>aucun credit debite pour l'instant.</strong>
+            Résultat prêt — <strong>aucun crédit débité pour l'instant.</strong>
           </p>
 
           <div className="rounded-xl overflow-hidden border border-white/8">
@@ -349,19 +349,19 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-400" />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-emerald-400">Retouche validee — 1 credit debite</p>
+              <p className="text-sm font-semibold text-emerald-400">Retouche validée — 1 crédit débité</p>
             </div>
             <a
               href={state.resultUrl}
               download="pictaura-retouche.jpg"
               className="flex items-center gap-1 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors"
             >
-              <Download className="w-3 h-3" /> Telecharger
+              <Download className="w-3 h-3" /> Télécharger
             </a>
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={state.resultUrl} alt="Resultat retouche" className="w-full rounded-xl border border-white/8" />
+          <img src={state.resultUrl} alt="Résultat retouche" className="w-full rounded-xl border border-white/8" />
 
           <button
             onClick={handleAffinement}
@@ -406,7 +406,7 @@ export default function ResultsPage() {
       setFetchError("");
       return data;
     } catch {
-      setFetchError("Impossible de charger les resultats. Verifiez votre connexion.");
+      setFetchError("Impossible de charger les résultats. Vérifiez votre connexion.");
     }
   }, [jobId]);
 
@@ -439,11 +439,14 @@ export default function ResultsPage() {
     try {
       const res = await fetch(`/api/jobs/${jobId}/download`);
       if (!res.ok) { setActionError("Erreur lors du téléchargement"); return; }
+      const contentType = res.headers.get("Content-Type") || "";
+      const isImage = contentType.includes("image/");
+      const ext = isImage ? ".jpg" : ".zip";
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `pictaura_${job?.preset?.toLowerCase()}.zip`;
+      a.download = `pictaura_${job?.preset?.toLowerCase()}${ext}`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -507,7 +510,7 @@ export default function ResultsPage() {
             {PRESET_LABELS[job.preset as keyof typeof PRESET_LABELS] ?? job.preset}
           </h1>
           <p className="text-zinc-400 mt-1">
-            {completedPhotos.length}/{job.photos.length} photos traitees
+            {completedPhotos.length}/{job.photos.length} photos traitées
           </p>
         </div>
         {completedPhotos.length > 0 && (
@@ -517,7 +520,7 @@ export default function ResultsPage() {
             className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-blue-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
-            {downloading ? "Preparation..." : "Telecharger le ZIP"}
+            {downloading ? "Préparation..." : completedPhotos.length === 1 ? "Télécharger la photo" : "Télécharger le ZIP"}
           </button>
         )}
       </div>
@@ -540,7 +543,7 @@ export default function ResultsPage() {
               <p className="text-xs text-blue-400/70 mt-0.5">
                 {completedPhotos.length > 0
                   ? `~${Math.round((job.photos.length - completedPhotos.length) * 35)}s restantes`
-                  : `~${Math.round(job.photos.length * 35)}s estimees`}
+                  : `~${Math.round(job.photos.length * 35)}s estimées`}
               </p>
             </div>
           </div>
@@ -573,7 +576,7 @@ export default function ResultsPage() {
           <div className="flex items-center gap-3">
             <Clock className="w-6 h-6 text-amber-400" />
             <div className="flex-1">
-              <p className="font-semibold text-amber-300">Le traitement prend plus de temps que prevu</p>
+              <p className="font-semibold text-amber-300">Le traitement prend plus de temps que prévu</p>
               <p className="text-xs text-amber-400/70 mt-1">
                 Rechargez la page dans quelques minutes. Si le probleme persiste, contactez le support.
               </p>
@@ -650,14 +653,14 @@ export default function ResultsPage() {
                   <span>Original : {(currentPhoto.fileSizeOriginal / 1024).toFixed(0)} Ko</span>
                 )}
                 {currentPhoto.fileSizeProcessed && (
-                  <span>Traite : {(currentPhoto.fileSizeProcessed / 1024).toFixed(0)} Ko</span>
+                  <span>Traité : {(currentPhoto.fileSizeProcessed / 1024).toFixed(0)} Ko</span>
                 )}
               </div>
             </>
           ) : currentPhoto.status === "FAILED" ? (
             <div className="bg-red-500/10 rounded-xl p-6 text-center">
               <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-              <p className="text-red-400 font-medium">Echec du traitement — credit rembourse</p>
+              <p className="text-red-400 font-medium">Échec du traitement — crédit remboursé</p>
             </div>
           ) : (
             <div className="bg-[var(--surface-2)] rounded-xl p-12 text-center">

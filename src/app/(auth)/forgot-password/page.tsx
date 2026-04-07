@@ -23,13 +23,13 @@ export default function ForgotPasswordPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error ?? "Erreur. Reessayez.");
+        setError(data.error ?? "Erreur. Réessayez.");
         return;
       }
 
       setSent(true);
     } catch {
-      setError("Erreur reseau. Reessayez.");
+      setError("Erreur réseau. Réessayez.");
     } finally {
       setLoading(false);
     }

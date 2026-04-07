@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   const allowed = checkRateLimit(`forgot-pw:${ip}`, 3, 15 * 60 * 1000); // 3 per 15 min
   if (!allowed) {
     return NextResponse.json(
-      { error: "Trop de tentatives. Reessayez dans quelques minutes." },
+      { error: "Trop de tentatives. Réessayez dans quelques minutes." },
       { status: 429 }
     );
   }

@@ -2,29 +2,24 @@
 
 import { useState } from "react";
 
-export default function BuyButton({
-  packId,
-}: {
-  packId: "starter" | "pro" | "studio";
-}) {
+export default function SubscribeButton() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleBuy() {
+  async function handleSubscribe() {
     setLoading(true);
     setError("");
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packId }),
       });
 
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setError("Erreur lors de la création du paiement");
+        setError(data.error ?? "Erreur lors de la création du paiement");
       }
     } catch {
       setError("Erreur réseau. Réessayez.");
@@ -36,11 +31,11 @@ export default function BuyButton({
   return (
     <div>
       <button
-        onClick={handleBuy}
+        onClick={handleSubscribe}
         disabled={loading}
-        className="w-full bg-brand-600 text-white py-2.5 rounded-xl font-semibold hover:bg-brand-700 transition-colors disabled:opacity-50"
+        className="w-full bg-gradient-to-r from-violet-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50 text-base"
       >
-        {loading ? "Chargement..." : "Acheter →"}
+        {loading ? "Redirection..." : "S'abonner — 29€/mois"}
       </button>
       {error && (
         <p className="text-red-400 text-xs mt-2 text-center">{error}</p>

@@ -89,7 +89,7 @@ Respond ONLY with valid JSON (no markdown, no code block):
   INSTAGRAM: {
     id: "INSTAGRAM",
     name: "Instagram",
-    description: "Sublimez vos contenus pour les reseaux sociaux",
+    description: "Sublimez vos contenus pour les réseaux sociaux",
     icon: Camera,
     gradient: "from-pink-600 to-violet-600",
     accentColor: "#EC4899",

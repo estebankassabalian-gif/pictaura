@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const allowed = checkRateLimit(`reset-pw:${ip}`, 5, 15 * 60 * 1000); // 5 per 15 min
   if (!allowed) {
     return NextResponse.json(
-      { error: "Trop de tentatives. Reessayez dans quelques minutes." },
+      { error: "Trop de tentatives. Réessayez dans quelques minutes." },
       { status: 429 }
     );
   }
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   }
   if (!password || typeof password !== "string" || password.length < 8) {
     return NextResponse.json(
-      { error: "Le mot de passe doit contenir au moins 8 caracteres." },
+      { error: "Le mot de passe doit contenir au moins 8 caractères." },
       { status: 400 }
     );
   }

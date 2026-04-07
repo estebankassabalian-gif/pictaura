@@ -31,16 +31,10 @@ const envSchema = z.object({
   R2_BUCKET_NAME: z.string().min(1),
   R2_PUBLIC_DOMAIN: optionalStr,
 
-  // Stripe — packs à l'unité
+  // Stripe — abonnement Pro unique
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: optionalPrefixed("whsec_"),
-  STRIPE_PRICE_STARTER: z.string().startsWith("price_"),
   STRIPE_PRICE_PRO: z.string().startsWith("price_"),
-  STRIPE_PRICE_STUDIO: z.string().startsWith("price_"),
-  // Stripe — abonnements mensuels (optionnels tant que non créés dans Stripe)
-  STRIPE_PRICE_SUB_ESSENTIAL: optionalPrefixed("price_"),
-  STRIPE_PRICE_SUB_PRO: optionalPrefixed("price_"),
-  STRIPE_PRICE_SUB_AGENCY: optionalPrefixed("price_"),
 
   // Replicate
   REPLICATE_API_TOKEN: z.string().min(1),
