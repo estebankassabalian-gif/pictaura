@@ -40,6 +40,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [applyToAll, setApplyToAll] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [error, setError] = useState("");
 
   const credits = session?.user?.credits ?? 0;
@@ -128,22 +129,50 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
     }
     setLoading(true);
     setError("");
+    setUploadProgress("Création du traitement...");
 
     try {
-      const formData = new FormData();
-      formData.append("preset", agent.id);
-      formData.append("instructions", JSON.stringify(allInstructions));
-      files.forEach((file) => formData.append("photos", file));
+      // Étape 1 : Créer le job (léger, pas de fichier)
+      const jobRes = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          preset: agent.id,
+          photoCount: files.length,
+          instructions: allInstructions,
+        }),
+      });
 
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      const uploadData = await uploadRes.json();
-
-      if (!uploadRes.ok) {
-        setError(uploadData.error ?? "Erreur lors de l'upload. Vos crédits ont été préservés.");
+      const jobData = await jobRes.json();
+      if (!jobRes.ok) {
+        setError(jobData.error ?? "Erreur lors de la création du traitement.");
         return;
       }
 
-      const { jobId } = uploadData;
+      const { jobId } = jobData;
+
+      // Étape 2 : Upload chaque photo une par une (1 requête = 1 photo)
+      for (let i = 0; i < files.length; i++) {
+        setUploadProgress(`Upload photo ${i + 1}/${files.length}...`);
+
+        const formData = new FormData();
+        formData.append("photo", files[i]);
+        formData.append("instruction", allInstructions[i] || "");
+
+        const photoRes = await fetch(`/api/jobs/${jobId}/photos`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!photoRes.ok) {
+          const photoData = await photoRes.json().catch(() => ({}));
+          setError(photoData.error ?? `Erreur lors de l'upload de la photo ${i + 1}.`);
+          return;
+        }
+      }
+
+      // Étape 3 : Lancer le traitement
+      setUploadProgress("Lancement du traitement...");
       const processRes = await fetch(`/api/process/${jobId}`, { method: "POST" });
       if (!processRes.ok) {
         const processData = await processRes.json().catch(() => ({}));
@@ -156,6 +185,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
       setError("Erreur réseau. Réessayez.");
     } finally {
       setLoading(false);
+      setUploadProgress("");
     }
   }
 
@@ -280,7 +310,8 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
         <div className="animate-fade-in">
           <button
             onClick={() => setStep("upload")}
-            className="text-sm text-[var(--muted)] hover:text-[var(--text)] mb-4 flex items-center gap-1 transition-colors"
+            disabled={loading}
+            className="text-sm text-[var(--muted)] hover:text-[var(--text)] mb-4 flex items-center gap-1 transition-colors disabled:opacity-30"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Retour
@@ -408,7 +439,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           {/* Navigation + Actions */}
           <div className="flex flex-col gap-3 mt-6">
             {/* Navigation arrows (multi-photo, not applyToAll) */}
-            {files.length > 1 && !applyToAll && (
+            {files.length > 1 && !applyToAll && !loading && (
               <div className="flex gap-2">
                 <button
                   onClick={() => setActivePhotoIndex(activePhotoIndex - 1)}
@@ -438,7 +469,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Envoi en cours...
+                  {uploadProgress || "Envoi en cours..."}
                 </>
               ) : (
                 <>
