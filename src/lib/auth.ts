@@ -13,26 +13,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Mot de passe", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        try {
+          if (!credentials?.email || !credentials?.password) return null;
 
-        // Sanitize input
-        const email = String(credentials.email).toLowerCase().trim();
-        const password = String(credentials.password);
+          // Sanitize input
+          const email = String(credentials.email).toLowerCase().trim();
+          const password = String(credentials.password);
 
-        if (email.length > 254 || password.length > 128) return null;
+          if (email.length > 254 || password.length > 128) return null;
 
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.passwordHash || !user.isActive) return null;
+          const user = await prisma.user.findUnique({ where: { email } });
+          if (!user || !user.passwordHash || !user.isActive) return null;
 
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+          const valid = await bcrypt.compare(password, user.passwordHash);
+          if (!valid) return null;
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        };
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+          };
+        } catch (err) {
+          console.error("[auth] authorize error:", err);
+          return null;
+        }
       },
     }),
   ],
