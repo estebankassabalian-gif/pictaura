@@ -132,17 +132,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const job = await prisma.processingJob.create({
-      data: {
-        id: jobId,
-        userId,
-        preset: preset as Preset,
-        subOption: subOption ?? null,
-        status: "PENDING",
-        photoCount: files.length,
-        creditsCost,
-      },
-    });
+    let _job;
+    try {
+      _job = await prisma.processingJob.create({
+        data: {
+          id: jobId,
+          userId,
+          preset: preset as Preset,
+          subOption: subOption ?? null,
+          status: "PENDING",
+          photoCount: files.length,
+          creditsCost,
+        },
+      });
+    } catch (jobCreateError) {
+      // Job creation failed — refund credits immediately
+      await refundCredits(userId, creditsCost, jobId).catch(console.error);
+      throw jobCreateError;
+    }
 
     // ── Upload chaque photo vers R2 ───────────────────────────
     const photoRecords = [];
