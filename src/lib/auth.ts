@@ -1,11 +1,23 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/config/env";
+import { TransactionType } from "@prisma/client";
+import { FREE_SIGNUP_CREDITS } from "@/config/plans";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     CredentialsProvider({
       name: "email",
       credentials: {
@@ -43,6 +55,44 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   callbacks: {
+    async signIn({ user, account }) {
+      // For Google OAuth: create user with free credits if first login
+      if (account?.provider === "google" && user.email) {
+        try {
+          const existing = await prisma.user.findUnique({
+            where: { email: user.email.toLowerCase() },
+          });
+          if (!existing) {
+            const newUser = await prisma.user.create({
+              data: {
+                email: user.email.toLowerCase(),
+                name: user.name ?? undefined,
+                image: user.image ?? undefined,
+                emailVerified: new Date(),
+                credits: FREE_SIGNUP_CREDITS,
+              },
+            });
+            await prisma.creditTransaction.create({
+              data: {
+                userId: newUser.id,
+                type: TransactionType.FREE_SIGNUP,
+                amount: FREE_SIGNUP_CREDITS,
+                balanceAfter: FREE_SIGNUP_CREDITS,
+                description: `${FREE_SIGNUP_CREDITS} crédits offerts à l'inscription`,
+              },
+            });
+            // Override user.id so the jwt callback uses the DB id
+            user.id = newUser.id;
+          } else {
+            user.id = existing.id;
+          }
+        } catch (err) {
+          console.error("[auth] Google signIn callback error:", err);
+          return false;
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;

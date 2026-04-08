@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Preset } from "@prisma/client";
 import { deductCreditsAtomic, refundCredits } from "@/services/credits";
-import { uploadOriginalPhoto, validateImageFile, detectMimeFromMagicBytes } from "@/services/storage";
+import { uploadOriginalPhoto, detectMimeFromMagicBytes } from "@/services/storage";
 import {
   MAX_PHOTOS_PER_BATCH,
   MAX_FILE_SIZE_BYTES,
@@ -13,7 +13,6 @@ import { v4 as uuidv4 } from "uuid";
 import { detectBlur } from "@/services/blur-detection";
 
 export const maxDuration = 120;
-export const config = { api: { bodyParser: false } };
 
 // Rate limiting simple par session (max 3 jobs en cours)
 const MAX_CONCURRENT_JOBS = 3;
@@ -31,7 +30,8 @@ export async function POST(req: NextRequest) {
     const preset = formData.get("preset") as string;
     const subOption = (formData.get("subOption") as string | null) ?? undefined;
     const files = formData.getAll("photos") as File[];
-    // Per-photo instructions: JSON array matching files order, or empty for global subOption
+
+    // Per-photo instructions: JSON array matching files order
     let photoInstructions: string[] = [];
     const instructionsRaw = formData.get("instructions") as string | null;
     if (instructionsRaw) {
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Validation ────────────────────────────────────────────
+    // ── Validation légère (sans charger les fichiers en mémoire) ──
     if (!Object.values(Preset).includes(preset as Preset)) {
       return NextResponse.json({ error: "Preset invalide" }, { status: 400 });
     }
@@ -62,35 +62,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Valider chaque fichier et lire les buffers une seule fois
-    const fileBuffers: Buffer[] = [];
+    // Valider type et taille SANS lire les buffers
     for (const file of files) {
       if (!ALLOWED_IMAGE_TYPES.includes(file.type as typeof ALLOWED_IMAGE_TYPES[number])) {
-        return NextResponse.json(
-          { error: "Type de fichier non supporté" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: `Type de fichier non supporté : ${file.name}` }, { status: 400 });
       }
       if (file.size > MAX_FILE_SIZE_BYTES) {
-        return NextResponse.json(
-          { error: `Fichier trop volumineux (max 20 Mo)` },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: `Fichier trop volumineux : ${file.name} (max 20 Mo)` }, { status: 400 });
       }
-      // Read buffer once — reused for magic bytes validation AND upload
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const detectedMime = detectMimeFromMagicBytes(buffer);
-      if (!detectedMime) {
-        return NextResponse.json(
-          { error: "Fichier invalide : type d'image non reconnu" },
-          { status: 400 }
-        );
-      }
-      fileBuffers.push(buffer);
     }
-
-    // ── Vérifier crédits ──────────────────────────────────────
-    const creditsCost = files.length;
 
     // ── Auto-nettoyage des jobs bloqués (>10 min) ────────────
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
@@ -107,10 +87,7 @@ export async function POST(req: NextRequest) {
     const userRole = session.user.role;
     if (userRole !== "ADMIN") {
       const concurrentJobs = await prisma.processingJob.count({
-        where: {
-          userId,
-          status: { in: ["PENDING", "PROCESSING"] },
-        },
+        where: { userId, status: { in: ["PENDING", "PROCESSING"] } },
       });
       if (concurrentJobs >= MAX_CONCURRENT_JOBS) {
         return NextResponse.json(
@@ -120,10 +97,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Créer le job ──────────────────────────────────────────
+    // ── Créer le job + déduire crédits ───────────────────────
+    const creditsCost = files.length;
     const jobId = uuidv4();
 
-    // Déduire les crédits AVANT d'uploader (atomique — check + deduct en une seule transaction)
     const deducted = await deductCreditsAtomic(userId, creditsCost, jobId, `Traitement ${preset} - ${files.length} photo(s)`);
     if (!deducted) {
       return NextResponse.json(
@@ -132,9 +109,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let _job;
     try {
-      _job = await prisma.processingJob.create({
+      await prisma.processingJob.create({
         data: {
           id: jobId,
           userId,
@@ -146,40 +122,42 @@ export async function POST(req: NextRequest) {
         },
       });
     } catch (jobCreateError) {
-      // Job creation failed — refund credits immediately
       await refundCredits(userId, creditsCost, jobId).catch(console.error);
       throw jobCreateError;
     }
 
-    // ── Upload chaque photo vers R2 ───────────────────────────
-    const photoRecords = [];
+    // ── Upload photo par photo (1 seul buffer en mémoire à la fois) ──
     const uploadedKeys: string[] = [];
     const blurWarnings: string[] = [];
 
     try {
       for (let idx = 0; idx < files.length; idx++) {
         const file = files[idx];
-        const buffer = fileBuffers[idx];
 
-        // Détection de flou (non bloquant — juste un warning)
-        const blurResult = await detectBlur(buffer);
-        if (blurResult.isBlurry && blurResult.message) {
-          blurWarnings.push(`${file.name} : ${blurResult.message}`);
+        // Lire UNE photo en mémoire
+        const buffer = Buffer.from(await file.arrayBuffer());
+
+        // Valider les magic bytes
+        const detectedMime = detectMimeFromMagicBytes(buffer);
+        if (!detectedMime) {
+          throw new Error(`Fichier invalide : ${file.name} — type d'image non reconnu`);
         }
 
-        const { key } = await uploadOriginalPhoto(
-          buffer,
-          file.type,
-          file.name,
-          userId,
-          jobId
-        );
+        // Détection de flou (non bloquant)
+        try {
+          const blurResult = await detectBlur(buffer);
+          if (blurResult.isBlurry && blurResult.message) {
+            blurWarnings.push(`${file.name} : ${blurResult.message}`);
+          }
+        } catch { /* blur detection failed — ignore */ }
+
+        // Upload vers R2
+        const { key } = await uploadOriginalPhoto(buffer, file.type, file.name, userId, jobId);
         uploadedKeys.push(key);
 
-        // Per-photo instruction, or fallback to global subOption
+        // Créer le record en DB
         const photoInstruction = photoInstructions[idx] || subOption || null;
-
-        const photo = await prisma.processedPhoto.create({
+        await prisma.processedPhoto.create({
           data: {
             jobId,
             originalKey: key,
@@ -190,16 +168,14 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        photoRecords.push(photo.id);
+        // Le buffer est libéré ici (plus de référence) → le GC peut récupérer la mémoire
       }
     } catch (uploadError) {
-      // Nettoyage R2 : supprimer les fichiers déjà uploadés
       console.error("Upload partiel échoué, nettoyage R2...", uploadError);
       const { deleteFromR2 } = await import("@/lib/r2");
       for (const key of uploadedKeys) {
         try { await deleteFromR2(key); } catch { /* best effort */ }
       }
-      // Marquer le job comme échoué et rembourser les crédits
       await prisma.processingJob.update({
         where: { id: jobId },
         data: { status: "FAILED", errorMsg: "Échec de l'upload" },
