@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PRO_PLAN } from "@/config/plans";
 import SubscribeButton from "./BuyButton";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import {
   CreditCard,
   Gift,
@@ -22,9 +22,14 @@ const TX_META: Record<string, { label: string; icon: LucideIcon; color: string }
   REFERRAL:    { label: "Parrainage",      icon: Users,      color: "text-teal-400 bg-teal-500/10" },
 };
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ payment?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) return null;
+  const { payment } = await searchParams;
 
   let transactions: Awaited<ReturnType<typeof prisma.creditTransaction.findMany>> = [];
   try {
@@ -44,6 +49,12 @@ export default async function BillingPage() {
 
   return (
     <div className="max-w-3xl">
+      {payment === "cancelled" && (
+        <div className="bg-zinc-800 border border-white/10 rounded-xl p-4 flex items-center gap-3 mb-6">
+          <X className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+          <p className="text-sm text-zinc-400">Paiement annulé. Aucun montant n'a été prélevé.</p>
+        </div>
+      )}
       <h1 className="text-2xl font-bold text-white mb-2">Abonnement & Facturation</h1>
       <p className="text-zinc-400 mb-8">
         {isAdmin

@@ -5,8 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { addCreditsFromPurchase } from "@/services/credits";
 import { PRO_PLAN } from "@/config/plans";
 
-export const config = { api: { bodyParser: false } };
-
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get("stripe-signature");
@@ -87,13 +85,17 @@ export async function POST(req: NextRequest) {
     // ── Renouvellement mensuel (facture payée) ───────────────
     case "invoice.payment_succeeded": {
       const invoice = event.data.object as unknown as {
-        subscription: string;
+        id: string;
+        subscription: string | null;
         customer: string;
         billing_reason: string;
       };
 
       // Ignorer la première facture (déjà gérée par checkout.session.completed)
       if (invoice.billing_reason === "subscription_create") break;
+
+      // Ignorer les factures sans abonnement (factures one-time)
+      if (!invoice.subscription) break;
 
       const dbUser = invoice.customer
         ? await prisma.user.findFirst({ where: { stripeCustomerId: invoice.customer }, select: { id: true } })
@@ -115,10 +117,11 @@ export async function POST(req: NextRequest) {
       });
 
       try {
+        // Clé idempotente basée sur l'ID de la facture (unique par renouvellement)
         await addCreditsFromPurchase(
           userId,
           PRO_PLAN.creditsPerMonth,
-          `sub_renew_${invoice.subscription}_${Date.now()}`,
+          `invoice_${invoice.id}`,
           `Renouvellement Pro — ${PRO_PLAN.creditsPerMonth} crédits`
         );
         console.log(`✅ Renouvellement Pro pour ${userId} — ${PRO_PLAN.creditsPerMonth} crédits ajoutés`);

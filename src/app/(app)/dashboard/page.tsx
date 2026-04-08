@@ -9,11 +9,11 @@ import { ImageIcon, CreditCard, FolderOpen, AlertTriangle, Plus, ArrowRight } fr
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ welcome?: string; page?: string }>;
+  searchParams: Promise<{ welcome?: string; page?: string; payment?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) return null;
-  const { welcome, page: pageStr } = await searchParams;
+  const { welcome, page: pageStr, payment } = await searchParams;
 
   const PAGE_SIZE = 10;
   const currentPage = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
@@ -41,6 +41,26 @@ export default async function DashboardPage({
 
   return (
     <div>
+      {/* Bannière succès paiement */}
+      {payment === "success" && (
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl p-6 mb-8 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-bold text-lg mb-1">
+              Abonnement Pro activé !
+            </p>
+            <p className="text-emerald-100 text-sm">
+              200 crédits ont été ajoutés à votre compte. Commencez à optimiser vos photos maintenant.
+            </p>
+          </div>
+          <Link
+            href="/immobilier"
+            className="bg-white/10 backdrop-blur text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-white/20 transition-colors whitespace-nowrap flex-shrink-0"
+          >
+            Commencer
+          </Link>
+        </div>
+      )}
+
       {/* Onboarding banner */}
       {welcome === "true" && (
         <div className="bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-2xl p-6 mb-8 flex items-center justify-between gap-4">
@@ -106,23 +126,23 @@ export default async function DashboardPage({
             href="/billing"
             className="bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition-colors whitespace-nowrap"
           >
-            Acheter des credits
+            Acheter des crédits
           </Link>
         </div>
       )}
 
       {/* Recent jobs */}
-      <h2 className="text-lg font-semibold text-white mb-4">Traitements recents</h2>
+      <h2 className="text-lg font-semibold text-white mb-4">Traitements récents</h2>
 
       {recentJobs.length === 0 ? (
         <div className="bg-[var(--surface)] rounded-2xl border border-white/8 p-12 text-center">
           <ImageIcon className="w-12 h-12 text-[var(--muted)] mx-auto mb-4" />
-          <p className="text-zinc-400 mb-4">Vous n'avez pas encore effectue de retouche.</p>
+          <p className="text-zinc-400 mb-4">Vous n'avez pas encore effectué de retouche.</p>
           <Link
             href="/immobilier"
             className="bg-gradient-to-r from-violet-600 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all inline-block"
           >
-            Commencer ma premiere retouche
+            Commencer ma première retouche
           </Link>
         </div>
       ) : (
@@ -179,7 +199,7 @@ export default async function DashboardPage({
               href={`/dashboard?page=${currentPage - 1}`}
               className="px-3 py-1.5 text-sm border border-white/10 rounded-lg hover:border-violet-400 text-zinc-400 hover:text-violet-400 transition-colors"
             >
-              Precedent
+              Précédent
             </Link>
           )}
           <span className="text-sm text-zinc-500">
