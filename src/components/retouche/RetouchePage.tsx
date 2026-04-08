@@ -406,44 +406,47 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           )}
 
           {/* Navigation + Actions */}
-          <div className="flex gap-3 mt-6">
-            {files.length > 1 && activePhotoIndex > 0 && !applyToAll && (
-              <button
-                onClick={() => setActivePhotoIndex(activePhotoIndex - 1)}
-                className="btn-outline px-4 py-3.5"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Précédente
-              </button>
+          <div className="flex flex-col gap-3 mt-6">
+            {/* Navigation arrows (multi-photo, not applyToAll) */}
+            {files.length > 1 && !applyToAll && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setActivePhotoIndex(activePhotoIndex - 1)}
+                  disabled={activePhotoIndex === 0}
+                  className="btn-outline px-4 py-2.5 disabled:opacity-30"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Précédente
+                </button>
+                <button
+                  onClick={() => setActivePhotoIndex(activePhotoIndex + 1)}
+                  disabled={activePhotoIndex === files.length - 1}
+                  className="btn-outline flex-1 py-2.5 disabled:opacity-30"
+                >
+                  Photo suivante ({activePhotoIndex < files.length - 1 ? activePhotoIndex + 2 : files.length}/{files.length})
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             )}
 
-            {files.length > 1 && activePhotoIndex < files.length - 1 && !applyToAll ? (
-              <button
-                onClick={() => setActivePhotoIndex(activePhotoIndex + 1)}
-                className="btn-primary flex-1 py-3.5 text-base"
-              >
-                Photo suivante ({activePhotoIndex + 2}/{files.length})
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                onClick={handleProcess}
-                disabled={loading || (!isAdmin && credits < files.length)}
-                className="btn-primary flex-1 py-3.5 text-base"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Envoi en cours...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5" />
-                    Lancer la retouche — {files.length} crédit(s)
-                  </>
-                )}
-              </button>
-            )}
+            {/* Launch button — always visible */}
+            <button
+              onClick={handleProcess}
+              disabled={loading || (!isAdmin && credits < files.length)}
+              className="btn-primary w-full py-3.5 text-base"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5" />
+                  Lancer la retouche — {files.length} crédit(s)
+                </>
+              )}
+            </button>
           </div>
 
           {!isAdmin && credits < files.length && (
