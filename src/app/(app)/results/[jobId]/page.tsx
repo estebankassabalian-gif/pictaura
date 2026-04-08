@@ -299,7 +299,7 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
           <Loader2 className="w-5 h-5 text-violet-400 animate-spin" />
           <div>
             <p className="text-sm font-semibold text-violet-300">Retouche IA en cours...</p>
-            <p className="text-xs text-violet-400/70 mt-0.5">Gemini analyse et retouche votre photo (~20-40s)</p>
+            <p className="text-xs text-violet-400/70 mt-0.5">Pictaura analyse et retouche votre photo (~20-40s)</p>
           </div>
         </div>
       )}
@@ -351,13 +351,25 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
             <div className="flex-1">
               <p className="text-sm font-semibold text-emerald-400">Retouche validée — 1 crédit débité</p>
             </div>
-            <a
-              href={state.resultUrl}
-              download="pictaura-retouche.jpg"
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch(state.resultUrl!);
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "pictaura-retouche.jpg";
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch { /* ignore */ }
+              }}
               className="flex items-center gap-1 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors"
             >
               <Download className="w-3 h-3" /> Télécharger
-            </a>
+            </button>
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}

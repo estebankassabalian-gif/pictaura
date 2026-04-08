@@ -551,7 +551,7 @@ export default function LandingClient() {
 
             {[
               { step: "01", Icon: Upload, title: "Uploadez vos photos", desc: "Jusqu'à 10 photos. JPEG, PNG, WEBP, HEIC. Jusqu'à 20 Mo par photo. Drag & drop.", badge: "Analyse qualité auto" },
-              { step: "02", Icon: Zap, title: "L'IA retouche en 30s", desc: "Optimisation, recadrage, couleurs, fond blanc, SEO — tout en parallèle.", badge: "Gemini · Claude Vision" },
+              { step: "02", Icon: Zap, title: "L'IA retouche en 30s", desc: "Optimisation, recadrage, couleurs, fond blanc, SEO — tout en parallèle.", badge: "IA Pictaura" },
               { step: "03", Icon: Download, title: "Téléchargez votre pack", desc: "ZIP avec photos retouchées + métadonnées SEO gravées dans chaque fichier. Importez sur Shopify ou WordPress : alt texts et noms pré-remplis automatiquement.", badge: "ZIP + EXIF + CSV SEO" },
             ].map((item, i) => (
               <FadeUp key={item.step} delay={i * 0.15}>
@@ -589,8 +589,8 @@ export default function LandingClient() {
             {[
               { Icon: Microscope, title: "Upscaling IA", desc: "Real-ESRGAN multiplie la résolution. Vos photos floues deviennent nettes sans artefacts.", accent: "from-blue-500 to-cyan-500" },
               { Icon: Wand2, title: "Fond blanc auto", desc: "L'IA détecte et supprime le fond pour du blanc parfait. Sans Photoshop.", accent: "from-brand-500 to-violet-500" },
-              { Icon: Pencil, title: "Retouche sur instruction", desc: '"Retire le canapé", "Débâche la piscine" — Gemini exécute en 60s.', accent: "from-orange-500 to-amber-500" },
-              { Icon: Star, title: "Score photo /10", desc: "Claude Vision analyse luminosité, cadrage, attractivité. Rapport détaillé inclus.", accent: "from-yellow-500 to-orange-500" },
+              { Icon: Pencil, title: "Retouche sur instruction", desc: '"Retire le canapé", "Débâche la piscine" — Pictaura exécute en 60s.', accent: "from-orange-500 to-amber-500" },
+              { Icon: Star, title: "Score photo /10", desc: "Pictaura analyse luminosité, cadrage, attractivité. Rapport détaillé inclus.", accent: "from-yellow-500 to-orange-500" },
               { Icon: Search, title: "SEO gravé dans l'image", desc: "Alt text, nom SEO et mots-clés écrits directement dans les métadonnées EXIF du fichier. Shopify et WordPress les lisent automatiquement à l'import — zéro saisie manuelle.", accent: "from-emerald-500 to-teal-500" },
               { Icon: Film, title: "Reels MP4 Ken Burns", desc: "Photo → vidéo 9:16 animée. 3-5× plus de reach qu'une photo statique.", accent: "from-pink-500 to-rose-500" },
             ].map((f, i) => (
@@ -738,7 +738,7 @@ export default function LandingClient() {
               { q: "Comment optimiser ses photos pour Airbnb avec Pictaura ?", a: "Inscrivez-vous, uploadez vos photos et sélectionnez le preset Airbnb. Pictaura redimensionne à 1920×1280px, améliore la luminosité, le contraste, et applique l'upscaling IA Real-ESRGAN. Téléchargez le ZIP en un clic." },
               { q: "Comment mettre un fond blanc sur ses photos Vinted ?", a: "Sélectionnez le preset Vinted. Pictaura détecte et supprime automatiquement le fond, puis place votre produit sur fond blanc parfait 1000×1000px avec une ombre douce." },
               { q: "Comment fonctionne l'abonnement Pro ?", a: "29€/mois pour 200 photos optimisées. Les crédits non utilisés ne sont pas reportés. Résiliable à tout moment depuis votre espace. 5 photos offertes à l'inscription pour tester." },
-              { q: "Qu'est-ce que la retouche sur instruction ?", a: 'Après traitement, écrivez ce que vous voulez modifier : "Retire le canapé rouge", "Débâche la piscine". Pictaura utilise Gemini pour exécuter en 60s. Coût : 1 crédit.' },
+              { q: "Qu'est-ce que la retouche sur instruction ?", a: 'Après traitement, écrivez ce que vous voulez modifier : "Retire le canapé rouge", "Débâche la piscine". Pictaura exécute la modification en 60s. Coût : 1 crédit.' },
               { q: "Quels formats sont acceptés ?", a: "JPEG, PNG, WEBP et HEIC (iPhone). Taille maximale 20 Mo par photo, jusqu'à 10 photos par lot." },
               { q: "Qu'est-ce qu'un Reel Ken Burns ?", a: "Pictaura transforme votre photo en vidéo MP4 9:16 animée avec un léger zoom ou panoramique. Les Reels ont 3-5× plus de reach que les photos statiques sur Instagram." },
             ].map((item) => (
@@ -786,7 +786,7 @@ export default function LandingClient() {
                 <span className="text-white font-bold tracking-tight">Pictaura</span>
               </div>
               <p className="text-ink-muted text-sm max-w-xs leading-relaxed">Retouche photo IA pour Airbnb, Vinted, Instagram et Shopify. Résultat pro en 30 secondes.</p>
-              <p className="text-xs mt-4 text-ink-faint">Propulsé par Gemini · Claude · Real-ESRGAN · Cloudflare R2</p>
+              <p className="text-xs mt-4 text-ink-faint">Propulsé par l'IA Pictaura</p>
             </div>
 
             <div className="grid grid-cols-2 gap-12 text-sm">
