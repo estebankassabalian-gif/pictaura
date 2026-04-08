@@ -53,12 +53,12 @@ type RetoucheState =
   | { step: "ready"; analysis: string; suggestions: string[]; presetSuggestions: RetouchingSuggestion[] }
   | { step: "retouching" }
   | { step: "validating"; inpaintingJobId: string; resultUrl: string; originalUrl: string }
-  | { step: "validated"; resultUrl: string; inpaintingJobId: string };
+  | { step: "validated"; resultUrl: string; inpaintingJobId: string }; // legacy, kept for type safety
 
 const PRESETS = ["AIRBNB", "IMMOBILIER", "INSTAGRAM", "VINTED", "SHOPIFY"] as const;
 
 // RetoucheChat
-function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
+function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset: string; onPhotoUpdated?: () => void }) {
   const [state, setState] = useState<RetoucheState>({ step: "idle" });
   const [instruction, setInstruction] = useState("");
   const [error, setError] = useState("");
@@ -174,11 +174,15 @@ function RetoucheChat({ photo, preset }: { photo: Photo; preset: string }) {
     }
 
     if (action === "approve") {
-      const currentState = state as Extract<RetoucheState, { step: "validating" }>;
+      // La photo principale a été mise à jour côté serveur.
+      // On notifie le parent pour rafraîchir les données, puis on revient à "ready".
+      onPhotoUpdated?.();
+      const presetSuggestions = DEFAULT_SUGGESTIONS[preset] ?? [];
       setState({
-        step: "validated",
-        resultUrl: data.resultUrl ?? currentState.resultUrl,
-        inpaintingJobId,
+        step: "ready",
+        analysis: "Retouche appliquée avec succès ! Souhaitez-vous affiner davantage ?",
+        suggestions: presetSuggestions.map((s) => s.label),
+        presetSuggestions,
       });
       setInstruction("");
     } else {
@@ -749,7 +753,7 @@ export default function ResultsPage() {
           )}
 
           {/* Retouche IA inline */}
-          <RetoucheChat photo={currentPhoto} preset={job.preset} />
+          <RetoucheChat photo={currentPhoto} preset={job.preset} onPhotoUpdated={fetchJob} />
         </div>
       )}
 

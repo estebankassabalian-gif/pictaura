@@ -89,9 +89,17 @@ export async function POST(req: NextRequest) {
         const updated = await tx.inpaintingJob.update({
           where: { id: inpaintingJobId },
           data: { status: JobStatus.COMPLETED },
-          select: { resultKey: true },
+          select: { resultKey: true, photoId: true },
         });
         resultUrl = updated.resultKey;
+
+        // Remplacer la photo principale par le résultat de la retouche
+        if (updated.photoId && updated.resultKey) {
+          await tx.processedPhoto.update({
+            where: { id: updated.photoId },
+            data: { processedKey: updated.resultKey },
+          });
+        }
       });
 
       // Générer l'URL signée du résultat final
