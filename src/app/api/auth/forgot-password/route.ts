@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   // Always return success to prevent email enumeration
   const successResponse = NextResponse.json({
-    message: "Si un compte existe avec cet email, un lien de reinitialisation a ete envoye.",
+    message: "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.",
   });
 
   const user = await prisma.user.findUnique({ where: { email: normalized } });

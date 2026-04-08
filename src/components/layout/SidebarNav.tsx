@@ -171,7 +171,7 @@ const toolNav = [
 ];
 
 const extraNav = [
-  { href: "/editor", label: "Editeur libre", icon: Wand2 },
+  { href: "/editor", label: "Éditeur libre", icon: Wand2 },
   { href: "/reel", label: "Reels", icon: Film },
 ];
 
@@ -263,7 +263,7 @@ export function SidebarNav({ userName, userEmail, userInitial, credits, isAdmin 
           className="mt-3 w-full flex items-center gap-2 text-xs text-[var(--muted)] hover:text-white text-left px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
         >
           <LogOut className="w-3.5 h-3.5" />
-          Deconnexion
+          Déconnexion
         </button>
       </div>
     </aside>

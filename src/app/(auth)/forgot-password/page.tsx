@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
           <Link href="/" className="text-2xl font-bold text-brand-600">
             Pictaura
           </Link>
-          <p className="text-zinc-400 mt-2">Reinitialisation du mot de passe</p>
+          <p className="text-zinc-400 mt-2">Réinitialisation du mot de passe</p>
         </div>
 
         {sent ? (
@@ -52,15 +52,15 @@ export default function ForgotPasswordPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-white mb-2">Email envoye</h2>
+            <h2 className="text-lg font-semibold text-white mb-2">Email envoyé</h2>
             <p className="text-sm text-zinc-400 mb-6">
-              Si un compte existe avec cette adresse, vous recevrez un lien de reinitialisation valable 1 heure.
+              Si un compte existe avec cette adresse, vous recevrez un lien de réinitialisation valable 1 heure.
             </p>
             <Link
               href="/login"
               className="text-sm text-violet-400 hover:underline"
             >
-              Retour a la connexion
+              Retour à la connexion
             </Link>
           </div>
         ) : (
@@ -99,7 +99,7 @@ export default function ForgotPasswordPage() {
 
             <p className="text-center text-sm text-zinc-500 mt-6">
               <Link href="/login" className="text-violet-400 hover:underline">
-                Retour a la connexion
+                Retour à la connexion
               </Link>
             </p>
           </>

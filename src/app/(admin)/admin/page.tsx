@@ -67,7 +67,7 @@ export default async function AdminPage() {
       </div>
 
       {/* Recent users */}
-      <h2 className="text-lg font-semibold text-white mb-4">Utilisateurs recents</h2>
+      <h2 className="text-lg font-semibold text-white mb-4">Utilisateurs récents</h2>
       <div className="bg-[var(--surface)] rounded-2xl border border-white/8 overflow-hidden mb-10">
         <table className="w-full text-sm">
           <thead className="bg-[var(--surface-2)] border-b border-white/8">
@@ -120,7 +120,7 @@ export default async function AdminPage() {
       </div>
 
       {/* Recent jobs */}
-      <h2 className="text-lg font-semibold text-white mb-4">Jobs recents</h2>
+      <h2 className="text-lg font-semibold text-white mb-4">Jobs récents</h2>
       <div className="bg-[var(--surface)] rounded-2xl border border-white/8 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-[var(--surface-2)] border-b border-white/8">

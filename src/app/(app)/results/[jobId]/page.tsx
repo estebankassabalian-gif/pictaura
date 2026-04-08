@@ -592,7 +592,7 @@ export default function ResultsPage() {
             <div className="flex-1">
               <p className="font-semibold text-amber-300">Le traitement prend plus de temps que prévu</p>
               <p className="text-xs text-amber-400/70 mt-1">
-                Rechargez la page dans quelques minutes. Si le probleme persiste, contactez le support.
+                Rechargez la page dans quelques minutes. Si le problème persiste, contactez le support.
               </p>
             </div>
             <button

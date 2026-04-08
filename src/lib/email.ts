@@ -136,15 +136,15 @@ export async function sendPasswordResetEmail({
       <p style="color: white; font-size: 24px; font-weight: 800; margin: 0;">Pictaura</p>
     </div>
     <div style="padding: 32px;">
-      <h1 style="font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 12px;">Mot de passe oublie ?</h1>
+      <h1 style="font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 12px;">Mot de passe oublié ?</h1>
       <p style="color: #a1a1aa; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
         Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien expire dans 1 heure.
       </p>
       <a href="${resetUrl}" style="display: block; background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%); color: white; text-decoration: none; text-align: center; padding: 15px 24px; border-radius: 12px; font-weight: 700; font-size: 15px;">
-        Reinitialiser mon mot de passe
+        Réinitialiser mon mot de passe
       </a>
       <p style="color: #3f3f46; font-size: 12px; margin: 24px 0 0; text-align: center;">
-        Si vous n'avez pas demande cette reinitialisation, ignorez cet email.
+        Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
       </p>
     </div>
     <div style="border-top: 1px solid rgba(255,255,255,0.05); padding: 16px 32px; text-align: center;">

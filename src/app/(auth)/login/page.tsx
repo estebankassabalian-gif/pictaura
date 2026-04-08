@@ -135,7 +135,7 @@ function LoginForm() {
 
         <div className="text-center mt-4">
           <Link href="/forgot-password" className="text-sm text-zinc-500 hover:text-violet-400 transition-colors">
-            Mot de passe oublie ?
+            Mot de passe oublié ?
           </Link>
         </div>
 
