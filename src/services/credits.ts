@@ -63,7 +63,7 @@ export async function deductCredits(
 
 /**
  * Vérifie ET déduit les crédits en une seule transaction interactive.
- * Élimine la race condition entre hasEnoughCredits() et deductCredits().
+ * Uses SELECT FOR UPDATE to prevent race conditions between concurrent requests.
  * @returns true si la déduction a réussi, false si crédits insuffisants
  */
 export async function deductCreditsAtomic(
@@ -74,19 +74,19 @@ export async function deductCreditsAtomic(
 ): Promise<boolean> {
   try {
     await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { credits: true, role: true },
-      });
+      // SELECT FOR UPDATE locks the row until transaction completes
+      const rows = await tx.$queryRaw<Array<{ credits: number; role: string }>>`
+        SELECT credits, role FROM users WHERE id = ${userId} FOR UPDATE
+      `;
 
-      if (!user) throw new Error("Utilisateur non trouvé");
-      if (user.role === Role.ADMIN) return; // Admin : jamais débité
+      if (!rows[0]) throw new Error("Utilisateur non trouvé");
+      if (rows[0].role === "ADMIN") return; // Admin : jamais débité
 
-      if (user.credits < amount) {
+      if (rows[0].credits < amount) {
         throw new Error("INSUFFICIENT_CREDITS");
       }
 
-      const newBalance = user.credits - amount;
+      const newBalance = rows[0].credits - amount;
 
       await tx.user.update({
         where: { id: userId },
@@ -151,7 +151,8 @@ export async function refundCredits(
 
 /**
  * Ajoute des crédits suite à un achat Stripe.
- * Idempotent : vérifie que stripePaymentIntentId n'a pas déjà été traité.
+ * Idempotent : the unique constraint on stripePaymentIntentId prevents double-crediting.
+ * Check + insert are inside the same interactive transaction to eliminate the race window.
  */
 export async function addCreditsFromPurchase(
   userId: string,
@@ -159,36 +160,45 @@ export async function addCreditsFromPurchase(
   stripePaymentIntentId: string,
   description?: string
 ): Promise<void> {
-  // Idempotence : si déjà traité, on ne fait rien
-  const existing = await prisma.creditTransaction.findUnique({
-    where: { stripePaymentIntentId },
-  });
-  if (existing) return;
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Check idempotence inside the transaction
+      const existing = await tx.creditTransaction.findUnique({
+        where: { stripePaymentIntentId },
+      });
+      if (existing) return; // Already processed
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { credits: true },
-  });
-  if (!user) throw new Error("Utilisateur non trouvé");
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { credits: true },
+      });
+      if (!user) throw new Error("Utilisateur non trouvé");
 
-  const newBalance = user.credits + amount;
+      const newBalance = user.credits + amount;
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: { credits: { increment: amount } },
-    }),
-    prisma.creditTransaction.create({
-      data: {
-        userId,
-        type: TransactionType.PURCHASE,
-        amount,
-        balanceAfter: newBalance,
-        stripePaymentIntentId,
-        description: description ?? `Achat de ${amount} crédit(s)`,
-      },
-    }),
-  ]);
+      await tx.user.update({
+        where: { id: userId },
+        data: { credits: { increment: amount } },
+      });
+
+      await tx.creditTransaction.create({
+        data: {
+          userId,
+          type: TransactionType.PURCHASE,
+          amount,
+          balanceAfter: newBalance,
+          stripePaymentIntentId,
+          description: description ?? `Achat de ${amount} crédit(s)`,
+        },
+      });
+    });
+  } catch (err) {
+    // Handle unique constraint violation gracefully (concurrent webhook retry)
+    if (err instanceof Error && err.message.includes("Unique constraint")) {
+      return; // Already processed — idempotent
+    }
+    throw err;
+  }
 }
 
 /**

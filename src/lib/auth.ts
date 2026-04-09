@@ -14,7 +14,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           GoogleProvider({
             clientId: env.GOOGLE_CLIENT_ID,
             clientSecret: env.GOOGLE_CLIENT_SECRET,
-            allowDangerousEmailAccountLinking: true,
+            allowDangerousEmailAccountLinking: false,
           }),
         ]
       : []),
@@ -102,19 +102,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { role: true, credits: true, isSubscribed: true, passwordHash: true },
+          select: { role: true, credits: true, isSubscribed: true, passwordVersion: true },
         });
         if (dbUser) {
-          // Invalidate session if password changed (hash differs from login)
-          if (token.passwordHash && token.passwordHash !== dbUser.passwordHash) {
+          // Invalidate session if password changed (version differs from login)
+          if (token.passwordVersion != null && token.passwordVersion !== dbUser.passwordVersion) {
             return { ...token, id: undefined }; // forces re-login
           }
           token.role = dbUser.role;
           token.credits = dbUser.credits;
           token.isSubscribed = dbUser.isSubscribed;
-          // Store password hash on first login to detect changes
-          if (!token.passwordHash) {
-            token.passwordHash = dbUser.passwordHash;
+          // Store password version on first login to detect changes
+          if (token.passwordVersion == null) {
+            token.passwordVersion = dbUser.passwordVersion;
           }
         }
       }

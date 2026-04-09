@@ -45,6 +45,7 @@ model User {
   name             String?
   image            String?
   passwordHash     String?   // Null pour les utilisateurs OAuth uniquement
+  passwordVersion  Int       @default(0) // Incremented on password change to invalidate JWTs
   role             Role      @default(USER)
   credits          Int       @default(0)
   isActive         Boolean   @default(true)

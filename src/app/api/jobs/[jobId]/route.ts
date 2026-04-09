@@ -4,6 +4,36 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { getFreshSignedUrl } from "@/services/storage";
 
+// In-memory signed URL cache (TTL 10 minutes) — avoids regenerating for every poll
+const urlCache = new Map<string, { url: string; expiresAt: number }>();
+const URL_CACHE_TTL = 10 * 60 * 1000; // 10 min
+
+function getCachedUrl(key: string): string | null {
+  const entry = urlCache.get(key);
+  if (entry && entry.expiresAt > Date.now()) return entry.url;
+  urlCache.delete(key);
+  return null;
+}
+
+function setCachedUrl(key: string, url: string) {
+  urlCache.set(key, { url, expiresAt: Date.now() + URL_CACHE_TTL });
+  // Lazy cleanup: prune old entries when cache grows too large
+  if (urlCache.size > 500) {
+    const now = Date.now();
+    for (const [k, v] of urlCache) {
+      if (v.expiresAt < now) urlCache.delete(k);
+    }
+  }
+}
+
+async function getSignedUrlCached(key: string): Promise<string> {
+  const cached = getCachedUrl(key);
+  if (cached) return cached;
+  const url = await getFreshSignedUrl(key);
+  setCachedUrl(key, url);
+  return url;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
@@ -19,7 +49,6 @@ export async function GET(
   const job = await prisma.processingJob.findFirst({
     where: {
       id: jobId,
-      // Admin peut voir tous les jobs, user seulement les siens
       ...(isAdmin ? {} : { userId: session.user.id }),
     },
     include: {
@@ -36,19 +65,19 @@ export async function GET(
     return NextResponse.json({ error: "Job non trouvé" }, { status: 404 });
   }
 
-  // Générer des URLs signées fraîches en parallèle
+  // Generate signed URLs in parallel with caching
   const photosWithUrls = await Promise.all(
     job.photos.map(async (photo) => {
       let originalUrl: string | null = null;
       let processedUrl: string | null = null;
 
       try {
-        originalUrl = await getFreshSignedUrl(photo.originalKey);
+        originalUrl = await getSignedUrlCached(photo.originalKey);
       } catch { /* ignore */ }
 
       if (photo.processedKey) {
         try {
-          processedUrl = await getFreshSignedUrl(photo.processedKey);
+          processedUrl = await getSignedUrlCached(photo.processedKey);
         } catch { /* ignore */ }
       }
 
@@ -73,7 +102,6 @@ export async function GET(
     })
   );
 
-  // Watermark actif si non abonné et non admin
   const isWatermarked = job.user?.isSubscribed !== true && job.user?.role !== Role.ADMIN;
 
   return NextResponse.json({

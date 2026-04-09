@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
     serverActions: {
-      bodySizeLimit: "120mb",
+      bodySizeLimit: "5mb",
     },
   },
   images: {
@@ -42,8 +42,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              // unsafe-inline needed for Next.js styled-jsx; unsafe-eval needed for Next.js dev HMR
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+              "script-src 'self' 'unsafe-inline' https://js.stripe.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.r2.cloudflarestorage.com https://lh3.googleusercontent.com https://images.unsplash.com",
               "font-src 'self'",

@@ -429,42 +429,55 @@ export default function ResultsPage() {
   const [pollTimeout, setPollTimeout] = useState(false);
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout;
+    let cancelled = false;
     const maxPollTime = 10 * 60 * 1000; // 10 minutes max
     const startTime = Date.now();
 
     async function poll() {
+      if (cancelled) return;
       if (Date.now() - startTime > maxPollTime) {
-        clearInterval(intervalId);
         setPollTimeout(true);
         return;
       }
       const data = await fetchJob();
+      if (cancelled) return;
       if (data?.status === "COMPLETED" || data?.status === "FAILED") {
-        clearInterval(intervalId);
+        return; // Stop polling
       }
+      // Adaptive polling: 1.5s while processing (fast updates), 3s while pending
+      const interval = data?.status === "PROCESSING" ? 1500 : 3000;
+      timeoutId = setTimeout(poll, interval);
     }
 
     poll();
-    intervalId = setInterval(poll, 3000);
-    return () => clearInterval(intervalId);
+    return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [fetchJob]);
+
+  async function downloadSinglePhoto(photoId: string) {
+    const res = await fetch(`/api/jobs/${jobId}/download?photoId=${photoId}`);
+    if (!res.ok) throw new Error("Erreur lors du téléchargement");
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="(.+?)"/);
+    const fileName = match?.[1] || `pictaura_${job?.preset?.toLowerCase()}.jpg`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Delay revoke so the browser can start the download
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   async function downloadPhoto(photoId: string) {
     setDownloading(true);
     try {
-      const res = await fetch(`/api/jobs/${jobId}/download?photoId=${photoId}`);
-      if (!res.ok) { setActionError("Erreur lors du téléchargement"); return; }
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") || "";
-      const match = disposition.match(/filename="(.+?)"/);
-      const fileName = match?.[1] || `pictaura_${job?.preset?.toLowerCase()}.jpg`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadSinglePhoto(photoId);
+    } catch {
+      setActionError("Erreur lors du téléchargement");
     } finally {
       setDownloading(false);
     }
@@ -473,12 +486,18 @@ export default function ResultsPage() {
   async function handleDownloadAll() {
     if (!job) return;
     setDownloading(true);
+    setActionError("");
     try {
-      for (const photo of job.photos.filter((p) => p.status === "COMPLETED")) {
-        await downloadPhoto(photo.id);
-        // Small delay between downloads to avoid browser blocking
-        await new Promise((r) => setTimeout(r, 300));
+      const completed = job.photos.filter((p) => p.status === "COMPLETED");
+      for (let i = 0; i < completed.length; i++) {
+        await downloadSinglePhoto(completed[i].id);
+        // Longer delay between downloads so the browser doesn't block them
+        if (i < completed.length - 1) {
+          await new Promise((r) => setTimeout(r, 800));
+        }
       }
+    } catch {
+      setActionError("Erreur lors du téléchargement de certaines photos");
     } finally {
       setDownloading(false);
     }
@@ -564,41 +583,50 @@ export default function ResultsPage() {
       )}
 
       {/* Processing indicator */}
-      {isProcessing && (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5 mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
-            <div>
-              <p className="font-semibold text-blue-300">Traitement IA en cours...</p>
-              <p className="text-xs text-blue-400/70 mt-0.5">
-                {completedPhotos.length > 0
-                  ? `~${Math.round((job.photos.length - completedPhotos.length) * 35)}s restantes`
-                  : `~${Math.round(job.photos.length * 35)}s estimées`}
-              </p>
+      {isProcessing && (() => {
+        const processingPhotos = job.photos.filter((p) => p.status === "PROCESSING");
+        const pendingPhotos = job.photos.filter((p) => p.status === "PENDING");
+        const remaining = processingPhotos.length + pendingPhotos.length;
+        // ~30s per photo, 2 concurrent = roughly 15s per photo effective
+        const estimatedSeconds = Math.round(remaining * 15);
+
+        return (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5 mb-6">
+            <div className="flex items-center gap-3 mb-3">
+              <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+              <div className="flex-1">
+                <p className="font-semibold text-blue-300">
+                  Traitement IA en cours — {completedPhotos.length}/{job.photos.length} terminées
+                </p>
+                <p className="text-xs text-blue-400/70 mt-0.5">
+                  {estimatedSeconds > 0 ? `~${estimatedSeconds}s restantes` : "Finalisation..."}
+                  {processingPhotos.length > 0 && ` · ${processingPhotos.length} en cours`}
+                </p>
+              </div>
+            </div>
+            <div className="w-full bg-blue-500/20 rounded-full h-2.5 mb-3 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-blue-500 to-violet-500 h-full rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${Math.max(3, (completedPhotos.length / Math.max(job.photos.length, 1)) * 100)}%` }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {job.photos.map((p, i) => (
+                <span
+                  key={p.id}
+                  title={p.fileName}
+                  className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-medium ${getStatusBadgeClasses(p.status)}`}
+                >
+                  {p.status === "COMPLETED" ? <CheckCircle2 className="w-3 h-3" /> :
+                   p.status === "FAILED"    ? <XCircle className="w-3 h-3" /> :
+                   p.status === "PROCESSING"? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                  Photo {i + 1}
+                </span>
+              ))}
             </div>
           </div>
-          <div className="w-full bg-blue-500/20 rounded-full h-2 mb-3">
-            <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-700"
-              style={{ width: `${Math.max(5, (completedPhotos.length / Math.max(job.photos.length, 1)) * 100)}%` }}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {job.photos.map((p, i) => (
-              <span
-                key={p.id}
-                title={p.fileName}
-                className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-medium ${getStatusBadgeClasses(p.status)}`}
-              >
-                {p.status === "COMPLETED" ? <CheckCircle2 className="w-3 h-3" /> :
-                 p.status === "FAILED"    ? <XCircle className="w-3 h-3" /> :
-                 p.status === "PROCESSING"? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
-                Photo {i + 1}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Timeout warning */}
       {pollTimeout && isProcessing && (

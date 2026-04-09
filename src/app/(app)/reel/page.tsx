@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { useSession } from "next-auth/react";
 import { Upload, CheckCircle2, Film, Loader2, Download, Info } from "lucide-react";
+import { REEL_CREDITS_COST } from "@/config/plans";
 
 const STYLES = [
   { id: "zoom-in", label: "Zoom avant", desc: "Classique — focalise sur le sujet" },
@@ -18,8 +19,6 @@ const FILTERS = [
   { id: "warm", label: "Warm", desc: "Golden hour" },
   { id: "none", label: "Aucun", desc: "Photo originale" },
 ];
-
-const REEL_CREDITS_COST = 3;
 
 export default function ReelPage() {
   const { data: session } = useSession();

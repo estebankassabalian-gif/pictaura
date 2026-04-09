@@ -49,28 +49,38 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const newJob = await prisma.processingJob.create({
-    data: {
-      id: newJobId,
-      userId,
-      preset: preset as Preset,
-      status: "PENDING",
-      photoCount,
-      creditsCost,
-    },
-  });
+  // Create job + photos in a single transaction for rollback safety
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.processingJob.create({
+        data: {
+          id: newJobId,
+          userId,
+          preset: preset as Preset,
+          status: "PENDING",
+          photoCount,
+          creditsCost,
+        },
+      });
 
-  // Créer les entrées photos en réutilisant les clés R2 originales
-  for (const photo of originalJob.photos) {
-    await prisma.processedPhoto.create({
-      data: {
-        jobId: newJobId,
-        originalKey: photo.originalKey,
-        fileName: photo.fileName,
-        fileSizeOriginal: photo.fileSizeOriginal,
-        status: "PENDING",
-      },
+      for (const photo of originalJob.photos) {
+        await tx.processedPhoto.create({
+          data: {
+            jobId: newJobId,
+            originalKey: photo.originalKey,
+            fileName: photo.fileName,
+            fileSizeOriginal: photo.fileSizeOriginal,
+            status: "PENDING",
+          },
+        });
+      }
     });
+  } catch (error) {
+    // Rollback: refund credits since job+photos creation failed
+    const { refundCredits } = await import("@/services/credits");
+    await refundCredits(userId, creditsCost, newJobId).catch(console.error);
+    console.error("Reprocess job creation failed:", error);
+    return NextResponse.json({ error: "Erreur lors de la création du job" }, { status: 500 });
   }
 
   // Lancer le traitement en arrière-plan

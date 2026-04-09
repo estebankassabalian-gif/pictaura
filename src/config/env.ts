@@ -33,7 +33,7 @@ const envSchema = z.object({
 
   // Stripe — abonnement Pro unique
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
-  STRIPE_WEBHOOK_SECRET: optionalPrefixed("whsec_"),
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
   STRIPE_PRICE_PRO: z.string().startsWith("price_"),
 
   // Replicate

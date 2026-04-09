@@ -13,11 +13,15 @@ export default auth((req) => {
     "/",
     "/login",
     "/register",
+    "/forgot-password",
+    "/reset-password",
     "/api/auth",
     "/api/webhooks/stripe",
     "/cgu",
     "/politique-confidentialite",
     "/contact",
+    "/robots.txt",
+    "/sitemap.xml",
   ];
   const isPublic = publicRoutes.some((r) => pathname.startsWith(r));
 

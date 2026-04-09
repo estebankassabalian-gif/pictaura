@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { stripe } from "@/lib/stripe";
 import bcrypt from "bcryptjs";
 
 export async function DELETE(req: NextRequest) {
@@ -14,7 +15,7 @@ export async function DELETE(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { passwordHash: true, role: true },
+    select: { passwordHash: true, role: true, stripeSubscriptionId: true },
   });
 
   if (!user) {
@@ -34,6 +35,15 @@ export async function DELETE(req: NextRequest) {
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: "Mot de passe incorrect" }, { status: 400 });
+    }
+  }
+
+  // M7: Cancel Stripe subscription before deleting user
+  if (user.stripeSubscriptionId) {
+    try {
+      await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+    } catch (err) {
+      console.error("Failed to cancel Stripe subscription on account delete:", err);
     }
   }
 

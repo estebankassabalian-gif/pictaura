@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PRO_PLAN } from "@/config/plans";
 import SubscribeButton from "./BuyButton";
+import ManageSubscriptionButton from "./ManageButton";
 import { Check, X } from "lucide-react";
 import {
   CreditCard,
@@ -115,10 +116,10 @@ export default async function BillingPage({
             <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-semibold text-emerald-400">Abonnement Pro actif</span>
           </div>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-zinc-400 mb-3">
             {PRO_PLAN.creditsPerMonth} crédits renouvelés chaque mois automatiquement.
-            Gérez votre abonnement depuis votre espace Stripe.
           </p>
+          <ManageSubscriptionButton />
         </div>
       )}
 

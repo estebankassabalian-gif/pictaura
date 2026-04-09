@@ -4,12 +4,10 @@ import { deductCreditsAtomic, refundCredits } from "@/services/credits";
 import { generateKenBurnsReel, KenBurnsStyle } from "@/services/processing/ken-burns";
 import { uploadToR2, getSignedDownloadUrl } from "@/lib/r2";
 import { v4 as uuidv4 } from "uuid";
-import { MAX_FILE_SIZE_BYTES } from "@/config/plans";
+import { MAX_FILE_SIZE_BYTES, REEL_CREDITS_COST } from "@/config/plans";
 import { detectMimeFromMagicBytes } from "@/services/storage";
 
 export const maxDuration = 120;
-
-const REEL_CREDITS_COST = 3;
 
 const VALID_STYLES: KenBurnsStyle[] = ["zoom-in", "zoom-out", "pan-right", "pan-left", "diagonal"];
 const VALID_FILTERS = ["cinematic", "warm", "film", "pop", "none"];

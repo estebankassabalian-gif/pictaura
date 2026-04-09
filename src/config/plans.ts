@@ -25,6 +25,7 @@ export const FREE_SIGNUP_CREDITS = 5;
 
 export const INPAINTING_CREDITS_COST = 1;
 export const INSTAGRAM_HD_CREDITS_COST = 2;
+export const REEL_CREDITS_COST = 3;
 export const MAX_PHOTOS_PER_BATCH = 5;
 export const MAX_FILE_SIZE_MB = 20;
 export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;

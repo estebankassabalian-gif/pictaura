@@ -31,47 +31,55 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Configuration Stripe manquante" }, { status: 500 });
   }
 
-  // Récupérer ou créer le Stripe Customer
-  let stripeCustomerId = user?.stripeCustomerId;
+  try {
+    // Récupérer ou créer le Stripe Customer
+    let stripeCustomerId = user?.stripeCustomerId;
 
-  if (!stripeCustomerId) {
-    const customer = await stripe.customers.create({
-      email: session.user.email,
-      name: session.user.name ?? undefined,
-      metadata: { userId },
-    });
-    stripeCustomerId = customer.id;
-    await prisma.user.update({
-      where: { id: userId },
-      data: { stripeCustomerId },
-    });
-  }
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: session.user.email,
+        name: session.user.name ?? undefined,
+        metadata: { userId },
+      });
+      stripeCustomerId = customer.id;
+      await prisma.user.update({
+        where: { id: userId },
+        data: { stripeCustomerId },
+      });
+    }
 
-  // Créer la Checkout Session en mode subscription
-  const checkoutSession = await stripe.checkout.sessions.create({
-    customer: stripeCustomerId,
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
-    mode: "subscription",
-    success_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success&plan=pro`,
-    cancel_url: `${env.NEXT_PUBLIC_APP_URL}/billing?payment=cancelled`,
-    metadata: {
-      userId,
-      planId: PRO_PLAN.id,
-    },
-    subscription_data: {
+    // Créer la Checkout Session en mode subscription
+    const checkoutSession = await stripe.checkout.sessions.create({
+      customer: stripeCustomerId,
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      success_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success&plan=pro`,
+      cancel_url: `${env.NEXT_PUBLIC_APP_URL}/billing?payment=cancelled`,
       metadata: {
         userId,
         planId: PRO_PLAN.id,
       },
-    },
-    locale: "fr",
-  });
+      subscription_data: {
+        metadata: {
+          userId,
+          planId: PRO_PLAN.id,
+        },
+      },
+      locale: "fr",
+    });
 
-  return NextResponse.json({ url: checkoutSession.url });
+    return NextResponse.json({ url: checkoutSession.url });
+  } catch (error) {
+    console.error("Stripe checkout error:", error);
+    return NextResponse.json(
+      { error: "Erreur lors de la création de la session de paiement. Réessayez." },
+      { status: 500 }
+    );
+  }
 }
