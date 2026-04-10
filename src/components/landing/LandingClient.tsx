@@ -323,7 +323,7 @@ export default function LandingClient() {
               <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
                 <span className="tag mb-8 block w-fit">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-                  Pour les professionnels · {FREE_SIGNUP_CREDITS} photos offertes
+                  Le photographe pro de votre business · {FREE_SIGNUP_CREDITS} photos offertes
                 </span>
               </motion.div>
 
@@ -331,29 +331,48 @@ export default function LandingClient() {
                 className="text-display-xl font-black tracking-[-0.04em] leading-[1.03] mb-6"
                 variants={fadeUp} initial="hidden" animate="visible" custom={0.1}
               >
-                <span className="gradient-text-white">Retouche photo</span>
+                <span className="gradient-text-white">Transformez vos photos</span>
                 <br />
-                <span className="text-brand-400">pro & automatisée</span>
+                <span className="text-brand-400">en aimants à clients</span>
                 <br />
-                <span className="gradient-text-white">pour votre business</span>
-                <br />
-                <span className="text-ink-muted text-[0.7em] font-semibold tracking-normal">en 30 secondes, par l&apos;IA.</span>
+                <span className="gradient-text-white">— en 30 secondes.</span>
               </motion.h1>
 
               <motion.p
-                className="text-ink-muted text-base leading-relaxed max-w-md mb-10"
+                className="text-ink-muted text-base leading-relaxed max-w-md mb-6"
                 variants={fadeUp} initial="hidden" animate="visible" custom={0.2}
               >
-                Immobilier, e-commerce, réseaux sociaux — Pictaura optimise automatiquement
-                vos photos pro : luminosité, couleurs, fond blanc, upscaling IA et métadonnées SEO.
+                Vos biens, produits et créations paraissent enfin à la hauteur de leur vraie valeur.
+                Sans photographe à 200€/bien. Sans Photoshop. Sans y passer la journée.
               </motion.p>
+
+              <motion.div
+                className="max-w-md mb-10 bg-white/[0.03] border border-white/8 rounded-xl p-4"
+                variants={fadeUp} initial="hidden" animate="visible" custom={0.25}
+              >
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <div className="text-2xl font-black text-brand-400"><Counter to={61} suffix="%" /></div>
+                    <div className="text-[10px] text-ink-muted font-medium leading-tight mt-1">de vues en plus sur vos annonces<sup>*</sup></div>
+                  </div>
+                  <div className="border-x border-white/8">
+                    <div className="text-2xl font-black text-brand-400"><Counter to={32} suffix="%" /></div>
+                    <div className="text-[10px] text-ink-muted font-medium leading-tight mt-1">plus rapide pour vendre un bien<sup>*</sup></div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-black text-brand-400"><Counter to={40} suffix="%" /></div>
+                    <div className="text-[10px] text-ink-muted font-medium leading-tight mt-1">de réservations Airbnb<sup>*</sup></div>
+                  </div>
+                </div>
+                <p className="text-[9px] text-ink-muted/60 mt-3 text-center">* Sources : Redfin, Airbnb — études sur l&apos;impact des photos professionnelles</p>
+              </motion.div>
 
               <motion.div
                 className="flex gap-3 flex-wrap mb-10"
                 variants={fadeUp} initial="hidden" animate="visible" custom={0.3}
               >
                 <Link href="/register" className="btn-primary">
-                  Commencer gratuitement
+                  Essayer gratuitement — {FREE_SIGNUP_CREDITS} photos offertes
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
@@ -365,7 +384,7 @@ export default function LandingClient() {
                 className="flex flex-wrap gap-5"
                 variants={fadeUp} initial="hidden" animate="visible" custom={0.4}
               >
-                {["5 photos offertes", "Résiliable à tout moment", "Paiement Stripe sécurisé", "200 photos/mois"].map((t) => (
+                {["Optimisé Airbnb · SeLoger · Instagram · Shopify", "Sans carte bancaire", "Résultat en 30 secondes", "Paiement Stripe sécurisé"].map((t) => (
                   <span key={t} className="flex items-center gap-1.5 text-xs text-ink-muted font-medium">
                     <svg className="w-3.5 h-3.5 text-brand-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
