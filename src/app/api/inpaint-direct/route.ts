@@ -75,6 +75,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Fichier invalide : type d'image non reconnu" }, { status: 400 });
   }
 
+  // Auto-expire stale AWAITING_VALIDATION jobs (older than 1 hour)
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  await prisma.inpaintingJob.updateMany({
+    where: {
+      userId,
+      status: JobStatus.AWAITING_VALIDATION,
+      createdAt: { lt: oneHourAgo },
+    },
+    data: { status: JobStatus.REJECTED },
+  }).catch(console.error);
+
   const inpaintingJobId = uuidv4();
 
   await prisma.inpaintingJob.create({

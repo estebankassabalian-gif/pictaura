@@ -61,7 +61,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           const existing = await prisma.user.findUnique({
             where: { email: user.email.toLowerCase() },
+            select: { id: true, isActive: true },
           });
+          if (existing && !existing.isActive) {
+            return false; // Banned user cannot login via Google
+          }
           if (!existing) {
             const newUser = await prisma.user.create({
               data: {

@@ -12,7 +12,16 @@ import {
   Upload,
   Loader2,
   Download,
+  CheckCircle2,
+  XCircle,
+  Pencil,
 } from "lucide-react";
+
+type EditorState =
+  | { step: "upload" }
+  | { step: "retouching" }
+  | { step: "validating"; inpaintingJobId: string; resultUrl: string }
+  | { step: "done"; resultUrl: string };
 
 const PLATFORMS = [
   { id: "AIRBNB", label: "Airbnb", icon: Building2 },
@@ -89,8 +98,7 @@ export default function DirectEditorPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [platform, setPlatform] = useState("AIRBNB");
   const [instruction, setInstruction] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [state, setState] = useState<EditorState>({ step: "upload" });
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -103,7 +111,7 @@ export default function DirectEditorPage() {
     const f = acceptedFiles[0];
     if (!f) return;
     setFile(f);
-    setResult(null);
+    setState({ step: "upload" });
     setError("");
     const url = URL.createObjectURL(f);
     setPreview(url);
@@ -132,9 +140,8 @@ export default function DirectEditorPage() {
       return;
     }
 
-    setLoading(true);
+    setState({ step: "retouching" });
     setError("");
-    setResult(null);
     setProgress(5);
     progressRef.current = setInterval(() => {
       setProgress((p) => p < 85 ? p + Math.random() * 8 : p);
@@ -151,33 +158,74 @@ export default function DirectEditorPage() {
 
       if (!res.ok) {
         setError(data.error ?? "Erreur lors de la retouche");
+        setState({ step: "upload" });
         return;
       }
 
       setProgress(100);
-      setTimeout(() => setResult(data.resultUrl), 300);
+      // Go to validation step — credits NOT yet deducted
+      setTimeout(() => {
+        setState({
+          step: "validating",
+          inpaintingJobId: data.inpaintingJobId,
+          resultUrl: data.resultUrl,
+        });
+      }, 300);
     } catch {
       setError("Erreur réseau. Réessayez.");
+      setState({ step: "upload" });
     } finally {
       if (progressRef.current) clearInterval(progressRef.current);
-      setLoading(false);
+    }
+  }
+
+  async function handleValidate(action: "approve" | "reject") {
+    if (state.step !== "validating") return;
+
+    try {
+      const res = await fetch("/api/inpaint-validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inpaintingJobId: state.inpaintingJobId, action }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Erreur lors de la validation");
+        return;
+      }
+
+      if (action === "approve") {
+        setState({ step: "done", resultUrl: data.resultUrl ?? state.resultUrl });
+      } else {
+        setState({ step: "upload" });
+        setInstruction("");
+      }
+    } catch {
+      setError("Erreur réseau. Réessayez.");
     }
   }
 
   async function handleDownload() {
-    if (!result) return;
+    const resultUrl = state.step === "done" ? state.resultUrl : null;
+    if (!resultUrl) return;
     setDownloading(true);
     try {
-      const res = await fetch(result);
+      const res = await fetch(resultUrl);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "pictaura_retouche.jpg";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 500);
     } catch {
-      setError("Erreur lors du telechargement");
+      setError("Erreur lors du téléchargement");
     } finally {
       setDownloading(false);
     }
@@ -191,132 +239,170 @@ export default function DirectEditorPage() {
         <span className="text-violet-400 font-medium">{INPAINTING_CREDITS_COST} credits</span>
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Upload */}
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-300 mb-2">1. Votre photo</h2>
-          {preview ? (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={preview} alt="Apercu" className="w-full rounded-xl max-h-64 object-cover" />
-              <button
-                type="button"
-                onClick={() => { setFile(null); setPreview(null); setResult(null); }}
-                className="absolute top-2 right-2 bg-[var(--surface)] text-zinc-400 hover:text-red-400 rounded-full w-7 h-7 flex items-center justify-center shadow border border-white/10 text-lg"
-              >
-                x
-              </button>
-            </div>
-          ) : (
-            <div
-              {...getRootProps()}
-              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors ${
-                isDragActive ? "border-violet-400 bg-violet-500/10" : "border-white/10 hover:border-violet-400 hover:bg-white/[0.02]"
-              }`}
-            >
-              <input {...getInputProps()} />
-              <Upload className="w-8 h-8 text-[var(--muted)] mx-auto mb-2" />
-              <p className="text-zinc-300 font-medium text-sm">
-                {isDragActive ? "Déposez ici..." : "Glissez votre photo ou cliquez"}
-              </p>
-              <p className="text-xs text-[var(--muted)] mt-1">JPEG, PNG, WEBP · Max 20 Mo</p>
-            </div>
-          )}
-        </div>
-
-        {/* Platform */}
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-300 mb-2">2. Contexte</h2>
-          <div className="flex gap-2 flex-wrap">
-            {PLATFORMS.map((p) => {
-              const Icon = p.icon;
-              return (
+      {/* UPLOAD + RETOUCHING: form */}
+      {(state.step === "upload" || state.step === "retouching") && (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Upload */}
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-300 mb-2">1. Votre photo</h2>
+            {preview ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={preview} alt="Aperçu" className="w-full rounded-xl max-h-64 object-cover" />
                 <button
-                  key={p.id}
                   type="button"
-                  onClick={() => setPlatform(p.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
-                    platform === p.id
-                      ? "border-violet-500 bg-violet-500/10 text-violet-400"
-                      : "border-white/8 text-zinc-400 hover:border-white/15"
-                  }`}
+                  onClick={() => { setFile(null); setPreview(null); setState({ step: "upload" }); }}
+                  className="absolute top-2 right-2 bg-[var(--surface)] text-zinc-400 hover:text-red-400 rounded-full w-7 h-7 flex items-center justify-center shadow border border-white/10 text-lg"
+                  disabled={state.step === "retouching"}
                 >
-                  <Icon className="w-4 h-4" /> {p.label}
+                  x
                 </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Instruction */}
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-300 mb-2">3. Votre instruction</h2>
-          <textarea
-            value={instruction}
-            onChange={(e) => setInstruction(e.target.value)}
-            maxLength={300}
-            rows={3}
-            placeholder='Ex : "Eclaircis la piece et rends la lumiere plus naturelle"'
-            className="w-full border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none bg-transparent text-white"
-          />
-          <div className="flex flex-wrap gap-2 mt-2">
-            {EXAMPLES.map((ex) => (
-              <button
-                key={ex}
-                type="button"
-                onClick={() => setInstruction(ex)}
-                className="text-xs bg-white/5 hover:bg-violet-500/10 hover:text-violet-400 text-zinc-400 px-3 py-1.5 rounded-lg transition-colors"
+              </div>
+            ) : (
+              <div
+                {...getRootProps()}
+                className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors ${
+                  isDragActive ? "border-violet-400 bg-violet-500/10" : "border-white/10 hover:border-violet-400 hover:bg-white/[0.02]"
+                }`}
               >
-                {ex}
-              </button>
-            ))}
+                <input {...getInputProps()} />
+                <Upload className="w-8 h-8 text-[var(--muted)] mx-auto mb-2" />
+                <p className="text-zinc-300 font-medium text-sm">
+                  {isDragActive ? "Déposez ici..." : "Glissez votre photo ou cliquez"}
+                </p>
+                <p className="text-xs text-[var(--muted)] mt-1">JPEG, PNG, WEBP · Max 20 Mo</p>
+              </div>
+            )}
+          </div>
+
+          {/* Platform */}
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-300 mb-2">2. Contexte</h2>
+            <div className="flex gap-2 flex-wrap">
+              {PLATFORMS.map((p) => {
+                const Icon = p.icon;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPlatform(p.id)}
+                    disabled={state.step === "retouching"}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
+                      platform === p.id
+                        ? "border-violet-500 bg-violet-500/10 text-violet-400"
+                        : "border-white/8 text-zinc-400 hover:border-white/15"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" /> {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Instruction */}
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-300 mb-2">3. Votre instruction</h2>
+            <textarea
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              maxLength={300}
+              rows={3}
+              disabled={state.step === "retouching"}
+              placeholder='Ex : "Éclaircis la pièce et rends la lumière plus naturelle"'
+              className="w-full border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none bg-transparent text-white disabled:opacity-50"
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  type="button"
+                  disabled={state.step === "retouching"}
+                  onClick={() => setInstruction(ex)}
+                  className="text-xs bg-white/5 hover:bg-violet-500/10 hover:text-violet-400 text-zinc-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={state.step === "retouching" || !file || !instruction.trim()}
+            className="w-full bg-gradient-to-r from-violet-600 to-blue-600 text-white py-4 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {state.step === "retouching" ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" /> Traitement IA en cours... ({Math.round(progress)}%)
+              </span>
+            ) : (
+              `Retoucher — ${INPAINTING_CREDITS_COST} crédit(s)`
+            )}
+          </button>
+
+          {state.step === "retouching" && (
+            <div className="w-full bg-white/8 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-2 bg-gradient-to-r from-violet-600 to-blue-600 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
+        </form>
+      )}
+
+      {/* VALIDATING: before/after + approve/reject */}
+      {state.step === "validating" && preview && (
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-400">
+            Résultat prêt — <strong>aucun crédit débité pour l&apos;instant.</strong>
+          </p>
+
+          <BeforeAfterSlider before={preview} after={state.resultUrl} />
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleValidate("approve")}
+              className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition-colors text-sm"
+            >
+              <CheckCircle2 className="w-4 h-4" /> Valider — {INPAINTING_CREDITS_COST} crédit
+            </button>
+            <button
+              onClick={() => handleValidate("reject")}
+              className="flex-1 flex items-center justify-center gap-2 bg-white/5 text-zinc-300 py-3 rounded-xl font-semibold hover:bg-white/8 transition-colors text-sm border border-white/8"
+            >
+              <XCircle className="w-4 h-4" /> Rejeter — gratuit
+            </button>
           </div>
         </div>
+      )}
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3">
-            {error}
+      {/* DONE: download result */}
+      {state.step === "done" && (
+        <div className="space-y-4">
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            <p className="text-sm font-semibold text-emerald-400">Retouche validée — {INPAINTING_CREDITS_COST} crédit débité</p>
           </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={loading || !file || !instruction.trim()}
-          className="w-full bg-gradient-to-r from-violet-600 to-blue-600 text-white py-4 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" /> Analyse IA en cours... ({Math.round(progress)}%)
-            </span>
-          ) : (
-            `Retoucher — ${INPAINTING_CREDITS_COST} credits`
-          )}
-        </button>
+          {preview && <BeforeAfterSlider before={preview} after={state.resultUrl} />}
 
-        {loading && (
-          <div className="w-full bg-white/8 rounded-full h-2 overflow-hidden">
-            <div
-              className="h-2 bg-gradient-to-r from-violet-600 to-blue-600 rounded-full transition-all duration-700 ease-out"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="flex gap-3">
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" /> {downloading ? "Téléchargement..." : "Télécharger"}
+            </button>
+            <button
+              onClick={() => { setState({ step: "upload" }); setInstruction(""); setError(""); }}
+              className="flex-1 flex items-center justify-center gap-2 bg-white/5 text-zinc-300 py-3 rounded-xl font-semibold hover:bg-white/8 transition-colors border border-white/8"
+            >
+              <Pencil className="w-3.5 h-3.5" /> Nouvelle retouche
+            </button>
           </div>
-        )}
-      </form>
-
-      {/* Result with before/after slider */}
-      {result && preview && (
-        <div className="mt-8 bg-[var(--surface)] rounded-2xl border border-white/8 p-6">
-          <h2 className="font-semibold text-white mb-1">Résultat</h2>
-          <p className="text-xs text-zinc-500 mb-4">Glissez le curseur pour comparer avant / apres</p>
-          <BeforeAfterSlider before={preview} after={result} />
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="mt-4 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            {downloading ? "Telechargement..." : "Telecharger la photo retouchee"}
-          </button>
         </div>
       )}
     </div>

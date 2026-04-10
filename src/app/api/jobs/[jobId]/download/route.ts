@@ -52,7 +52,7 @@ export async function GET(
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "image/jpeg",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Content-Disposition": `attachment; filename="${fileName.replace(/["\\]/g, "_")}"`,
         "Cache-Control": "no-store",
       },
     });
