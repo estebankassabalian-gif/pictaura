@@ -220,7 +220,7 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
   return (
     <div className="mt-4 border-t border-white/5 pt-4">
       <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-        <Pencil className="w-4 h-4 text-violet-400" /> Retouche IA
+        <Pencil className="w-4 h-4 text-accent-400" /> Retouche IA
       </h3>
 
       {/* ANALYZING */}
@@ -251,7 +251,7 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
                   <button
                     key={s.label}
                     onClick={() => handleSuggestionClick(s)}
-                    className="flex items-center gap-1 text-xs bg-[var(--surface)] border border-white/8 hover:border-violet-400 hover:bg-violet-500/10 hover:text-violet-400 text-zinc-300 px-3 py-1.5 rounded-lg transition-colors"
+                    className="flex items-center gap-1 text-xs bg-[var(--surface)] border border-white/8 hover:border-accent-400 hover:bg-accent-500/10 hover:text-accent-400 text-zinc-300 px-3 py-1.5 rounded-lg transition-colors"
                   >
                     <span>{s.icon}</span>
                     <span>{s.label}</span>
@@ -279,12 +279,12 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
                 maxLength={300}
                 rows={2}
                 placeholder='Ex: "Retire la voiture devant la maison"'
-                className="flex-1 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none bg-transparent text-white"
+                className="flex-1 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none bg-transparent text-white"
               />
               <button
                 onClick={() => handleRetouche(instruction)}
                 disabled={!instruction.trim()}
-                className="px-4 py-2 bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-xl text-sm font-semibold hover:from-violet-700 hover:to-blue-700 disabled:opacity-40 transition-all self-end"
+                className="px-4 py-2 bg-gradient-to-r from-brand-600 to-accent-500 text-white rounded-xl text-sm font-semibold hover:from-brand-700 hover:to-accent-600 disabled:opacity-40 transition-all self-end"
               >
                 <Send className="w-4 h-4 sm:hidden" />
                 <span className="hidden sm:inline">{INPAINTING_CREDITS_COST} crédit</span>
@@ -299,11 +299,11 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
 
       {/* RETOUCHING */}
       {state.step === "retouching" && (
-        <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4 flex items-center gap-3">
-          <Loader2 className="w-5 h-5 text-violet-400 animate-spin" />
+        <div className="bg-accent-500/10 border border-accent-500/20 rounded-xl p-4 flex items-center gap-3">
+          <Loader2 className="w-5 h-5 text-accent-400 animate-spin" />
           <div>
-            <p className="text-sm font-semibold text-violet-300">Retouche IA en cours...</p>
-            <p className="text-xs text-violet-400/70 mt-0.5">Pictaura analyse et retouche votre photo (~20-40s)</p>
+            <p className="text-sm font-semibold text-accent-300">Retouche IA en cours...</p>
+            <p className="text-xs text-accent-400/70 mt-0.5">Pictaura analyse et retouche votre photo (~20-40s)</p>
           </div>
         </div>
       )}
@@ -323,7 +323,7 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
                 <img src={state.originalUrl} alt="Avant" className="w-full aspect-video object-cover" />
               </div>
               <div className="relative">
-                <p className="absolute top-2 left-2 bg-violet-600/80 text-white text-xs px-2 py-0.5 rounded-full z-10">Apres</p>
+                <p className="absolute top-2 left-2 bg-accent-500/80 text-white text-xs px-2 py-0.5 rounded-full z-10">Apres</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={state.resultUrl} alt="Apres retouche" className="w-full aspect-video object-cover" />
               </div>
@@ -381,7 +381,7 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
 
           <button
             onClick={handleAffinement}
-            className="w-full flex items-center justify-center gap-2 text-sm text-violet-400 font-medium py-2 border border-violet-500/20 rounded-xl hover:bg-violet-500/10 transition-colors"
+            className="w-full flex items-center justify-center gap-2 text-sm text-accent-400 font-medium py-2 border border-accent-500/20 rounded-xl hover:bg-accent-500/10 transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" /> Affiner encore (nouvelle retouche)
           </button>
@@ -530,13 +530,13 @@ export default function ResultsPage() {
             <>
               <XCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
               <p className="text-red-400 font-medium mb-2">{fetchError}</p>
-              <Link href="/dashboard" className="text-violet-400 hover:underline text-sm">
+              <Link href="/dashboard" className="text-accent-400 hover:underline text-sm">
                 Retour au dashboard
               </Link>
             </>
           ) : (
             <>
-              <Loader2 className="w-10 h-10 text-violet-400 animate-spin mx-auto mb-4" />
+              <Loader2 className="w-10 h-10 text-accent-400 animate-spin mx-auto mb-4" />
               <p className="text-zinc-400">Chargement...</p>
             </>
           )}
@@ -566,7 +566,7 @@ export default function ResultsPage() {
           <button
             onClick={completedPhotos.length === 1 ? () => downloadPhoto(completedPhotos[0].id) : handleDownloadAll}
             disabled={downloading}
-            className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-blue-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-accent-500 text-white px-5 py-2.5 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
             {downloading ? "Téléchargement..." : completedPhotos.length === 1 ? "Télécharger la photo" : `Télécharger les ${completedPhotos.length} photos`}
@@ -606,7 +606,7 @@ export default function ResultsPage() {
             </div>
             <div className="w-full bg-blue-500/20 rounded-full h-2.5 mb-3 overflow-hidden">
               <div
-                className="bg-gradient-to-r from-blue-500 to-violet-500 h-full rounded-full transition-all duration-500 ease-out"
+                className="bg-gradient-to-r from-brand-500 to-accent-500 h-full rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${Math.max(3, (completedPhotos.length / Math.max(job.photos.length, 1)) * 100)}%` }}
               />
             </div>
@@ -653,7 +653,7 @@ export default function ResultsPage() {
       {job.status === "COMPLETED" && (
         <div className="bg-[var(--surface-2)] border border-white/8 rounded-xl p-4 mb-6">
           <p className="text-sm font-semibold text-zinc-300 mb-2 flex items-center gap-2">
-            <RefreshCw className="w-4 h-4 text-violet-400" /> Essayer un autre preset (1 credit/photo)
+            <RefreshCw className="w-4 h-4 text-accent-400" /> Essayer un autre preset (1 credit/photo)
           </p>
           <div className="flex gap-2 flex-wrap">
             {otherPresets.map((p) => (
@@ -661,7 +661,7 @@ export default function ResultsPage() {
                 key={p}
                 onClick={() => handleReprocess(p)}
                 disabled={reprocessing}
-                className="px-4 py-1.5 text-sm border border-white/10 rounded-lg hover:border-violet-400 hover:text-violet-400 text-zinc-400 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 text-sm border border-white/10 rounded-lg hover:border-accent-400 hover:text-accent-400 text-zinc-400 transition-colors disabled:opacity-50"
               >
                 {reprocessing ? "..." : PRESET_LABELS[p as keyof typeof PRESET_LABELS]?.split(" /")[0] ?? p}
               </button>
@@ -678,7 +678,7 @@ export default function ResultsPage() {
               key={photo.id}
               onClick={() => setActivePhoto(index)}
               className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                activePhoto === index ? "border-violet-500" : "border-white/8"
+                activePhoto === index ? "border-accent-500" : "border-white/8"
               }`}
             >
               {photo.originalUrl ? (
@@ -718,7 +718,7 @@ export default function ResultsPage() {
                 <button
                   onClick={() => downloadPhoto(currentPhoto.id)}
                   disabled={downloading}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-accent-400 hover:text-accent-300 transition-colors disabled:opacity-50"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Télécharger cette photo
@@ -732,7 +732,7 @@ export default function ResultsPage() {
             </div>
           ) : (
             <div className="bg-[var(--surface-2)] rounded-xl p-12 text-center">
-              <Loader2 className="w-10 h-10 text-violet-400 animate-spin mx-auto mb-3" />
+              <Loader2 className="w-10 h-10 text-accent-400 animate-spin mx-auto mb-3" />
               <p className="text-zinc-400">Traitement en cours...</p>
             </div>
           )}
@@ -748,7 +748,7 @@ export default function ResultsPage() {
               </div>
               <Link
                 href="/billing"
-                className="flex-shrink-0 text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors whitespace-nowrap"
+                className="flex-shrink-0 text-xs font-semibold text-accent-400 hover:text-accent-300 transition-colors whitespace-nowrap"
               >
                 Passer au Pro →
               </Link>
@@ -759,20 +759,20 @@ export default function ResultsPage() {
           {currentPhoto.status === "COMPLETED" && (
             <div className="mt-6 space-y-3">
               {currentPhoto.photoScore !== null && (
-                <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
+                <div className="bg-accent-500/10 border border-accent-500/20 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-semibold text-violet-300">
+                    <span className="text-sm font-semibold text-accent-300">
                       Score photo : {currentPhoto.photoScore}/10
                     </span>
-                    <div className="flex-1 h-2 bg-violet-500/15 rounded-full overflow-hidden">
+                    <div className="flex-1 h-2 bg-accent-500/15 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-violet-500 rounded-full"
+                        className="h-full bg-accent-500 rounded-full"
                         style={{ width: `${(currentPhoto.photoScore / 10) * 100}%` }}
                       />
                     </div>
                   </div>
                   {currentPhoto.photoScoreReport && (
-                    <p className="text-xs text-violet-400/70">{currentPhoto.photoScoreReport}</p>
+                    <p className="text-xs text-accent-400/70">{currentPhoto.photoScoreReport}</p>
                   )}
                 </div>
               )}
@@ -786,7 +786,7 @@ export default function ResultsPage() {
       )}
 
       <div className="text-center">
-        <Link href="/dashboard" className="text-violet-400 font-medium hover:underline inline-flex items-center gap-1">
+        <Link href="/dashboard" className="text-accent-400 font-medium hover:underline inline-flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" /> Retour au dashboard
         </Link>
       </div>

@@ -336,7 +336,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                       disabled={applyToAll && idx !== 0}
                       className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
                         activePhotoIndex === idx
-                          ? "border-violet-500 ring-2 ring-violet-500/20"
+                          ? "border-accent-500 ring-2 ring-accent-500/20"
                           : applyToAll && idx !== 0
                           ? "border-white/5 opacity-40"
                           : "border-white/8 hover:border-white/20"
@@ -483,7 +483,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           {!isAdmin && credits < files.length && (
             <p className="text-sm text-red-400 mt-2 text-center">
               Crédits insuffisants ({credits} disponible(s), {files.length} requis).{" "}
-              <a href="/billing" className="underline text-violet-400">Acheter des crédits</a>
+              <a href="/billing" className="underline text-accent-400">Acheter des crédits</a>
             </p>
           )}
         </div>

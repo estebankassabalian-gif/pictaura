@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Bricolage_Grotesque, Atkinson_Hyperlegible } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/Toaster";
 
-const inter = Inter({
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const sans = Atkinson_Hyperlegible({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-sans",
   display: "swap",
 });
 
@@ -16,24 +23,24 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://pictaura.fr";
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "Pictaura — Retouche photo IA pour Airbnb, Vinted & Instagram",
+    default: "Pictaura — Retouche photo IA pour professionnels",
     template: "%s | Pictaura",
   },
   description:
-    "Optimisez vos photos Airbnb, Vinted, Instagram et Shopify en 30 secondes grâce à l'IA. Upscaling, fond blanc automatique, SEO des images, score photo. Téléchargez votre pack optimisé instantanément.",
+    "Des photos à la hauteur de votre vision. Retouche IA pro pour agences immobilières, e-commerçants et studios : batch, SEO EXIF intégré, sans watermark. 5 crédits offerts à l'inscription.",
   keywords: [
-    "retouche photo IA",
-    "optimisation photo Airbnb",
-    "photo Vinted fond blanc",
-    "améliorer photos location saisonnière",
-    "retouche photo Instagram IA",
+    "retouche photo IA professionnelle",
+    "photo immobilier IA",
+    "optimisation photo e-commerce",
+    "retouche photo batch",
+    "SEO photo EXIF",
     "photo Shopify fond blanc",
-    "optimiser photos Airbnb automatique",
-    "retouche photo automatique",
-    "IA retouche photo",
+    "retouche photo agence immobilière",
+    "photo Vinted fond blanc",
+    "retouche photo Instagram IA",
+    "upscaling photo pro",
     "photo location courte durée",
-    "upscaling photo",
-    "améliorer qualité photo",
+    "améliorer qualité photo IA",
   ],
   authors: [{ name: "Pictaura" }],
   creator: "Pictaura",
@@ -102,7 +109,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={inter.className}>
+      <body className={`${display.variable} ${sans.variable} font-sans`}>
         <SessionProvider>
           <Toaster>{children}</Toaster>
         </SessionProvider>

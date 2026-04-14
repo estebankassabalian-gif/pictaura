@@ -93,11 +93,11 @@ export default function EditorPage() {
   return (
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-        <Pencil className="w-6 h-6 text-violet-400" /> Retouche sur instruction
+        <Pencil className="w-6 h-6 text-accent-400" /> Retouche sur instruction
       </h1>
       <p className="text-zinc-400 mb-8">
         Décrivez ce que vous souhaitez modifier — l'IA s'occupe du reste.
-        <span className="text-violet-400 font-medium ml-1">
+        <span className="text-accent-400 font-medium ml-1">
           {INPAINTING_CREDITS_COST} crédit(s) — débité uniquement si vous validez
         </span>
       </p>
@@ -116,7 +116,7 @@ export default function EditorPage() {
               rows={3}
               disabled={state.step === "retouching"}
               placeholder='Ex: "Retire le canapé rouge et remplace-le par un canapé gris moderne"'
-              className="w-full border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none bg-transparent text-white disabled:opacity-50"
+              className="w-full border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none bg-transparent text-white disabled:opacity-50"
             />
             <p className="text-xs text-zinc-600 mt-1 text-right">{instruction.length}/300</p>
           </div>
@@ -130,7 +130,7 @@ export default function EditorPage() {
                   type="button"
                   disabled={state.step === "retouching"}
                   onClick={() => setInstruction(ex)}
-                  className="text-xs bg-white/5 hover:bg-violet-500/10 hover:text-violet-400 text-zinc-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  className="text-xs bg-white/5 hover:bg-accent-500/10 hover:text-accent-400 text-zinc-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {ex}
                 </button>
@@ -141,7 +141,7 @@ export default function EditorPage() {
           <button
             type="submit"
             disabled={state.step === "retouching" || !instruction.trim()}
-            className="w-full bg-gradient-to-r from-violet-600 to-blue-600 text-white py-4 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-brand-600 to-accent-500 text-white py-4 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all disabled:opacity-50"
           >
             {state.step === "retouching" ? (
               <span className="flex items-center justify-center gap-2">
@@ -202,7 +202,7 @@ export default function EditorPage() {
             <a
               href={state.resultUrl}
               download="pictaura_retouche.jpg"
-              className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all"
+              className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-brand-600 to-accent-500 text-white py-3 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all"
             >
               <Download className="w-4 h-4" /> Télécharger
             </a>

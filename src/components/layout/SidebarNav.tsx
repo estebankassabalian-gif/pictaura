@@ -17,6 +17,7 @@ import {
   Shield,
   LogOut,
 } from "lucide-react";
+import Logo from "@/components/brand/Logo";
 
 const ONBOARDING_KEY = "pictaura_onboarded";
 
@@ -104,8 +105,8 @@ function OnboardingModal() {
       >
         {/* Title */}
         <div className="mb-6">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shadow-lg shadow-violet-500/20 mb-3">
-            <span className="text-white font-black text-sm">P</span>
+          <div className="w-10 h-10 rounded-xl bg-[var(--surface-2)] border border-white/5 flex items-center justify-center mb-3">
+            <Logo variant="mark" size={28} />
           </div>
           <h2 className="text-xl font-bold text-white leading-tight">
             Quel est votre cas d&apos;usage ?
@@ -190,10 +191,8 @@ export function SidebarNav({ userName, userEmail, userInitial, credits, isAdmin 
       {/* Logo */}
       <div className="p-5 border-b border-white/5">
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <span className="text-white font-black text-xs">P</span>
-          </div>
-          <span className="text-white font-bold tracking-tight">Pictaura</span>
+          <Logo variant="mark" size={28} />
+          <span className="text-white font-bold tracking-tight font-display">Pictaura</span>
         </Link>
       </div>
 
@@ -239,17 +238,17 @@ export function SidebarNav({ userName, userEmail, userInitial, credits, isAdmin 
 
       {/* Footer: credits + user */}
       <div className="p-3 border-t border-white/5">
-        <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-3 text-center mb-3">
-          <div className="text-2xl font-black text-violet-400">
+        <div className="bg-accent-500/10 border border-accent-500/20 rounded-xl p-3 text-center mb-3">
+          <div className="text-2xl font-black text-accent-400">
             {credits === -1 ? "\u221E" : credits}
           </div>
-          <div className="text-[10px] text-violet-300/70 font-semibold uppercase tracking-wider">
+          <div className="text-[10px] text-accent-300/70 font-semibold uppercase tracking-wider">
             crédits disponibles
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 text-sm px-1.5">
-          <div className="w-8 h-8 bg-violet-500/15 border border-violet-500/20 rounded-full flex items-center justify-center text-xs font-bold text-violet-400 flex-shrink-0">
+          <div className="w-8 h-8 bg-accent-500/15 border border-accent-500/20 rounded-full flex items-center justify-center text-xs font-bold text-accent-400 flex-shrink-0">
             {userInitial}
           </div>
           <div className="flex-1 min-w-0">
@@ -288,7 +287,7 @@ function NavItem({
 }) {
   const activeClasses = activeColor && activeBg
     ? `${activeBg} ${activeColor}`
-    : "bg-violet-500/10 text-violet-400";
+    : "bg-accent-500/10 text-accent-400";
 
   return (
     <Link

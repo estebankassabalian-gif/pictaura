@@ -6,16 +6,17 @@ export const PRO_PLAN = {
   id: "pro",
   name: "Pro",
   creditsPerMonth: 200,
-  priceEurCents: 2900,
-  priceDisplay: "29€/mois",
-  pricePerPhoto: "0,15€",
+  priceEurCents: 8900,
+  priceDisplay: "89€/mois",
+  pricePerPhoto: "0,45€",
   stripePriceEnvKey: "STRIPE_PRICE_PRO" as const,
   features: [
-    "200 photos/mois",
-    "Tous les outils de retouche",
-    "Métadonnées SEO (EXIF)",
+    "200 retouches par mois",
+    "1 crédit = 1 photo standard",
     "Sans watermark",
-    "Retouche IA illimitée",
+    "Tous les agents (Immobilier, Instagram, Vinted, Shopify)",
+    "Métadonnées SEO intégrées (EXIF + JSON-LD)",
+    "Jusqu'à 50 Mo par photo",
     "Support prioritaire",
     "Résiliable à tout moment",
   ],
@@ -27,7 +28,7 @@ export const INPAINTING_CREDITS_COST = 1;
 export const INSTAGRAM_HD_CREDITS_COST = 2;
 export const REEL_CREDITS_COST = 3;
 export const MAX_PHOTOS_PER_BATCH = 5;
-export const MAX_FILE_SIZE_MB = 20;
+export const MAX_FILE_SIZE_MB = 50;
 export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 export const ALLOWED_IMAGE_TYPES = [

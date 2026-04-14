@@ -16,8 +16,8 @@ import type { LucideIcon } from "lucide-react";
 
 const TX_META: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   PURCHASE:    { label: "Achat",           icon: CreditCard, color: "text-emerald-400 bg-emerald-500/10" },
-  FREE_SIGNUP: { label: "Crédits offerts", icon: Gift,       color: "text-violet-400 bg-violet-500/10" },
-  ADMIN_GRANT: { label: "Crédit admin",    icon: Shield,     color: "text-violet-400 bg-violet-500/10" },
+  FREE_SIGNUP: { label: "Crédits offerts", icon: Gift,       color: "text-accent-400 bg-accent-500/10" },
+  ADMIN_GRANT: { label: "Crédit admin",    icon: Shield,     color: "text-accent-400 bg-accent-500/10" },
   USAGE:       { label: "Utilisation",     icon: ImageIcon,  color: "text-zinc-400 bg-white/5" },
   REFUND:      { label: "Remboursement",   icon: Undo2,      color: "text-amber-400 bg-amber-500/10" },
   REFERRAL:    { label: "Parrainage",      icon: Users,      color: "text-teal-400 bg-teal-500/10" },
@@ -73,7 +73,7 @@ export default async function BillingPage({
             <div className="text-xs text-zinc-500 mt-1">Photos traitées</div>
           </div>
           <div className="bg-[var(--surface)] border border-white/8 rounded-2xl p-5 text-center">
-            <div className="text-2xl font-bold text-violet-400">{session.user.credits}</div>
+            <div className="text-2xl font-bold text-accent-400">{session.user.credits}</div>
             <div className="text-xs text-zinc-500 mt-1">Crédits restants</div>
           </div>
         </div>
@@ -82,15 +82,15 @@ export default async function BillingPage({
       {/* Plan Pro */}
       {!isAdmin && !isSubscribed && (
         <div className="mb-10">
-          <div className="bg-[var(--surface)] rounded-2xl border-2 border-violet-500 shadow-lg shadow-violet-500/10 p-8 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-violet-600 to-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full">
+          <div className="bg-[var(--surface)] rounded-2xl border-2 border-accent-500 shadow-lg shadow-accent-500/10 p-8 relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-brand-600 to-accent-500 text-white text-xs font-bold px-4 py-1 rounded-full">
               RECOMMANDÉ
             </div>
 
             <div className="text-center mb-6">
               <div className="text-base font-bold text-white mb-1">{PRO_PLAN.name}</div>
               <div className="text-4xl font-black text-white mb-1">{PRO_PLAN.priceDisplay}</div>
-              <div className="text-violet-400 font-semibold text-sm">{PRO_PLAN.creditsPerMonth} photos/mois · {PRO_PLAN.pricePerPhoto}/photo</div>
+              <div className="text-accent-400 font-semibold text-sm">{PRO_PLAN.creditsPerMonth} photos/mois</div>
             </div>
 
             <ul className="space-y-3 mb-8 max-w-sm mx-auto">

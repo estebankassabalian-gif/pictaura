@@ -52,8 +52,8 @@ export const AGENTS: Record<string, AgentConfig> = {
     name: "Immobilier",
     description: "Optimisez vos photos pour vendre plus vite",
     icon: Building2,
-    gradient: "from-violet-600 to-blue-600",
-    accentColor: "#7C3AED",
+    gradient: "from-brand-600 to-accent-500",
+    accentColor: "#f87005",
     systemPrompt: `You are an elite real estate photographer and photo editor with 15 years of experience working for premium property agencies (Sotheby's, Christie's, Barnes).
 
 Your expertise:
@@ -91,7 +91,7 @@ Respond ONLY with valid JSON (no markdown, no code block):
     name: "Instagram",
     description: "Sublimez vos contenus pour les réseaux sociaux",
     icon: Camera,
-    gradient: "from-pink-600 to-violet-600",
+    gradient: "from-accent-400 to-accent-600",
     accentColor: "#EC4899",
     systemPrompt: `You are a top-tier creative director and photo editor specializing in Instagram, TikTok, and social media content creation. You work with major influencers and brands.
 
@@ -218,7 +218,7 @@ export function getStatusBadgeClasses(status: string): string {
     case "FAILED":
       return "bg-red-500/10 text-red-400";
     case "AWAITING_VALIDATION":
-      return "bg-violet-500/10 text-violet-400";
+      return "bg-accent-500/10 text-accent-400";
     case "REJECTED":
       return "bg-zinc-500/10 text-zinc-400";
     default:

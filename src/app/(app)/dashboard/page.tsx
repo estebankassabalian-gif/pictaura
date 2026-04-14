@@ -63,12 +63,12 @@ export default async function DashboardPage({
 
       {/* Onboarding banner */}
       {welcome === "true" && (
-        <div className="bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-2xl p-6 mb-8 flex items-center justify-between gap-4">
+        <div className="bg-gradient-to-r from-brand-600 to-accent-500 text-white rounded-2xl p-6 mb-8 flex items-center justify-between gap-4">
           <div>
             <p className="font-bold text-lg mb-1">
               Bienvenue sur Pictaura, {session.user.name?.split(" ")[0]} !
             </p>
-            <p className="text-violet-100 text-sm">
+            <p className="text-white/85 text-sm">
               Vous avez reçu <strong>{session.user.credits} crédits gratuits</strong> pour tester le service. Commencez par optimiser vos photos.
             </p>
           </div>
@@ -95,7 +95,7 @@ export default async function DashboardPage({
         </div>
         <Link
           href="/immobilier"
-          className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-blue-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all"
+          className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-accent-500 text-white px-5 py-2.5 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all"
         >
           <Plus className="w-4 h-4" /> Nouvelle retouche
         </Link>
@@ -140,7 +140,7 @@ export default async function DashboardPage({
           <p className="text-zinc-400 mb-4">Vous n'avez pas encore effectué de retouche.</p>
           <Link
             href="/immobilier"
-            className="bg-gradient-to-r from-violet-600 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all inline-block"
+            className="bg-gradient-to-r from-brand-600 to-accent-500 text-white px-6 py-3 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all inline-block"
           >
             Commencer ma première retouche
           </Link>
@@ -178,7 +178,7 @@ export default async function DashboardPage({
                     {(job.status === "COMPLETED" || job.status === "PROCESSING" || job.status === "PENDING") && (
                       <Link
                         href={`/results/${job.id}`}
-                        className="text-violet-400 font-medium hover:underline flex items-center gap-1 justify-end"
+                        className="text-accent-400 font-medium hover:underline flex items-center gap-1 justify-end"
                       >
                         Voir <ArrowRight className="w-3.5 h-3.5" />
                       </Link>
@@ -197,7 +197,7 @@ export default async function DashboardPage({
           {currentPage > 1 && (
             <Link
               href={`/dashboard?page=${currentPage - 1}`}
-              className="px-3 py-1.5 text-sm border border-white/10 rounded-lg hover:border-violet-400 text-zinc-400 hover:text-violet-400 transition-colors"
+              className="px-3 py-1.5 text-sm border border-white/10 rounded-lg hover:border-accent-400 text-zinc-400 hover:text-accent-400 transition-colors"
             >
               Précédent
             </Link>
@@ -208,7 +208,7 @@ export default async function DashboardPage({
           {currentPage < totalPages && (
             <Link
               href={`/dashboard?page=${currentPage + 1}`}
-              className="px-3 py-1.5 text-sm border border-white/10 rounded-lg hover:border-violet-400 text-zinc-400 hover:text-violet-400 transition-colors"
+              className="px-3 py-1.5 text-sm border border-white/10 rounded-lg hover:border-accent-400 text-zinc-400 hover:text-accent-400 transition-colors"
             >
               Suivant
             </Link>
@@ -230,7 +230,7 @@ function StatCard({
 }) {
   return (
     <div className="bg-[var(--surface)] rounded-2xl border border-white/8 p-6">
-      <Icon className="w-6 h-6 text-violet-400 mb-3" />
+      <Icon className="w-6 h-6 text-accent-400 mb-3" />
       <div className="text-3xl font-bold text-white">{value}</div>
       <div className="text-sm text-zinc-400 mt-1">{label}</div>
     </div>

@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               href="/login"
-              className="text-sm text-violet-400 hover:underline"
+              className="text-sm text-accent-400 hover:underline"
             >
               Retour à la connexion
             </Link>
@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
             </form>
 
             <p className="text-center text-sm text-zinc-500 mt-6">
-              <Link href="/login" className="text-violet-400 hover:underline">
+              <Link href="/login" className="text-accent-400 hover:underline">
                 Retour à la connexion
               </Link>
             </p>

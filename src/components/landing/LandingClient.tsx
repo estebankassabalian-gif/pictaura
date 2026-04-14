@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, useInView, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { PRO_PLAN, FREE_SIGNUP_CREDITS } from "@/config/plans";
 import BeforeAfterHero from "@/components/landing/BeforeAfterHero";
+import Logo from "@/components/brand/Logo";
 import {
   Upload,
   Zap,
@@ -65,27 +66,6 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
     return () => clearInterval(id);
   }, [inView, to]);
   return <span ref={ref}>{val}{suffix}</span>;
-}
-
-/* ── Pictaura Logo SVG ─────────────────────────────────────── */
-function PictauraLogo({ size = 32 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-      <defs>
-        <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#a78bfa" />
-          <stop offset="100%" stopColor="#7c3aed" />
-        </linearGradient>
-      </defs>
-      <rect width="40" height="40" rx="10" fill="url(#logo-grad)" />
-      {/* Lens / aperture icon */}
-      <circle cx="20" cy="20" r="10" stroke="white" strokeWidth="2" fill="none" opacity="0.9" />
-      <circle cx="20" cy="20" r="5.5" stroke="white" strokeWidth="1.5" fill="none" opacity="0.7" />
-      <circle cx="20" cy="20" r="2" fill="white" opacity="0.9" />
-      {/* Sparkle */}
-      <path d="M31 9l1 3 1-3 3 1-3 1 3 1-3-1-1 3-1-3-3 1 3-1-3-1z" fill="white" opacity="0.6" />
-    </svg>
-  );
 }
 
 /* ── Brand logos for marquee ──────────────────────────────── */
@@ -288,14 +268,14 @@ export default function LandingClient() {
       >
         <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <PictauraLogo size={32} />
+            <Logo variant="mark" size={34} />
             <div className="flex flex-col leading-none">
-              <span className="text-white font-bold tracking-tight text-lg">Pictaura</span>
+              <span className="text-white font-bold tracking-tight text-lg font-display">Pictaura</span>
               <span className="text-[8px] text-ink-faint/50 font-medium tracking-wider uppercase">by GK Technologies</span>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-8">
-            {[["#plateformes", "Plateformes"], ["#comment", "Comment ça marche"], ["#pricing", "Tarifs"]].map(([h, l]) => (
+            {[["#plateformes", "Plateformes"], ["#comment", "Comment ça marche"], ["#pricing", "Tarifs"], ["#faq", "FAQ"]].map(([h, l]) => (
               <a key={h} href={h} className="text-ink-muted hover:text-white text-sm font-medium transition-colors duration-200">{l}</a>
             ))}
           </div>
@@ -328,22 +308,27 @@ export default function LandingClient() {
               </motion.div>
 
               <motion.h1
-                className="text-display-xl font-black tracking-[-0.04em] leading-[1.03] mb-6"
+                className="text-display-xl font-black tracking-[-0.04em] leading-[1.03] mb-4 font-display"
                 variants={fadeUp} initial="hidden" animate="visible" custom={0.1}
               >
-                <span className="gradient-text-white">Transformez vos photos</span>
+                <span className="gradient-text-white">Retouche photo IA</span>
                 <br />
-                <span className="text-brand-400">en aimants à clients</span>
-                <br />
-                <span className="gradient-text-white">— en 30 secondes.</span>
+                <span className="gradient-text">pour professionnels</span>
               </motion.h1>
+
+              <motion.p
+                className="text-accent-300 italic text-lg font-display mb-6"
+                variants={fadeUp} initial="hidden" animate="visible" custom={0.15}
+              >
+                Des photos à la hauteur de votre vision.
+              </motion.p>
 
               <motion.p
                 className="text-ink-muted text-base leading-relaxed max-w-md mb-6"
                 variants={fadeUp} initial="hidden" animate="visible" custom={0.2}
               >
-                Vos biens, produits et créations paraissent enfin à la hauteur de leur vraie valeur.
-                Sans photographe à 200€/bien. Sans Photoshop. Sans y passer la journée.
+                Agences immobilières, e-commerçants, studios : optimisez vos visuels en lot, avec SEO
+                gravé dans l&apos;EXIF, sans watermark. Zéro manipulation manuelle.
               </motion.p>
 
               <motion.div
@@ -406,7 +391,7 @@ export default function LandingClient() {
               <div className="absolute inset-0 bg-brand-600/10 rounded-3xl blur-2xl scale-95 pointer-events-none" />
 
               {/* Frame */}
-              <div className="relative h-full rounded-2xl overflow-hidden border border-white/8 shadow-[0_0_80px_rgba(139,92,246,0.15)]">
+              <div className="relative h-full rounded-2xl overflow-hidden border border-white/8 shadow-[0_0_80px_rgba(248,112,5,0.18)]">
                 <BeforeAfterHero
                   imageUrl="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80"
                   beforeFilter="grayscale(25%) brightness(0.72) contrast(0.82) saturate(0.5)"
@@ -569,7 +554,7 @@ export default function LandingClient() {
             <div className="hidden md:block absolute top-14 left-1/3 right-1/3 h-px bg-gradient-to-r from-transparent via-brand-500/30 to-transparent pointer-events-none" />
 
             {[
-              { step: "01", Icon: Upload, title: "Uploadez vos photos", desc: "Jusqu'à 10 photos. JPEG, PNG, WEBP, HEIC. Jusqu'à 20 Mo par photo. Drag & drop.", badge: "Analyse qualité auto" },
+              { step: "01", Icon: Upload, title: "Uploadez vos photos", desc: "Jusqu'à 5 photos par lot. JPEG, PNG, WEBP, HEIC. Jusqu'à 50 Mo par photo — compatible reflex pro. Drag & drop.", badge: "Analyse qualité auto" },
               { step: "02", Icon: Zap, title: "L'IA retouche en 30s", desc: "Optimisation, recadrage, couleurs, fond blanc, SEO — tout en parallèle.", badge: "IA Pictaura" },
               { step: "03", Icon: Download, title: "Téléchargez votre pack", desc: "ZIP avec photos retouchées + métadonnées SEO gravées dans chaque fichier. Importez sur Shopify ou WordPress : alt texts et noms pré-remplis automatiquement.", badge: "ZIP + EXIF + CSV SEO" },
             ].map((item, i) => (
@@ -607,7 +592,7 @@ export default function LandingClient() {
           <div className="grid md:grid-cols-3 gap-4">
             {[
               { Icon: Microscope, title: "Upscaling IA", desc: "Real-ESRGAN multiplie la résolution. Vos photos floues deviennent nettes sans artefacts.", accent: "from-blue-500 to-cyan-500" },
-              { Icon: Wand2, title: "Fond blanc auto", desc: "L'IA détecte et supprime le fond pour du blanc parfait. Sans Photoshop.", accent: "from-brand-500 to-violet-500" },
+              { Icon: Wand2, title: "Fond blanc auto", desc: "L'IA détecte et supprime le fond pour du blanc parfait. Sans Photoshop.", accent: "from-brand-500 to-accent-500" },
               { Icon: Pencil, title: "Retouche sur instruction", desc: '"Retire le canapé", "Débâche la piscine" — Pictaura exécute en 60s.', accent: "from-orange-500 to-amber-500" },
               { Icon: Star, title: "Score photo /10", desc: "Pictaura analyse luminosité, cadrage, attractivité. Rapport détaillé inclus.", accent: "from-yellow-500 to-orange-500" },
               { Icon: Search, title: "SEO gravé dans l'image", desc: "Alt text, nom SEO et mots-clés écrits directement dans les métadonnées EXIF du fichier. Shopify et WordPress les lisent automatiquement à l'import — zéro saisie manuelle.", accent: "from-emerald-500 to-teal-500" },
@@ -629,10 +614,10 @@ export default function LandingClient() {
 
       {/* ── COMPARISON TABLE ───────────────────────────────────── */}
       <section className="py-24">
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-5xl mx-auto px-6">
           <FadeUp className="text-center mb-12">
             <h2 className="text-display-md font-black gradient-text-white mb-3">Pictaura vs les alternatives</h2>
-            <p className="text-ink-muted text-sm">Pourquoi Pictaura plutôt que Lightroom ou un photographe ?</p>
+            <p className="text-ink-muted text-sm">Pictaura complète votre workflow — pensé pour les pros qui n'ont pas le temps.</p>
           </FadeUp>
 
           <FadeUp>
@@ -640,8 +625,8 @@ export default function LandingClient() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/5">
-                    <th className="text-left px-6 py-5 text-ink-muted font-medium">Fonctionnalité</th>
-                    <th className="px-6 py-5 text-center bg-brand-500/5 border-b border-brand-500/10">
+                    <th className="text-left px-4 py-5 text-ink-muted font-medium">Fonctionnalité</th>
+                    <th className="px-3 py-5 text-center bg-brand-500/5 border-b border-brand-500/10">
                       <div className="flex flex-col items-center gap-1">
                         <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center shadow-glow-sm">
                           <span className="text-white font-black text-xs">P</span>
@@ -649,36 +634,43 @@ export default function LandingClient() {
                         <span className="font-bold text-brand-400 text-[10px] uppercase tracking-wide">Pictaura</span>
                       </div>
                     </th>
-                    <th className="px-6 py-5 text-center text-ink-muted font-medium text-[11px]">Lightroom</th>
-                    <th className="px-6 py-5 text-center text-ink-muted font-medium text-[11px]">Photographe</th>
+                    <th className="px-3 py-5 text-center text-ink-muted font-medium text-[11px]">Retouche<br/>smartphone</th>
+                    <th className="px-3 py-5 text-center text-ink-muted font-medium text-[11px]">Canva</th>
+                    <th className="px-3 py-5 text-center text-ink-muted font-medium text-[11px]">Lightroom</th>
+                    <th className="px-3 py-5 text-center text-ink-muted font-medium text-[11px]">Photographe</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    ["Résultat en 30 secondes", true, false, false],
-                    ["Spécialisé Airbnb / Vinted / Instagram", true, false, false],
-                    ["Fond blanc automatique IA", true, false, true],
-                    ["SEO gravé dans le fichier (EXIF + JSON-LD)", true, false, false],
-                    ["Score photo IA + rapport", true, false, false],
-                    ["Prix < 0,25€ par photo", true, false, false],
-                    ["Aucune compétence requise", true, false, true],
-                  ].map(([feat, p, lr, ph], idx) => (
-                    <tr key={String(feat)} className={`border-t border-white/4 hover:bg-white/2 transition-colors ${idx % 2 === 0 ? "" : "bg-white/1"}`}>
-                      <td className="px-6 py-4 text-ink-muted">{feat}</td>
-                      <td className="px-6 py-4 text-center bg-brand-500/3">
-                        {p ? <span className="text-emerald-400 font-bold">✓</span> : <span className="text-ink-faint">—</span>}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {lr ? <span className="text-emerald-400 font-bold">✓</span> : <span className="text-ink-faint">—</span>}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {ph ? <span className="text-emerald-400 font-bold">✓</span> : <span className="text-ink-faint">—</span>}
-                      </td>
-                    </tr>
-                  ))}
+                    ["Résultat en 30 secondes", true, true, false, false, false],
+                    ["Qualité contrôlée pour usage pro", true, false, false, true, true],
+                    ["Spécialisé Airbnb / Immo / Vinted / Shopify", true, false, false, false, false],
+                    ["SEO gravé dans le fichier (EXIF + JSON-LD)", true, false, false, false, false],
+                    ["Retouche sur instruction (\"retire le canapé\")", true, false, false, false, true],
+                    ["Batch multi-photos automatique", true, false, false, false, true],
+                    ["Score photo IA + rapport", true, false, false, false, false],
+                    ["Aucune compétence requise", true, true, true, false, true],
+                  ].map((row, idx) => {
+                    const [feat, ...cells] = row as [string, ...(boolean | string)[]];
+                    return (
+                      <tr key={feat} className={`border-t border-white/4 hover:bg-white/2 transition-colors ${idx % 2 === 0 ? "" : "bg-white/1"}`}>
+                        <td className="px-4 py-4 text-ink-muted">{feat}</td>
+                        {cells.map((v, i) => (
+                          <td key={i} className={`px-3 py-4 text-center ${i === 0 ? "bg-brand-500/3" : ""}`}>
+                            {typeof v === "boolean"
+                              ? v ? <span className="text-emerald-400 font-bold">✓</span> : <span className="text-ink-faint">—</span>
+                              : <span className={i === 0 ? "text-brand-400 font-semibold text-xs" : "text-ink-muted text-xs"}>{v}</span>}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
+            <p className="text-center text-[11px] text-ink-faint mt-4">
+              La retouche auto de votre smartphone est pratique pour un usage personnel — mais elle ne gère ni le SEO, ni le fond blanc, ni les formats spécifiques aux plateformes pro.
+            </p>
           </FadeUp>
         </div>
       </section>
@@ -721,8 +713,7 @@ export default function LandingClient() {
                 </div>
                 <h3 className="text-base font-bold text-white mb-3 mt-2">{PRO_PLAN.name}</h3>
                 <div className="text-5xl font-black gradient-text-white my-4">{PRO_PLAN.priceDisplay}</div>
-                <div className="text-xl font-bold text-brand-400 mb-1">{PRO_PLAN.creditsPerMonth} photos/mois</div>
-                <div className="text-xs text-ink-muted mb-4">{PRO_PLAN.pricePerPhoto}/photo</div>
+                <div className="text-xl font-bold text-brand-400 mb-4">{PRO_PLAN.creditsPerMonth} photos/mois</div>
                 <ul className="text-left space-y-2 mb-8 text-sm text-zinc-300 max-w-xs mx-auto">
                   {PRO_PLAN.features.map((f) => (
                     <li key={f} className="flex items-center gap-2">
@@ -756,9 +747,12 @@ export default function LandingClient() {
             {[
               { q: "Comment optimiser ses photos pour Airbnb avec Pictaura ?", a: "Inscrivez-vous, uploadez vos photos et sélectionnez le preset Airbnb. Pictaura redimensionne à 1920×1280px, améliore la luminosité, le contraste, et applique l'upscaling IA Real-ESRGAN. Téléchargez le ZIP en un clic." },
               { q: "Comment mettre un fond blanc sur ses photos Vinted ?", a: "Sélectionnez le preset Vinted. Pictaura détecte et supprime automatiquement le fond, puis place votre produit sur fond blanc parfait 1000×1000px avec une ombre douce." },
-              { q: "Comment fonctionne l'abonnement Pro ?", a: "29€/mois pour 200 photos optimisées. Les crédits non utilisés ne sont pas reportés. Résiliable à tout moment depuis votre espace. 5 photos offertes à l'inscription pour tester." },
+              { q: "Comment fonctionne l'abonnement Pro ?", a: "89€/mois pour 200 retouches optimisées (1 crédit = 1 photo standard). Les crédits non utilisés ne sont pas reportés. Résiliable à tout moment depuis votre espace. 5 photos offertes à l'inscription pour tester." },
+              { q: "Comment fonctionnent les crédits ?", a: "1 crédit = 1 photo standard retouchée. Les fonctions avancées coûtent un peu plus : Pack Instagram HD = 2 crédits, Reel vidéo Ken Burns = 3 crédits. Vous voyez toujours le coût avant de lancer." },
               { q: "Qu'est-ce que la retouche sur instruction ?", a: 'Après traitement, écrivez ce que vous voulez modifier : "Retire le canapé rouge", "Débâche la piscine". Pictaura exécute la modification en 60s. Coût : 1 crédit.' },
-              { q: "Quels formats sont acceptés ?", a: "JPEG, PNG, WEBP et HEIC (iPhone). Taille maximale 20 Mo par photo, jusqu'à 10 photos par lot." },
+              { q: "Quels formats sont acceptés ?", a: "JPEG, PNG, WEBP et HEIC (iPhone). Taille maximale 50 Mo par photo — compatible avec les reflex pro immobiliers et photographies HD." },
+              { q: "Puis-je annuler mon abonnement ?", a: "Oui, à tout moment depuis votre espace facturation. Vous gardez l'accès jusqu'à la fin de la période en cours, sans aucun frais supplémentaire." },
+              { q: "Mes photos sont-elles stockées en sécurité ?", a: "Les photos sont hébergées sur Cloudflare R2 (serveurs européens, chiffrés). Elles sont supprimées automatiquement après 30 jours. Vous pouvez les supprimer à tout moment depuis votre dashboard." },
               { q: "Qu'est-ce qu'un Reel Ken Burns ?", a: "Pictaura transforme votre photo en vidéo MP4 9:16 animée avec un léger zoom ou panoramique. Les Reels ont 3-5× plus de reach que les photos statiques sur Instagram." },
             ].map((item) => (
               <FadeUp key={item.q} delay={0.05}>

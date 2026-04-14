@@ -33,7 +33,7 @@ export default function ManageSubscriptionButton() {
       <button
         onClick={handleManage}
         disabled={loading}
-        className="flex items-center gap-2 text-sm font-medium text-violet-400 hover:text-violet-300 transition-colors disabled:opacity-50"
+        className="flex items-center gap-2 text-sm font-medium text-accent-400 hover:text-accent-300 transition-colors disabled:opacity-50"
       >
         <Settings className="w-4 h-4" />
         {loading ? "Redirection..." : "Gérer mon abonnement (factures, annulation)"}

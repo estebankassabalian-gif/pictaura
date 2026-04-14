@@ -55,7 +55,7 @@ export default async function AdminPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-white mb-8 flex items-center gap-2">
-        <Shield className="w-6 h-6 text-violet-400" /> Administration
+        <Shield className="w-6 h-6 text-accent-400" /> Administration
       </h1>
 
       {/* Stats */}
@@ -95,7 +95,7 @@ export default async function AdminPage() {
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       user.role === "ADMIN"
-                        ? "bg-violet-500/10 text-violet-400"
+                        ? "bg-accent-500/10 text-accent-400"
                         : "bg-white/5 text-zinc-300"
                     }`}
                   >
@@ -108,7 +108,7 @@ export default async function AdminPage() {
                 <td className="px-5 py-3 text-right">
                   <Link
                     href={`/admin/users/${user.id}`}
-                    className="text-violet-400 text-xs hover:underline"
+                    className="text-accent-400 text-xs hover:underline"
                   >
                     Gerer
                   </Link>
@@ -172,7 +172,7 @@ function AdminStat({
 }) {
   return (
     <div className="bg-[var(--surface)] rounded-2xl border border-white/8 p-5">
-      <Icon className="w-5 h-5 text-violet-400 mb-2" />
+      <Icon className="w-5 h-5 text-accent-400 mb-2" />
       <div className="text-3xl font-bold text-white">{value.toLocaleString()}</div>
       <div className="text-sm text-zinc-400 mt-0.5">{label}</div>
     </div>

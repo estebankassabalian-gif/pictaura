@@ -103,10 +103,10 @@ export default function ReelPage() {
         {...getRootProps()}
         className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors mb-6 ${
           isDragActive
-            ? "border-violet-400 bg-violet-500/10"
+            ? "border-accent-400 bg-accent-500/10"
             : file
             ? "border-emerald-500/30 bg-emerald-500/10"
-            : "border-white/10 hover:border-violet-400 hover:bg-white/[0.02]"
+            : "border-white/10 hover:border-accent-400 hover:bg-white/[0.02]"
         }`}
       >
         <input {...getInputProps()} />
@@ -137,7 +137,7 @@ export default function ReelPage() {
               onClick={() => setStyle(s.id)}
               className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
                 style === s.id
-                  ? "border-violet-500 bg-violet-500/10"
+                  ? "border-accent-500 bg-accent-500/10"
                   : "border-white/8 hover:border-white/15"
               }`}
             >
@@ -158,7 +158,7 @@ export default function ReelPage() {
               onClick={() => setFilter(f.id)}
               className={`flex-1 py-2 rounded-lg border text-sm transition-all ${
                 filter === f.id
-                  ? "border-violet-500 bg-violet-500/10 text-violet-300 font-medium"
+                  ? "border-accent-500 bg-accent-500/10 text-accent-300 font-medium"
                   : "border-white/8 text-zinc-400 hover:border-white/15"
               }`}
             >
@@ -171,7 +171,7 @@ export default function ReelPage() {
       {/* Duration */}
       <div className="mb-6">
         <h2 className="text-sm font-semibold text-zinc-300 mb-2">
-          Duree : <span className="text-violet-400">{duration}s</span>
+          Duree : <span className="text-accent-400">{duration}s</span>
         </h2>
         <input
           type="range"
@@ -179,7 +179,7 @@ export default function ReelPage() {
           max={8}
           value={duration}
           onChange={(e) => setDuration(Number(e.target.value))}
-          className="w-full accent-violet-600"
+          className="w-full accent-[#f87005]"
         />
         <div className="flex justify-between text-xs text-[var(--muted)] mt-1">
           <span>3s (loop court = algo boost)</span>
@@ -196,7 +196,7 @@ export default function ReelPage() {
       <button
         onClick={handleGenerate}
         disabled={loading || !file}
-        className="w-full bg-gradient-to-r from-violet-600 to-blue-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+        className="w-full bg-gradient-to-r from-brand-600 to-accent-500 text-white py-4 rounded-xl font-semibold text-lg hover:from-brand-700 hover:to-accent-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-6"
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">
@@ -211,7 +211,7 @@ export default function ReelPage() {
       {result && (
         <div className="bg-[var(--surface)] border border-white/8 rounded-2xl p-5">
           <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
-            <Film className="w-5 h-5 text-violet-400" /> Reel genere
+            <Film className="w-5 h-5 text-accent-400" /> Reel genere
           </h2>
           <video
             src={result.reelUrl}
@@ -227,7 +227,7 @@ export default function ReelPage() {
           <a
             href={result.reelUrl}
             download="reel-instagram.mp4"
-            className="flex items-center justify-center gap-2 w-full text-center bg-gradient-to-r from-violet-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all"
+            className="flex items-center justify-center gap-2 w-full text-center bg-gradient-to-r from-brand-600 to-accent-500 text-white py-3 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all"
           >
             <Download className="w-4 h-4" /> Telecharger le MP4
           </a>

@@ -33,3 +33,7 @@ Thumbs.db
 
 # Uploads temp
 /tmp/uploads/
+
+# local debug
+screenshots/
+scripts/screenshot-landing.mjs

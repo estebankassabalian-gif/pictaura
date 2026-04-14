@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PRO_PLAN } from "@/config/plans";
 
 export default function SubscribeButton() {
   const [loading, setLoading] = useState(false);
@@ -33,9 +34,9 @@ export default function SubscribeButton() {
       <button
         onClick={handleSubscribe}
         disabled={loading}
-        className="w-full bg-gradient-to-r from-violet-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-blue-700 transition-all disabled:opacity-50 text-base"
+        className="w-full bg-gradient-to-r from-brand-600 to-accent-500 text-white py-3 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all disabled:opacity-50 text-base"
       >
-        {loading ? "Redirection..." : "S'abonner — 29€/mois"}
+        {loading ? "Redirection..." : `S'abonner — ${PRO_PLAN.priceDisplay}`}
       </button>
       {error && (
         <p className="text-red-400 text-xs mt-2 text-center">{error}</p>

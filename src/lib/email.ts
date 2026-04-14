@@ -131,8 +131,8 @@ export async function sendPasswordResetEmail({
 <html lang="fr">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; margin: 0; padding: 20px;">
-  <div style="max-width: 520px; margin: 0 auto; background: #0f0f1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(124,58,237,0.15);">
-    <div style="background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%); padding: 32px 32px 28px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #0f0f1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(248,112,5,0.15);">
+    <div style="background: linear-gradient(135deg, #031D68 0%, #f87005 100%); padding: 32px 32px 28px;">
       <p style="color: white; font-size: 24px; font-weight: 800; margin: 0;">Pictaura</p>
     </div>
     <div style="padding: 32px;">
@@ -140,7 +140,7 @@ export async function sendPasswordResetEmail({
       <p style="color: #a1a1aa; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
         Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien expire dans 1 heure.
       </p>
-      <a href="${resetUrl}" style="display: block; background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%); color: white; text-decoration: none; text-align: center; padding: 15px 24px; border-radius: 12px; font-weight: 700; font-size: 15px;">
+      <a href="${resetUrl}" style="display: block; background: linear-gradient(135deg, #031D68 0%, #f87005 100%); color: white; text-decoration: none; text-align: center; padding: 15px 24px; border-radius: 12px; font-weight: 700; font-size: 15px;">
         Réinitialiser mon mot de passe
       </a>
       <p style="color: #3f3f46; font-size: 12px; margin: 24px 0 0; text-align: center;">
@@ -179,10 +179,10 @@ export async function sendWelcomeEmail({
 <html lang="fr">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; margin: 0; padding: 20px;">
-  <div style="max-width: 520px; margin: 0 auto; background: #0f0f1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(124,58,237,0.15);">
+  <div style="max-width: 520px; margin: 0 auto; background: #0f0f1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(248,112,5,0.15);">
 
     <!-- Header -->
-    <div style="background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%); padding: 32px 32px 28px;">
+    <div style="background: linear-gradient(135deg, #031D68 0%, #f87005 100%); padding: 32px 32px 28px;">
       <p style="color: white; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">Pictaura</p>
       <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 4px 0 0;">Retouche photo par intelligence artificielle</p>
     </div>
@@ -193,13 +193,13 @@ export async function sendWelcomeEmail({
         Bienvenue, ${firstName}
       </h1>
       <p style="color: #a1a1aa; font-size: 14px; margin: 0 0 28px; line-height: 1.6;">
-        Votre compte est activé. Nous avons crédité votre espace de <strong style="color: #7C3AED;">5 crédits offerts</strong> pour découvrir la plateforme sans engagement.
+        Votre compte est activé. Nous avons crédité votre espace de <strong style="color: #f87005;">5 crédits offerts</strong> pour découvrir la plateforme sans engagement.
       </p>
 
       <!-- Credits box -->
-      <div style="background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.2); border-radius: 12px; padding: 20px; margin-bottom: 28px; text-align: center;">
-        <p style="color: #7C3AED; font-size: 42px; font-weight: 900; margin: 0; line-height: 1;">5</p>
-        <p style="color: #a78bfa; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin: 4px 0 0;">crédits disponibles</p>
+      <div style="background: rgba(248,112,5,0.08); border: 1px solid rgba(248,112,5,0.2); border-radius: 12px; padding: 20px; margin-bottom: 28px; text-align: center;">
+        <p style="color: #f87005; font-size: 42px; font-weight: 900; margin: 0; line-height: 1;">5</p>
+        <p style="color: #ffa94d; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin: 4px 0 0;">crédits disponibles</p>
       </div>
 
       <!-- Tools -->
@@ -233,7 +233,7 @@ export async function sendWelcomeEmail({
       </table>
 
       <!-- CTA -->
-      <a href="${dashboardUrl}" style="display: block; background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%); color: white; text-decoration: none; text-align: center; padding: 15px 24px; border-radius: 12px; font-weight: 700; font-size: 15px; letter-spacing: -0.2px;">
+      <a href="${dashboardUrl}" style="display: block; background: linear-gradient(135deg, #031D68 0%, #f87005 100%); color: white; text-decoration: none; text-align: center; padding: 15px 24px; border-radius: 12px; font-weight: 700; font-size: 15px; letter-spacing: -0.2px;">
         Commencer maintenant →
       </a>
 
