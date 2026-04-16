@@ -1,9 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { PRO_PLAN } from "@/config/plans";
+import type { PlanId } from "@/config/plans";
 
-export default function SubscribeButton() {
+interface Props {
+  planId?: PlanId;
+  label?: string;
+  variant?: "primary" | "secondary";
+}
+
+export default function SubscribeButton({
+  planId = "immobilier",
+  label,
+  variant = "primary",
+}: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -14,6 +24,7 @@ export default function SubscribeButton() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
       });
 
       const data = await res.json();
@@ -29,18 +40,21 @@ export default function SubscribeButton() {
     }
   }
 
+  const classes =
+    variant === "primary"
+      ? "w-full bg-accent text-white py-3 rounded-xl font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 text-base shadow-md"
+      : "w-full bg-ink text-cream py-3 rounded-xl font-semibold hover:bg-brand transition-colors disabled:opacity-50 text-sm";
+
   return (
     <div>
       <button
         onClick={handleSubscribe}
         disabled={loading}
-        className="w-full bg-gradient-to-r from-brand-600 to-accent-500 text-white py-3 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all disabled:opacity-50 text-base"
+        className={classes}
       >
-        {loading ? "Redirection..." : `S'abonner — ${PRO_PLAN.priceDisplay}`}
+        {loading ? "Redirection..." : label ?? "S'abonner"}
       </button>
-      {error && (
-        <p className="text-red-400 text-xs mt-2 text-center">{error}</p>
-      )}
+      {error && <p className="text-accent text-xs mt-2 text-center">{error}</p>}
     </div>
   );
 }

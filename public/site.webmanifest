@@ -1,11 +1,11 @@
 {
-  "name": "Pictaura — Retouche photo IA",
+  "name": "Pictaura — Des photos à la hauteur de votre vision",
   "short_name": "Pictaura",
-  "description": "Optimisez vos photos Airbnb, Vinted, Instagram et Shopify en 30 secondes grâce à l'IA.",
+  "description": "La retouche photo simple mais experte, centrée sur le regard humain. Airbnb, Vinted, Instagram, Shopify — en 30 secondes par l'IA.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#f97316",
+  "background_color": "#FFFBF5",
+  "theme_color": "#F87005",
   "lang": "fr",
   "icons": [
     {

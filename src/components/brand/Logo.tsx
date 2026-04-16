@@ -1,29 +1,33 @@
 import type { SVGProps } from "react";
 
-type LogoVariant = "full" | "mark";
+type LogoVariant = "full" | "horizontal" | "mark";
+type LogoTone = "ink" | "cream";
 
 interface LogoProps extends Omit<SVGProps<SVGSVGElement>, "children"> {
   variant?: LogoVariant;
   size?: number;
-  blue?: string;
-  orange?: string;
+  tone?: LogoTone;
   wordmarkColor?: string;
 }
 
 export default function Logo({
-  variant = "full",
-  size = 32,
-  blue = "#031D68",
-  orange = "#f87005",
-  wordmarkColor = "currentColor",
+  variant = "horizontal",
+  size = 36,
+  tone = "ink",
+  wordmarkColor,
   className,
   ...rest
 }: LogoProps) {
+  const stroke = tone === "cream" ? "#FFFBF5" : "#0A1028";
+  const pupil = tone === "cream" ? "#FFFBF5" : "#0A1028";
+  const word = wordmarkColor ?? (tone === "cream" ? "#FFFBF5" : "#0A1028");
+  const rayNavy = tone === "cream" ? "#FFFBF5" : "#031D68";
+
   if (variant === "mark") {
     return (
       <svg
-        viewBox="0 0 64 64"
-        width={size}
+        viewBox="0 0 88 64"
+        width={(size * 88) / 64}
         height={size}
         xmlns="http://www.w3.org/2000/svg"
         className={className}
@@ -31,15 +35,16 @@ export default function Logo({
         role="img"
         {...rest}
       >
-        <Mark blue={blue} orange={orange} />
+        <Mark stroke={stroke} pupil={pupil} rayNavy={rayNavy} />
       </svg>
     );
   }
 
+  // Horizontal / full : mark + wordmark side by side
   return (
     <svg
-      viewBox="0 0 240 64"
-      width={size * 3.75}
+      viewBox="0 0 260 72"
+      width={(size * 260) / 72}
       height={size}
       xmlns="http://www.w3.org/2000/svg"
       className={className}
@@ -47,15 +52,17 @@ export default function Logo({
       role="img"
       {...rest}
     >
-      <Mark blue={blue} orange={orange} />
+      <g transform="translate(0, 4)">
+        <Mark stroke={stroke} pupil={pupil} rayNavy={rayNavy} />
+      </g>
       <text
-        x="76"
-        y="44"
-        fontFamily="var(--font-display), 'Bricolage Grotesque', sans-serif"
-        fontSize="34"
-        fontWeight="700"
-        letterSpacing="-0.02em"
-        fill={wordmarkColor}
+        x="102"
+        y="50"
+        fontFamily="var(--font-display), 'Archivo Black', 'Archivo', system-ui, sans-serif"
+        fontSize="38"
+        fontWeight="900"
+        letterSpacing="-0.5"
+        fill={word}
       >
         Pictaura
       </text>
@@ -63,27 +70,68 @@ export default function Logo({
   );
 }
 
-function Mark({ blue, orange }: { blue: string; orange: string }) {
+function Mark({
+  stroke,
+  pupil,
+  rayNavy,
+}: {
+  stroke: string;
+  pupil: string;
+  rayNavy: string;
+}) {
   return (
     <g>
-      <circle cx="32" cy="32" r="28" fill="none" stroke={blue} strokeWidth="4" />
-      <circle cx="32" cy="32" r="11" fill={blue} />
-      <circle cx="36" cy="28" r="3.5" fill="#ffffff" />
       <path
-        d="M18 44 L10 32 L18 20"
-        fill="none"
-        stroke={orange}
-        strokeWidth="4"
+        d="M 8 32 L 40 10"
+        stroke={stroke}
+        strokeWidth="5"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
       <path
-        d="M46 20 L54 32 L46 44 M44 44 L50 32 L44 20"
-        fill="none"
-        stroke={orange}
-        strokeWidth="4"
+        d="M 8 32 L 40 54"
+        stroke={stroke}
+        strokeWidth="5"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
+      />
+      <path
+        d="M 40 10 Q 52 32 40 54"
+        stroke={stroke}
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <ellipse cx="42" cy="32" rx="9" ry="14" fill={pupil} />
+      <line
+        x1="46"
+        y1="14"
+        x2="74"
+        y2="4"
+        stroke={rayNavy}
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      <line
+        x1="52"
+        y1="32"
+        x2="84"
+        y2="32"
+        stroke="#FFC529"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      <line
+        x1="46"
+        y1="50"
+        x2="74"
+        y2="60"
+        stroke="#F87005"
+        strokeWidth="5"
+        strokeLinecap="round"
       />
     </g>
   );

@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/config/env";
-import { PRO_PLAN } from "@/config/plans";
+import { PLANS, getPlan, type PlanId } from "@/config/plans";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -13,7 +13,15 @@ export async function POST(req: NextRequest) {
 
   const userId = session.user.id;
 
-  // Vérifier si l'utilisateur a déjà un abonnement actif
+  const body = await req.json().catch(() => ({}));
+  const planId = (body?.planId ?? "immobilier") as PlanId;
+
+  if (!PLANS.some((p) => p.id === planId)) {
+    return NextResponse.json({ error: "Plan inconnu" }, { status: 400 });
+  }
+
+  const plan = getPlan(planId);
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { isSubscribed: true, stripeCustomerId: true, stripeSubscriptionId: true },
@@ -26,13 +34,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const priceId = env.STRIPE_PRICE_PRO;
+  const priceId = (env as Record<string, string | undefined>)[plan.stripePriceEnvKey];
   if (!priceId) {
-    return NextResponse.json({ error: "Configuration Stripe manquante" }, { status: 500 });
+    return NextResponse.json(
+      { error: `Configuration Stripe manquante : ${plan.stripePriceEnvKey}` },
+      { status: 500 }
+    );
   }
 
   try {
-    // Récupérer ou créer le Stripe Customer
     let stripeCustomerId = user?.stripeCustomerId;
 
     if (!stripeCustomerId) {
@@ -48,27 +58,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Créer la Checkout Session en mode subscription
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       payment_method_types: ["card"],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success&plan=pro`,
+      success_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success&plan=${plan.id}`,
       cancel_url: `${env.NEXT_PUBLIC_APP_URL}/billing?payment=cancelled`,
       metadata: {
         userId,
-        planId: PRO_PLAN.id,
+        planId: plan.id,
       },
       subscription_data: {
         metadata: {
           userId,
-          planId: PRO_PLAN.id,
+          planId: plan.id,
         },
       },
       locale: "fr",

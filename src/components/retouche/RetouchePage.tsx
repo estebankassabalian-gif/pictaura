@@ -198,12 +198,12 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${agent.gradient} flex items-center justify-center`}>
-          <Icon className="w-5 h-5 text-white" />
+        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${agent.gradient} flex items-center justify-center shadow-md`}>
+          <Icon className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-[var(--text)]">{agent.name}</h1>
-          <p className="text-sm text-[var(--muted)]">{agent.description}</p>
+          <h1 className="text-2xl md:text-3xl font-display tracking-tight text-ink">{agent.name}</h1>
+          <p className="text-sm text-ink-muted">{agent.description}</p>
         </div>
       </div>
 
@@ -215,12 +215,12 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           return (
             <div key={s.key} className="flex items-center gap-2 flex-1">
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                   isDone
-                    ? "bg-emerald-500/20 text-emerald-400"
+                    ? "bg-accent/15 text-accent"
                     : isCurrent
                     ? "bg-gradient-to-br " + agent.gradient + " text-white"
-                    : "bg-[var(--surface)] text-[var(--muted)] border border-[var(--border)]"
+                    : "bg-white text-ink-muted border border-ink/10"
                 }`}
               >
                 {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
@@ -246,18 +246,18 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
           <div
             {...getRootProps()}
-            className={`border border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all mb-4 ${
+            className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all mb-4 bg-white ${
               isDragActive
-                ? "border-[var(--accent)] bg-[var(--accent-dim)]"
-                : "border-[var(--border)] hover:border-[var(--accent)]/50 hover:bg-[var(--surface)]"
+                ? "border-accent bg-accent/5"
+                : "border-ink/15 hover:border-accent hover:bg-cream-2"
             }`}
           >
             <input {...getInputProps()} />
-            <Upload className="w-8 h-8 text-[var(--muted)] mx-auto mb-3" />
-            <p className="text-[var(--text)] font-medium text-sm">
+            <Upload className="w-8 h-8 text-accent mx-auto mb-3" />
+            <p className="text-ink font-semibold text-sm">
               {isDragActive ? "Déposez vos photos ici..." : "Glissez vos photos ici, ou cliquez pour sélectionner"}
             </p>
-            <p className="text-xs text-[var(--muted)] mt-2">
+            <p className="text-xs text-ink-muted mt-2">
               JPEG, PNG, WEBP, HEIC — Max {MAX_FILE_SIZE_MB} Mo — Max {MAX_PHOTOS_PER_BATCH} photos
             </p>
           </div>
@@ -268,28 +268,28 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
               {files.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-3"
+                  className="flex items-center justify-between bg-white border border-ink/10 rounded-xl px-4 py-3 shadow-sm"
                 >
                   <div className="flex items-center gap-3">
-                    <ImageIcon className="w-4 h-4 text-[var(--muted)]" />
+                    <ImageIcon className="w-4 h-4 text-ink-muted" />
                     <div>
-                      <div className="text-sm font-medium text-[var(--text)] truncate max-w-64">{file.name}</div>
-                      <div className="text-xs text-[var(--muted)]">{(file.size / 1024 / 1024).toFixed(1)} Mo</div>
+                      <div className="text-sm font-semibold text-ink truncate max-w-64">{file.name}</div>
+                      <div className="text-xs text-ink-muted">{(file.size / 1024 / 1024).toFixed(1)} Mo</div>
                     </div>
                   </div>
-                  <button onClick={() => removeFile(index)} className="text-[var(--muted)] hover:text-red-400 transition-colors">
+                  <button onClick={() => removeFile(index)} className="text-ink-muted hover:text-accent transition-colors">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               ))}
-              <div className="text-xs text-[var(--accent)] font-medium pl-1">
+              <div className="text-xs text-accent font-bold pl-1">
                 {files.length} photo(s) — {files.length} crédit(s)
               </div>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3 mb-4">
+            <div className="bg-accent/10 border border-accent/30 text-accent text-sm rounded-xl px-4 py-3 mb-4">
               {error}
             </div>
           )}
@@ -311,17 +311,16 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           <button
             onClick={() => setStep("upload")}
             disabled={loading}
-            className="text-sm text-[var(--muted)] hover:text-[var(--text)] mb-4 flex items-center gap-1 transition-colors disabled:opacity-30"
+            className="text-sm text-ink-muted hover:text-accent mb-4 flex items-center gap-1 transition-colors disabled:opacity-30"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Retour
           </button>
 
-          {/* Photo navigation thumbnails (multi-photo) */}
           {files.length > 1 && (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-[var(--text)]">
+                <h2 className="text-sm font-semibold text-ink">
                   Photo {activePhotoIndex + 1} / {files.length}
                 </h2>
               </div>
@@ -336,22 +335,22 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                       disabled={applyToAll && idx !== 0}
                       className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
                         activePhotoIndex === idx
-                          ? "border-accent-500 ring-2 ring-accent-500/20"
+                          ? "border-accent ring-2 ring-accent/25"
                           : applyToAll && idx !== 0
-                          ? "border-white/5 opacity-40"
-                          : "border-white/8 hover:border-white/20"
+                          ? "border-ink/10 opacity-40"
+                          : "border-ink/10 hover:border-accent/60"
                       }`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={config.previewUrl} alt={config.file.name} className="w-full h-full object-cover" />
                       {hasConfig && (
-                        <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                        <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-accent rounded-full flex items-center justify-center">
                           <Check className="w-2.5 h-2.5 text-white" />
                         </div>
                       )}
                       {applyToAll && idx > 0 && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <Copy className="w-3.5 h-3.5 text-white/70" />
+                        <div className="absolute inset-0 bg-brand/40 flex items-center justify-center">
+                          <Copy className="w-3.5 h-3.5 text-cream/80" />
                         </div>
                       )}
                     </button>
@@ -364,22 +363,21 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Photo preview */}
             <div>
-              <div className="rounded-xl overflow-hidden border border-[var(--border)]">
+              <div className="rounded-xl overflow-hidden border border-ink/10 bg-white shadow-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={currentConfig.previewUrl}
                   alt={currentConfig.file.name}
-                  className="w-full h-auto max-h-[400px] object-contain bg-black"
+                  className="w-full h-auto max-h-[400px] object-contain bg-cream-2"
                 />
               </div>
-              <p className="text-xs text-[var(--muted)] mt-2 truncate">{currentConfig.file.name}</p>
+              <p className="text-xs text-ink-muted mt-2 truncate">{currentConfig.file.name}</p>
             </div>
 
             {/* Instructions */}
             <div>
-              {/* Preset suggestions (quick buttons) */}
               <div className="mb-4">
-                <h3 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2">Suggestions</h3>
+                <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-2">Suggestions</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {agent.suggestions.slice(0, 6).map((s) => {
                     const SIcon = s.icon;
@@ -387,7 +385,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                       <button
                         key={s.label}
                         onClick={() => applyPresetSuggestion(activePhotoIndex, s)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)]/30 hover:bg-[var(--accent-dim)] transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ink/15 bg-white text-xs text-ink hover:border-accent hover:bg-accent/5 hover:text-accent transition-all"
                       >
                         <SIcon className="w-3 h-3" />
                         {s.label}
@@ -397,41 +395,39 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                 </div>
               </div>
 
-              {/* Custom instruction */}
               <div className="mb-4">
-                <h3 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2">Vos instructions</h3>
+                <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-2">Vos instructions</h3>
                 <div className="relative">
                   <textarea
                     value={currentConfig.customInstruction}
                     onChange={(e) => setCustomInstruction(activePhotoIndex, e.target.value)}
                     placeholder="Ex: Retirer le poteau électrique, ajouter un ciel bleu..."
-                    className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-3 pr-10 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent-dim)] focus:outline-none resize-none transition-colors"
+                    className="w-full bg-white border border-ink/15 rounded-xl px-4 py-3 pr-10 text-sm text-ink placeholder:text-ink-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:outline-none resize-none transition-colors"
                     rows={3}
                     maxLength={300}
                   />
-                  <div className="absolute bottom-2 right-3 text-[10px] text-[var(--muted)]">
+                  <div className="absolute bottom-2 right-3 text-[10px] text-ink-muted">
                     {currentConfig.customInstruction.length}/300
                   </div>
                 </div>
               </div>
 
-              {/* Apply to all — below instructions */}
               {files.length > 1 && (
                 <label className="flex items-center gap-2 cursor-pointer mb-2">
                   <input
                     type="checkbox"
                     checked={applyToAll}
                     onChange={(e) => setApplyToAll(e.target.checked)}
-                    className="rounded border-white/20"
+                    className="rounded border-ink/30 accent-accent"
                   />
-                  <span className="text-xs text-[var(--muted)]">Appliquer à toutes les photos</span>
+                  <span className="text-xs text-ink-muted">Appliquer à toutes les photos</span>
                 </label>
               )}
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3 mb-4 mt-4">
+            <div className="bg-accent/10 border border-accent/30 text-accent text-sm rounded-xl px-4 py-3 mb-4 mt-4">
               {error}
             </div>
           )}
@@ -481,9 +477,9 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           </div>
 
           {!isAdmin && credits < files.length && (
-            <p className="text-sm text-red-400 mt-2 text-center">
+            <p className="text-sm text-accent mt-2 text-center">
               Crédits insuffisants ({credits} disponible(s), {files.length} requis).{" "}
-              <a href="/billing" className="underline text-accent-400">Acheter des crédits</a>
+              <a href="/billing" className="underline font-semibold">Voir les abonnements</a>
             </p>
           )}
         </div>

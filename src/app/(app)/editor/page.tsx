@@ -7,7 +7,6 @@ import { INPAINTING_CREDITS_COST } from "@/config/plans";
 import {
   Building2,
   Camera,
-  ShoppingBag,
   Store,
   Upload,
   Loader2,
@@ -24,10 +23,9 @@ type EditorState =
   | { step: "done"; resultUrl: string };
 
 const PLATFORMS = [
-  { id: "AIRBNB", label: "Airbnb", icon: Building2 },
-  { id: "INSTAGRAM", label: "Instagram", icon: Camera },
-  { id: "VINTED", label: "Vinted", icon: ShoppingBag },
-  { id: "SHOPIFY", label: "Shopify", icon: Store },
+  { id: "IMMOBILIER", label: "Immobilier", icon: Building2 },
+  { id: "INSTAGRAM", label: "Réseaux sociaux", icon: Camera },
+  { id: "SHOPIFY", label: "E-commerce", icon: Store },
 ];
 
 const EXAMPLES = [
@@ -70,19 +68,19 @@ function BeforeAfterSlider({ before, after }: { before: string; after: string })
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={before} alt="Avant" className="absolute inset-0 w-full h-full object-cover" />
       </div>
-      <div className="absolute top-3 left-3 bg-black/60 text-white text-xs font-semibold px-2 py-1 rounded-full pointer-events-none">
+      <div className="absolute top-3 left-3 bg-brand/70 text-white text-xs font-semibold px-2 py-1 rounded-full pointer-events-none">
         Avant
       </div>
-      <div className="absolute top-3 right-3 bg-accent-500/90 text-white text-xs font-semibold px-2 py-1 rounded-full pointer-events-none">
+      <div className="absolute top-3 right-3 bg-accent/90 text-white text-xs font-semibold px-2 py-1 rounded-full pointer-events-none">
         Apres
       </div>
       <div
-        className="absolute top-0 bottom-0 w-0.5 bg-white/80 shadow-lg"
+        className="absolute top-0 bottom-0 w-0.5 bg-cream/80 shadow-lg"
         style={{ left: `${pos}%` }}
         onMouseDown={(e) => { e.preventDefault(); dragging.current = true; }}
         onTouchStart={() => { dragging.current = true; }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-[var(--surface)] rounded-full shadow-lg flex items-center justify-center border border-white/10">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border border-ink/10">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M5 8H1M15 8h-4M5 5L2 8l3 3M11 5l3 3-3 3" stroke="#f87005" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -233,10 +231,10 @@ export default function DirectEditorPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-white mb-2">Retouche sur instruction</h1>
-      <p className="text-zinc-400 mb-8">
+      <h1 className="text-3xl md:text-4xl font-display tracking-tight text-ink mb-2">Retouche sur instruction</h1>
+      <p className="text-ink-muted mb-8">
         Décrivez ce que vous souhaitez modifier — l'IA s'en charge.{" "}
-        <span className="text-accent-400 font-medium">{INPAINTING_CREDITS_COST} credits</span>
+        <span className="text-accent font-semibold">{INPAINTING_CREDITS_COST} credits</span>
       </p>
 
       {/* UPLOAD + RETOUCHING: form */}
@@ -244,7 +242,7 @@ export default function DirectEditorPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Upload */}
           <div>
-            <h2 className="text-sm font-semibold text-zinc-300 mb-2">1. Votre photo</h2>
+            <h2 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">1. Votre photo</h2>
             {preview ? (
               <div className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -252,7 +250,7 @@ export default function DirectEditorPage() {
                 <button
                   type="button"
                   onClick={() => { setFile(null); setPreview(null); setState({ step: "upload" }); }}
-                  className="absolute top-2 right-2 bg-[var(--surface)] text-zinc-400 hover:text-red-400 rounded-full w-7 h-7 flex items-center justify-center shadow border border-white/10 text-lg"
+                  className="absolute top-2 right-2 bg-white text-ink-muted hover:text-accent rounded-full w-7 h-7 flex items-center justify-center shadow border border-ink/10 text-lg"
                   disabled={state.step === "retouching"}
                 >
                   x
@@ -262,22 +260,22 @@ export default function DirectEditorPage() {
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors ${
-                  isDragActive ? "border-accent-400 bg-accent-500/10" : "border-white/10 hover:border-accent-400 hover:bg-white/[0.02]"
+                  isDragActive ? "border-accent bg-accent/5" : "border-ink/15 hover:border-accent hover:bg-cream-2"
                 }`}
               >
                 <input {...getInputProps()} />
-                <Upload className="w-8 h-8 text-[var(--muted)] mx-auto mb-2" />
-                <p className="text-zinc-300 font-medium text-sm">
+                <Upload className="w-8 h-8 text-accent mx-auto mb-2" />
+                <p className="text-ink font-semibold text-sm">
                   {isDragActive ? "Déposez ici..." : "Glissez votre photo ou cliquez"}
                 </p>
-                <p className="text-xs text-[var(--muted)] mt-1">JPEG, PNG, WEBP · Max 20 Mo</p>
+                <p className="text-xs text-ink-muted mt-1">JPEG, PNG, WEBP · Max 20 Mo</p>
               </div>
             )}
           </div>
 
           {/* Platform */}
           <div>
-            <h2 className="text-sm font-semibold text-zinc-300 mb-2">2. Contexte</h2>
+            <h2 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">2. Contexte</h2>
             <div className="flex gap-2 flex-wrap">
               {PLATFORMS.map((p) => {
                 const Icon = p.icon;
@@ -289,8 +287,8 @@ export default function DirectEditorPage() {
                     disabled={state.step === "retouching"}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
                       platform === p.id
-                        ? "border-accent-500 bg-accent-500/10 text-accent-400"
-                        : "border-white/8 text-zinc-400 hover:border-white/15"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-ink/15 bg-white text-ink-muted hover:border-accent/50 hover:text-ink"
                     }`}
                   >
                     <Icon className="w-4 h-4" /> {p.label}
@@ -302,7 +300,7 @@ export default function DirectEditorPage() {
 
           {/* Instruction */}
           <div>
-            <h2 className="text-sm font-semibold text-zinc-300 mb-2">3. Votre instruction</h2>
+            <h2 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">3. Votre instruction</h2>
             <textarea
               value={instruction}
               onChange={(e) => setInstruction(e.target.value)}
@@ -310,7 +308,7 @@ export default function DirectEditorPage() {
               rows={3}
               disabled={state.step === "retouching"}
               placeholder='Ex : "Éclaircis la pièce et rends la lumière plus naturelle"'
-              className="w-full border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none bg-transparent text-white disabled:opacity-50"
+              className="w-full border border-ink/15 bg-white rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none disabled:opacity-50"
             />
             <div className="flex flex-wrap gap-2 mt-2">
               {EXAMPLES.map((ex) => (
@@ -319,7 +317,7 @@ export default function DirectEditorPage() {
                   type="button"
                   disabled={state.step === "retouching"}
                   onClick={() => setInstruction(ex)}
-                  className="text-xs bg-white/5 hover:bg-accent-500/10 hover:text-accent-400 text-zinc-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  className="text-xs bg-cream-2 hover:bg-accent/10 hover:text-accent text-ink-muted px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {ex}
                 </button>
@@ -330,7 +328,7 @@ export default function DirectEditorPage() {
           <button
             type="submit"
             disabled={state.step === "retouching" || !file || !instruction.trim()}
-            className="w-full bg-gradient-to-r from-brand-600 to-accent-500 text-white py-4 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-accent text-white py-4 rounded-xl font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
           >
             {state.step === "retouching" ? (
               <span className="flex items-center justify-center gap-2">
@@ -342,9 +340,9 @@ export default function DirectEditorPage() {
           </button>
 
           {state.step === "retouching" && (
-            <div className="w-full bg-white/8 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-ink/10 rounded-full h-2 overflow-hidden">
               <div
-                className="h-2 bg-gradient-to-r from-brand-600 to-accent-500 rounded-full transition-all duration-700 ease-out"
+                className="h-2 bg-accent rounded-full transition-all duration-700 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -355,7 +353,7 @@ export default function DirectEditorPage() {
       {/* VALIDATING: before/after + approve/reject */}
       {state.step === "validating" && preview && (
         <div className="space-y-4">
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-ink-muted">
             Résultat prêt — <strong>aucun crédit débité pour l&apos;instant.</strong>
           </p>
 
@@ -364,13 +362,13 @@ export default function DirectEditorPage() {
           <div className="flex gap-3">
             <button
               onClick={() => handleValidate("approve")}
-              className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition-colors text-sm"
+              className="flex-1 flex items-center justify-center gap-2 bg-accent text-white py-3 rounded-xl font-semibold hover:bg-accent-hover transition-colors shadow-md text-sm"
             >
               <CheckCircle2 className="w-4 h-4" /> Valider — {INPAINTING_CREDITS_COST} crédit
             </button>
             <button
               onClick={() => handleValidate("reject")}
-              className="flex-1 flex items-center justify-center gap-2 bg-white/5 text-zinc-300 py-3 rounded-xl font-semibold hover:bg-white/8 transition-colors text-sm border border-white/8"
+              className="flex-1 flex items-center justify-center gap-2 bg-white border border-ink/15 text-ink py-3 rounded-xl font-semibold hover:bg-cream-2 transition-colors text-sm"
             >
               <XCircle className="w-4 h-4" /> Rejeter — gratuit
             </button>
@@ -381,9 +379,9 @@ export default function DirectEditorPage() {
       {/* DONE: download result */}
       {state.step === "done" && (
         <div className="space-y-4">
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-            <p className="text-sm font-semibold text-emerald-400">Retouche validée — {INPAINTING_CREDITS_COST} crédit débité</p>
+          <div className="bg-sun/15 border border-sun/40 rounded-xl p-4 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-accent" />
+            <p className="text-sm font-semibold text-ink">Retouche validée — {INPAINTING_CREDITS_COST} crédit débité</p>
           </div>
 
           {preview && <BeforeAfterSlider before={preview} after={state.resultUrl} />}
@@ -392,13 +390,13 @@ export default function DirectEditorPage() {
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-brand-600 to-accent-500 text-white py-3 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-2 bg-accent text-white py-3 rounded-xl font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shadow-md"
             >
               <Download className="w-4 h-4" /> {downloading ? "Téléchargement..." : "Télécharger"}
             </button>
             <button
               onClick={() => { setState({ step: "upload" }); setInstruction(""); setError(""); }}
-              className="flex-1 flex items-center justify-center gap-2 bg-white/5 text-zinc-300 py-3 rounded-xl font-semibold hover:bg-white/8 transition-colors border border-white/8"
+              className="flex-1 flex items-center justify-center gap-2 bg-white border border-ink/15 text-ink py-3 rounded-xl font-semibold hover:bg-cream-2 transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" /> Nouvelle retouche
             </button>

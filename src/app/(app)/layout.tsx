@@ -13,7 +13,7 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] flex">
+    <div className="min-h-screen bg-cream text-ink flex">
       <SidebarNav
         userName={session.user.name ?? "Utilisateur"}
         userEmail={session.user.email ?? ""}
@@ -22,8 +22,8 @@ export default async function AppLayout({
         isAdmin={session.user.role === "ADMIN"}
       />
 
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-5xl mx-auto px-6 py-8">{children}</div>
+      <main className="flex-1 overflow-auto bg-cream">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 pt-16 md:pt-10 pb-10">{children}</div>
       </main>
     </div>
   );

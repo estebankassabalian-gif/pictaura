@@ -91,7 +91,7 @@ export const DEFAULT_SUGGESTIONS: Record<string, RetouchingSuggestion[]> = {
     },
   ],
 
-  // Cible : e-commerçants Shopify, dropshippers, marques DTC
+  // Cible : e-commerçants Shopify, dropshippers, marques DTC, revendeurs Vinted/Leboncoin/Etsy
   SHOPIFY: [
     {
       label: "Fond blanc studio",
@@ -133,38 +133,19 @@ export const DEFAULT_SUGGESTIONS: Record<string, RetouchingSuggestion[]> = {
       prompt: "Place the product in a minimal, elegant lifestyle context appropriate for its category, keep the product sharp and prominent in the foreground",
       icon: "📦",
     },
-  ],
-
-  // Cible : revendeurs Vinted, LeBonCoin, dépôts-ventes, friperies
-  VINTED: [
     {
-      label: "Fond blanc propre",
-      prompt: "Replace the background with a pure clean white, product photography style for second-hand resale platform",
-      icon: "⬜",
-    },
-    {
-      label: "Retirer les faux plis",
-      prompt: "Remove wrinkles, creases and fold marks from the clothing item, make the fabric look smooth and freshly ironed",
+      label: "Retirer faux-plis textile",
+      prompt: "Remove wrinkles, creases and fold marks from clothing or fabric items, make the material look smooth and freshly ironed",
       icon: "👕",
     },
     {
       label: "Raviver les couleurs",
-      prompt: "Enhance and saturate the fabric colors to make them look vibrant, rich and as-new without looking unnatural",
+      prompt: "Enhance and saturate the fabric or product colors to make them look vibrant, rich and as-new without looking unnatural",
       icon: "🎨",
     },
     {
-      label: "Retirer les taches",
-      prompt: "Remove visible stains, marks, discolorations and spots from the clothing item cleanly",
-      icon: "🧹",
-    },
-    {
-      label: "Zoom produit centré",
-      prompt: "Crop tightly around the clothing item, center it perfectly in the frame, remove all distracting background elements",
-      icon: "🔍",
-    },
-    {
-      label: "Atténuer l'usure",
-      prompt: "Minimize visible signs of light wear: reduce pilling, slight fading, minor fabric wear and surface scuffs",
+      label: "Atténuer l'usure (seconde main)",
+      prompt: "Minimize visible signs of light wear: reduce pilling, slight fading, minor fabric wear and surface scuffs. Keep the result realistic for second-hand resale",
       icon: "✨",
     },
   ],

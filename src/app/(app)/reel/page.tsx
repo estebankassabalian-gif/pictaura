@@ -84,13 +84,13 @@ export default function ReelPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-white mb-1">Reel Instagram — Effet Ken Burns</h1>
-      <p className="text-[var(--muted)] text-sm mb-6">
+      <h1 className="text-3xl md:text-4xl font-display tracking-tight text-ink mb-2">Reel Instagram — Effet Ken Burns</h1>
+      <p className="text-ink-muted text-sm mb-6">
         Transformez une photo en vidéo MP4 animée 9:16 · {REEL_CREDITS_COST} crédits ·{" "}
         {isAdmin ? "Admin — crédits illimités" : `${credits} crédit(s) disponibles`}
       </p>
 
-      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 mb-6 text-sm text-blue-300 flex items-start gap-2.5">
+      <div className="bg-sun/15 border border-sun/40 rounded-xl px-4 py-3 mb-6 text-sm text-ink flex items-start gap-2.5">
         <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
         <div>
           <strong>Pourquoi un Reel ?</strong> Les Reels ont 3-5x plus de reach que les photos statiques
@@ -103,33 +103,33 @@ export default function ReelPage() {
         {...getRootProps()}
         className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors mb-6 ${
           isDragActive
-            ? "border-accent-400 bg-accent-500/10"
+            ? "border-accent bg-accent/5"
             : file
-            ? "border-emerald-500/30 bg-emerald-500/10"
-            : "border-white/10 hover:border-accent-400 hover:bg-white/[0.02]"
+            ? "border-accent/40 bg-accent/5"
+            : "border-ink/15 bg-white hover:border-accent hover:bg-cream-2"
         }`}
       >
         <input {...getInputProps()} />
         {file ? (
           <div>
-            <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-            <p className="font-medium text-white">{file.name}</p>
-            <p className="text-xs text-[var(--muted)] mt-1">{(file.size / 1024 / 1024).toFixed(1)} Mo · Cliquez pour changer</p>
+            <CheckCircle2 className="w-8 h-8 text-accent mx-auto mb-2" />
+            <p className="font-semibold text-ink">{file.name}</p>
+            <p className="text-xs text-ink-muted mt-1">{(file.size / 1024 / 1024).toFixed(1)} Mo · Cliquez pour changer</p>
           </div>
         ) : (
           <div>
-            <Upload className="w-8 h-8 text-[var(--muted)] mx-auto mb-3" />
-            <p className="text-zinc-300 font-medium">
+            <Upload className="w-8 h-8 text-accent mx-auto mb-3" />
+            <p className="text-ink font-semibold">
               {isDragActive ? "Déposez la photo ici..." : "Glissez ou cliquez pour sélectionner une photo"}
             </p>
-            <p className="text-xs text-[var(--muted)] mt-1">JPEG, PNG, WEBP · Max 20 Mo</p>
+            <p className="text-xs text-ink-muted mt-1">JPEG, PNG, WEBP · Max 20 Mo</p>
           </div>
         )}
       </div>
 
       {/* Style */}
       <div className="mb-5">
-        <h2 className="text-sm font-semibold text-zinc-300 mb-2">Style de mouvement</h2>
+        <h2 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">Style de mouvement</h2>
         <div className="space-y-2">
           {STYLES.map((s) => (
             <button
@@ -137,12 +137,12 @@ export default function ReelPage() {
               onClick={() => setStyle(s.id)}
               className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
                 style === s.id
-                  ? "border-accent-500 bg-accent-500/10"
-                  : "border-white/8 hover:border-white/15"
+                  ? "border-accent bg-accent/10"
+                  : "border-ink/15 bg-white hover:border-accent/50"
               }`}
             >
-              <span className="font-medium text-sm text-white">{s.label}</span>
-              <span className="text-xs text-[var(--muted)] ml-2">— {s.desc}</span>
+              <span className="font-semibold text-sm text-ink">{s.label}</span>
+              <span className="text-xs text-ink-muted ml-2">— {s.desc}</span>
             </button>
           ))}
         </div>
@@ -150,7 +150,7 @@ export default function ReelPage() {
 
       {/* Filter */}
       <div className="mb-5">
-        <h2 className="text-sm font-semibold text-zinc-300 mb-2">Filtre couleur</h2>
+        <h2 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">Filtre couleur</h2>
         <div className="flex gap-2">
           {FILTERS.map((f) => (
             <button
@@ -158,8 +158,8 @@ export default function ReelPage() {
               onClick={() => setFilter(f.id)}
               className={`flex-1 py-2 rounded-lg border text-sm transition-all ${
                 filter === f.id
-                  ? "border-accent-500 bg-accent-500/10 text-accent-300 font-medium"
-                  : "border-white/8 text-zinc-400 hover:border-white/15"
+                  ? "border-accent bg-accent/10 text-accent font-semibold"
+                  : "border-ink/15 bg-white text-ink-muted hover:border-accent/50 hover:text-ink"
               }`}
             >
               {f.label}
@@ -170,8 +170,8 @@ export default function ReelPage() {
 
       {/* Duration */}
       <div className="mb-6">
-        <h2 className="text-sm font-semibold text-zinc-300 mb-2">
-          Duree : <span className="text-accent-400">{duration}s</span>
+        <h2 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">
+          Duree : <span className="text-accent">{duration}s</span>
         </h2>
         <input
           type="range"
@@ -181,14 +181,14 @@ export default function ReelPage() {
           onChange={(e) => setDuration(Number(e.target.value))}
           className="w-full accent-[#f87005]"
         />
-        <div className="flex justify-between text-xs text-[var(--muted)] mt-1">
+        <div className="flex justify-between text-xs text-ink-muted mt-1">
           <span>3s (loop court = algo boost)</span>
           <span>8s</span>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3 mb-4">
+        <div className="bg-accent/10 border border-accent/30 text-accent text-sm rounded-xl px-4 py-3 mb-4">
           {error}
         </div>
       )}
@@ -196,7 +196,7 @@ export default function ReelPage() {
       <button
         onClick={handleGenerate}
         disabled={loading || !file}
-        className="w-full bg-gradient-to-r from-brand-600 to-accent-500 text-white py-4 rounded-xl font-semibold text-lg hover:from-brand-700 hover:to-accent-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+        className="w-full bg-accent text-white py-4 rounded-xl font-semibold text-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6 shadow-md"
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">
@@ -209,9 +209,9 @@ export default function ReelPage() {
 
       {/* Result */}
       {result && (
-        <div className="bg-[var(--surface)] border border-white/8 rounded-2xl p-5">
-          <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
-            <Film className="w-5 h-5 text-accent-400" /> Reel genere
+        <div className="bg-white border border-ink/10 rounded-2xl p-5 shadow-sm">
+          <h2 className="font-display text-ink text-lg mb-3 flex items-center gap-2">
+            <Film className="w-5 h-5 text-accent" /> Reel genere
           </h2>
           <video
             src={result.reelUrl}
@@ -219,15 +219,15 @@ export default function ReelPage() {
             autoPlay
             loop
             muted
-            className="w-full rounded-xl mb-4 max-h-96 object-contain bg-black"
+            className="w-full rounded-xl mb-4 max-h-96 object-contain bg-cream-2"
           />
-          <div className="flex items-center justify-between text-sm text-[var(--muted)] mb-4">
+          <div className="flex items-center justify-between text-sm text-ink-muted mb-4">
             <span>{result.duration}s · {result.sizeMb} Mo · 1080x1920</span>
           </div>
           <a
             href={result.reelUrl}
             download="reel-instagram.mp4"
-            className="flex items-center justify-center gap-2 w-full text-center bg-gradient-to-r from-brand-600 to-accent-500 text-white py-3 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all"
+            className="flex items-center justify-center gap-2 w-full text-center bg-accent text-white py-3 rounded-xl font-semibold hover:bg-accent-hover transition-colors shadow-md"
           >
             <Download className="w-4 h-4" /> Telecharger le MP4
           </a>

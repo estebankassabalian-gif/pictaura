@@ -3,7 +3,13 @@ import { stripe } from "@/lib/stripe";
 import { env } from "@/config/env";
 import { prisma } from "@/lib/prisma";
 import { addCreditsFromPurchase } from "@/services/credits";
-import { PRO_PLAN } from "@/config/plans";
+import { PLANS, type PlanId } from "@/config/plans";
+
+function resolvePlan(metadataPlanId?: string | null) {
+  if (!metadataPlanId) return PLANS[0];
+  const plan = PLANS.find((p) => p.id === (metadataPlanId as PlanId));
+  return plan ?? PLANS[0];
+}
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -43,6 +49,7 @@ export async function POST(req: NextRequest) {
       };
 
       if (session.mode !== "subscription") break;
+      const planFromMeta = resolvePlan(session.metadata?.planId);
 
       const dbUser = session.customer
         ? await prisma.user.findFirst({ where: { stripeCustomerId: session.customer }, select: { id: true } })
@@ -71,11 +78,11 @@ export async function POST(req: NextRequest) {
       try {
         await addCreditsFromPurchase(
           userId,
-          PRO_PLAN.creditsPerMonth,
+          planFromMeta.creditsPerMonth,
           `sub_initial_${session.subscription}`,
-          `Abonnement Pro — ${PRO_PLAN.creditsPerMonth} crédits`
+          `Abonnement ${planFromMeta.name} — ${planFromMeta.creditsPerMonth} crédits`
         );
-        console.log(`✅ Abonnement Pro activé pour ${userId} — ${PRO_PLAN.creditsPerMonth} crédits ajoutés`);
+        console.log(`✅ Abonnement ${planFromMeta.name} activé pour ${userId} — ${planFromMeta.creditsPerMonth} crédits ajoutés`);
       } catch (err) {
         console.error("Erreur ajout crédits abonnement:", err);
       }
@@ -116,15 +123,17 @@ export async function POST(req: NextRequest) {
         data: { subscriptionEndsAt: periodEnd },
       });
 
+      const subMeta = subscription.metadata as { planId?: string } | undefined;
+      const planRenewal = resolvePlan(subMeta?.planId);
+
       try {
-        // Clé idempotente basée sur l'ID de la facture (unique par renouvellement)
         await addCreditsFromPurchase(
           userId,
-          PRO_PLAN.creditsPerMonth,
+          planRenewal.creditsPerMonth,
           `invoice_${invoice.id}`,
-          `Renouvellement Pro — ${PRO_PLAN.creditsPerMonth} crédits`
+          `Renouvellement ${planRenewal.name} — ${planRenewal.creditsPerMonth} crédits`
         );
-        console.log(`✅ Renouvellement Pro pour ${userId} — ${PRO_PLAN.creditsPerMonth} crédits ajoutés`);
+        console.log(`✅ Renouvellement ${planRenewal.name} pour ${userId} — ${planRenewal.creditsPerMonth} crédits ajoutés`);
       } catch (err) {
         console.error("Erreur ajout crédits renouvellement:", err);
       }

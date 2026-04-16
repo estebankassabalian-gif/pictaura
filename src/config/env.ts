@@ -31,16 +31,20 @@ const envSchema = z.object({
   R2_BUCKET_NAME: z.string().min(1),
   R2_PUBLIC_DOMAIN: optionalStr,
 
-  // Stripe — abonnement Pro unique
+  // Stripe — 3 abonnements (Immobilier / Réseaux / E-commerce), tous à 49,90€/mois.
+  // STRIPE_PRICE_PRO reste pour la rétro-compat tant que les 3 prix ne sont pas créés.
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
-  STRIPE_PRICE_PRO: z.string().startsWith("price_"),
+  STRIPE_PRICE_PRO: optionalPrefixed("price_"),
+  STRIPE_PRICE_IMMOBILIER: optionalPrefixed("price_"),
+  STRIPE_PRICE_SOCIAL: optionalPrefixed("price_"),
+  STRIPE_PRICE_ECOMMERCE: optionalPrefixed("price_"),
 
-  // Replicate
-  REPLICATE_API_TOKEN: z.string().min(1),
+  // Replicate (legacy — plus utilisé, gardé optionnel pour rétro-compat)
+  REPLICATE_API_TOKEN: optionalStr,
 
-  // OpenAI
-  OPENAI_API_KEY: z.string().startsWith("sk-"),
+  // OpenAI (legacy — migré vers Gemini, gardé pour rétro-compat si présent)
+  OPENAI_API_KEY: optionalPrefixed("sk-"),
 
   // Google AI (Gemini) — requis pour l'analyse et la retouche photo
   GOOGLE_AI_KEY: z.string().min(1),

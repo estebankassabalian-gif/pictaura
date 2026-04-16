@@ -31,11 +31,10 @@ export async function sendJobCompletedEmail({
   failedCount: number;
 }): Promise<void> {
   const presetLabels: Record<string, string> = {
-    AIRBNB: "Airbnb",
+    AIRBNB: "Immobilier",
     IMMOBILIER: "Immobilier",
-    INSTAGRAM: "Instagram",
-    VINTED: "Vinted",
-    SHOPIFY: "Shopify",
+    INSTAGRAM: "Réseaux sociaux",
+    SHOPIFY: "E-commerce",
   };
 
   const presetLabel = presetLabels[preset] ?? preset;
@@ -216,16 +215,16 @@ export async function sendWelcomeEmail({
         </tr>
         <tr>
           <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <a href="${APP_URL()}/vinted" style="text-decoration: none; color: #e4e4e7; font-size: 14px; font-weight: 500;">
-              → Vinted &amp; Seconde main
+            <a href="${APP_URL()}/instagram" style="text-decoration: none; color: #e4e4e7; font-size: 14px; font-weight: 500;">
+              → Réseaux sociaux (Instagram, TikTok)
             </a>
-            <p style="color: #52525b; font-size: 12px; margin: 2px 0 0;">Photos produits claires et attractives pour marketplace</p>
+            <p style="color: #52525b; font-size: 12px; margin: 2px 0 0;">Contenus visuels prêts à publier, stories et posts</p>
           </td>
         </tr>
         <tr>
           <td style="padding: 10px 0;">
             <a href="${APP_URL()}/shopify" style="text-decoration: none; color: #e4e4e7; font-size: 14px; font-weight: 500;">
-              → E-commerce &amp; Shopify
+              → E-commerce (Shopify, Vinted, Etsy, Leboncoin)
             </a>
             <p style="color: #52525b; font-size: 12px; margin: 2px 0 0;">Visuels produits professionnels pour boutique en ligne</p>
           </td>

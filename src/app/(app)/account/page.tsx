@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useToast } from "@/components/ui/Toaster";
 
@@ -8,7 +8,6 @@ export default function AccountPage() {
   const { data: session, update } = useSession();
   const { toast } = useToast();
 
-  // ── Nom ───────────────────────────────────────────────────
   const [name, setName] = useState(session?.user?.name ?? "");
   const [nameLoading, setNameLoading] = useState(false);
 
@@ -33,7 +32,44 @@ export default function AccountPage() {
     }
   }
 
-  // ── Mot de passe ──────────────────────────────────────────
+  const [businessCity, setBusinessCity] = useState("");
+  const [cityLoading, setCityLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/account/update-business-city")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d?.businessCity != null) setBusinessCity(String(d.businessCity));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleUpdateCity(e: React.FormEvent) {
+    e.preventDefault();
+    setCityLoading(true);
+    try {
+      const res = await fetch("/api/account/update-business-city", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessCity: businessCity.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error ?? "Erreur", "error");
+        return;
+      }
+      toast("Zone SEO mise à jour !", "success");
+    } catch {
+      toast("Erreur réseau", "error");
+    } finally {
+      setCityLoading(false);
+    }
+  }
+
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
@@ -61,7 +97,6 @@ export default function AccountPage() {
     }
   }
 
-  // ── Suppression ───────────────────────────────────────────
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deletePwd, setDeletePwd] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -89,32 +124,29 @@ export default function AccountPage() {
     }
   }
 
-  const isGoogleAccount = !session?.user?.email?.includes("@") ? false :
-    // Google accounts n'ont pas de passwordHash — on déduit via l'absence de provider credentials
-    false; // simplification : on affiche le formulaire, l'API renverra une erreur claire si compte Google
+  const inputClass = "w-full border border-ink/15 bg-cream rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-bold text-white mb-8">Mon compte</h1>
+      <h1 className="text-3xl md:text-4xl font-display tracking-tight text-ink mb-8">Mon compte</h1>
 
-      {/* ── Infos compte ────────────────────────────────────── */}
-      <div className="bg-surface rounded-2xl border border-white/8 p-6 mb-6">
+      {/* Infos compte */}
+      <div className="bg-white rounded-2xl border border-ink/10 p-6 mb-6 shadow-sm">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-14 h-14 bg-brand-500/15 rounded-full flex items-center justify-center text-2xl font-bold text-brand-400">
+          <div className="w-14 h-14 bg-accent/15 border border-accent/30 rounded-full flex items-center justify-center text-2xl font-display text-accent">
             {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
           </div>
           <div>
-            <p className="font-semibold text-white">{session?.user?.name ?? "Utilisateur"}</p>
-            <p className="text-sm text-zinc-500">{session?.user?.email}</p>
-            <span className="inline-block mt-1 text-xs bg-brand-500/10 text-brand-400 px-2 py-0.5 rounded-full font-medium">
+            <p className="font-display text-ink">{session?.user?.name ?? "Utilisateur"}</p>
+            <p className="text-sm text-ink-muted">{session?.user?.email}</p>
+            <span className="inline-block mt-1 text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full font-semibold">
               {session?.user?.role === "ADMIN" ? "Administrateur" : "Utilisateur"}
             </span>
           </div>
         </div>
 
-        {/* Modifier le nom */}
         <form onSubmit={handleUpdateName} className="space-y-3">
-          <label className="block text-sm font-medium text-zinc-300">Nom affiché</label>
+          <label className="block text-sm font-semibold text-ink">Nom affiché</label>
           <div className="flex gap-3">
             <input
               type="text"
@@ -122,13 +154,13 @@ export default function AccountPage() {
               onChange={(e) => setName(e.target.value)}
               maxLength={100}
               required
-              className="flex-1 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className={inputClass + " flex-1"}
               placeholder="Votre nom"
             />
             <button
               type="submit"
               disabled={nameLoading}
-              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
+              className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-sm"
             >
               {nameLoading ? "..." : "Sauvegarder"}
             </button>
@@ -136,12 +168,43 @@ export default function AccountPage() {
         </form>
       </div>
 
-      {/* ── Changer le mot de passe ──────────────────────────── */}
-      <div className="bg-surface rounded-2xl border border-white/8 p-6 mb-6">
-        <h2 className="font-semibold text-white mb-4">Changer le mot de passe</h2>
+      {/* Zone SEO (immobilier) */}
+      <div className="bg-white rounded-2xl border border-ink/10 p-6 mb-6 shadow-sm">
+        <h2 className="font-display text-ink text-lg mb-1">Zone SEO par défaut</h2>
+        <p className="text-xs text-ink-muted mb-4">
+          Utilisée pour enrichir automatiquement les métadonnées SEO de vos photos
+          (ville, code postal ou quartier). Exemple : <span className="font-mono">Paris 11</span>,
+          <span className="font-mono"> Nice Côte d&apos;Azur</span>, <span className="font-mono">Var 83</span>.
+          Laisse vide si tu ne veux pas de géolocalisation dans le JSON-LD.
+        </p>
+        <form onSubmit={handleUpdateCity} className="space-y-3">
+          <label className="block text-sm font-semibold text-ink">Ville / zone</label>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={businessCity}
+              onChange={(e) => setBusinessCity(e.target.value)}
+              maxLength={120}
+              className={inputClass + " flex-1"}
+              placeholder="Ex : Nice, Paris 11, Var 83…"
+            />
+            <button
+              type="submit"
+              disabled={cityLoading}
+              className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-sm"
+            >
+              {cityLoading ? "..." : "Sauvegarder"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Mot de passe */}
+      <div className="bg-white rounded-2xl border border-ink/10 p-6 mb-6 shadow-sm">
+        <h2 className="font-display text-ink text-lg mb-4">Changer le mot de passe</h2>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Mot de passe actuel</label>
+            <label className="block text-sm font-semibold text-ink mb-1.5">Mot de passe actuel</label>
             <input
               type="password"
               value={currentPwd}
@@ -149,11 +212,11 @@ export default function AccountPage() {
               required
               maxLength={128}
               autoComplete="current-password"
-              className="w-full border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Nouveau mot de passe</label>
+            <label className="block text-sm font-semibold text-ink mb-1.5">Nouveau mot de passe</label>
             <input
               type="password"
               value={newPwd}
@@ -162,12 +225,12 @@ export default function AccountPage() {
               minLength={8}
               maxLength={128}
               autoComplete="new-password"
-              className="w-full border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className={inputClass}
               placeholder="Minimum 8 caractères"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Confirmer le nouveau mot de passe</label>
+            <label className="block text-sm font-semibold text-ink mb-1.5">Confirmer le nouveau mot de passe</label>
             <input
               type="password"
               value={confirmPwd}
@@ -175,42 +238,42 @@ export default function AccountPage() {
               required
               maxLength={128}
               autoComplete="new-password"
-              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${
-                confirmPwd && confirmPwd !== newPwd ? "border-red-500/30" : "border-white/10"
+              className={`w-full border rounded-lg px-3 py-2 text-sm text-ink bg-cream focus:outline-none focus:ring-2 focus:ring-accent ${
+                confirmPwd && confirmPwd !== newPwd ? "border-accent/60" : "border-ink/15"
               }`}
             />
             {confirmPwd && confirmPwd !== newPwd && (
-              <p className="text-xs text-red-600 mt-1">Les mots de passe ne correspondent pas</p>
+              <p className="text-xs text-accent mt-1">Les mots de passe ne correspondent pas</p>
             )}
           </div>
           <button
             type="submit"
             disabled={pwdLoading || (!!confirmPwd && confirmPwd !== newPwd)}
-            className="w-full bg-brand-600 text-white py-2.5 rounded-xl font-semibold hover:bg-brand-700 disabled:opacity-50 transition-colors"
+            className="w-full bg-accent text-white py-2.5 rounded-xl font-semibold hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-md"
           >
             {pwdLoading ? "Changement en cours..." : "Changer le mot de passe"}
           </button>
         </form>
       </div>
 
-      {/* ── Zone de danger ───────────────────────────────────── */}
-      <div className="bg-surface rounded-2xl border border-red-500/20 p-6">
-        <h2 className="font-semibold text-red-400 mb-2">Zone de danger</h2>
-        <p className="text-sm text-zinc-400 mb-4">
+      {/* Zone de danger */}
+      <div className="bg-white rounded-2xl border border-accent/25 p-6 shadow-sm">
+        <h2 className="font-display text-accent text-lg mb-2">Zone de danger</h2>
+        <p className="text-sm text-ink-muted mb-4">
           La suppression de votre compte est irréversible. Tous vos crédits, photos et historique seront définitivement effacés.
         </p>
 
         {!showDeleteForm ? (
           <button
             onClick={() => setShowDeleteForm(true)}
-            className="border border-red-500/25 text-red-400 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-500/10 transition-colors"
+            className="border border-accent/40 text-accent px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent/10 transition-colors"
           >
             Supprimer mon compte
           </button>
         ) : (
           <form onSubmit={handleDeleteAccount} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
+              <label className="block text-sm font-semibold text-ink mb-1.5">
                 Mot de passe actuel (pour confirmer)
               </label>
               <input
@@ -219,18 +282,18 @@ export default function AccountPage() {
                 onChange={(e) => setDeletePwd(e.target.value)}
                 maxLength={128}
                 autoComplete="current-password"
-                className="w-full border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
-                Tapez <span className="font-mono font-bold text-red-600">SUPPRIMER</span> pour confirmer
+              <label className="block text-sm font-semibold text-ink mb-1.5">
+                Tapez <span className="font-mono font-bold text-accent">SUPPRIMER</span> pour confirmer
               </label>
               <input
                 type="text"
                 value={deleteConfirm}
                 onChange={(e) => setDeleteConfirm(e.target.value)}
-                className="w-full border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                className={inputClass}
                 placeholder="SUPPRIMER"
               />
             </div>
@@ -238,14 +301,14 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => { setShowDeleteForm(false); setDeleteConfirm(""); setDeletePwd(""); }}
-                className="flex-1 border border-white/10 text-zinc-300 py-2 rounded-xl text-sm font-medium hover:bg-[#0a0a0a]"
+                className="flex-1 border border-ink/15 text-ink py-2 rounded-xl text-sm font-semibold hover:bg-cream-2 transition-colors"
               >
                 Annuler
               </button>
               <button
                 type="submit"
                 disabled={deleteLoading || deleteConfirm !== "SUPPRIMER"}
-                className="flex-1 bg-red-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-red-700 disabled:opacity-40"
+                className="flex-1 bg-accent text-white py-2 rounded-xl text-sm font-semibold hover:bg-accent-hover disabled:opacity-40 transition-colors shadow-md"
               >
                 {deleteLoading ? "Suppression..." : "Supprimer définitivement"}
               </button>

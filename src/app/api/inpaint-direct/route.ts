@@ -11,7 +11,7 @@ import { detectMimeFromMagicBytes } from "@/services/storage";
 
 export const maxDuration = 120;
 
-const VALID_PRESETS = ["AIRBNB", "IMMOBILIER", "INSTAGRAM", "VINTED", "SHOPIFY"] as const;
+const VALID_PRESETS = ["AIRBNB", "IMMOBILIER", "INSTAGRAM", "SHOPIFY"] as const;
 
 /**
  * POST /api/inpaint-direct
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
       where: { id: inpaintingJobId },
       data: {
         status: JobStatus.PROCESSING,
-        replicateModelUsed: "gpt-image-1",
+        replicateModelUsed: "gemini-2.0-flash-image",
         llmPrompt: instruction,
       },
     });

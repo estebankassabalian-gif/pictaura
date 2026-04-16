@@ -17,7 +17,6 @@ export default function robots(): MetadataRoute.Robots {
           "/admin",
           "/immobilier",
           "/instagram",
-          "/vinted",
           "/shopify",
           "/reel",
           "/account",

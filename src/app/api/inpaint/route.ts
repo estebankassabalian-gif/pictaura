@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.inpaintingJob.update({
       where: { id: inpaintingJobId },
-      data: { status: JobStatus.PROCESSING, replicateModelUsed: "gpt-image-1" },
+      data: { status: JobStatus.PROCESSING, replicateModelUsed: "gemini-2.0-flash-image" },
     });
 
     // ── Retouche via Gemini ───────────────────────────────────────────────

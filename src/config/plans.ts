@@ -1,25 +1,100 @@
-// ─── Plan unique Pro ─────────────────────────────────────────────────────────
-// Créer ce produit dans Stripe Dashboard (type "recurring", interval "month")
-// puis coller le price_xxx dans .env :
-//   STRIPE_PRICE_PRO=price_xxx
+// ─── 3 Plans Pictaura — Immobilier / Réseaux / E-commerce ─────────────────
+// Chaque plan = 49,90 €/mois, 300 retouches/mois.
+// Créer 3 produits Stripe (type recurring, interval month), puis coller les
+// price_xxx dans .env :
+//   STRIPE_PRICE_IMMOBILIER=price_xxx
+//   STRIPE_PRICE_SOCIAL=price_xxx
+//   STRIPE_PRICE_ECOMMERCE=price_xxx
+
+export type PlanId = "immobilier" | "social" | "ecommerce";
+
+export interface Plan {
+  id: PlanId;
+  name: string;
+  tagline: string;
+  creditsPerMonth: number;
+  priceEurCents: number;
+  priceDisplay: string;
+  stripePriceEnvKey: "STRIPE_PRICE_IMMOBILIER" | "STRIPE_PRICE_SOCIAL" | "STRIPE_PRICE_ECOMMERCE";
+  preset: "IMMOBILIER" | "INSTAGRAM" | "SHOPIFY";
+  accentColor: string;
+  features: readonly string[];
+}
+
+export const PLANS: readonly Plan[] = [
+  {
+    id: "immobilier",
+    name: "Immobilier",
+    tagline: "Annonces qui se vendent plus vite",
+    creditsPerMonth: 300,
+    priceEurCents: 4990,
+    priceDisplay: "49,90€/mois",
+    stripePriceEnvKey: "STRIPE_PRICE_IMMOBILIER",
+    preset: "IMMOBILIER",
+    accentColor: "#F87005",
+    features: [
+      "300 retouches par mois",
+      "Preset Immobilier : HDR, verticalité, lumière pro",
+      "Métadonnées SEO gravées pour Google (EXIF + JSON-LD)",
+      "Jusqu'à 50 Mo par photo — reflex pro compatible",
+      "Support par email sous 24h",
+      "Sans engagement, résiliable en un clic",
+    ],
+  },
+  {
+    id: "social",
+    name: "Réseaux sociaux",
+    tagline: "Contenu qui capte le regard",
+    creditsPerMonth: 300,
+    priceEurCents: 4990,
+    priceDisplay: "49,90€/mois",
+    stripePriceEnvKey: "STRIPE_PRICE_SOCIAL",
+    preset: "INSTAGRAM",
+    accentColor: "#E1306C",
+    features: [
+      "300 retouches par mois",
+      "Formats prêts à publier : 1:1 feed, 4:5 portrait, 9:16 Stories",
+      "20 hashtags FR + EN générés par photo",
+      "Alt text et caption accrocheurs injectés en EXIF",
+      "Jusqu'à 50 Mo par photo",
+      "Support par email sous 24h",
+      "Sans engagement, résiliable en un clic",
+    ],
+  },
+  {
+    id: "ecommerce",
+    name: "E-commerce",
+    tagline: "Fiches produit prêtes à publier",
+    creditsPerMonth: 300,
+    priceEurCents: 4990,
+    priceDisplay: "49,90€/mois",
+    stripePriceEnvKey: "STRIPE_PRICE_ECOMMERCE",
+    preset: "SHOPIFY",
+    accentColor: "#09B884",
+    features: [
+      "300 retouches par mois",
+      "Presets Shopify, Vinted, Etsy : fond blanc, cadrage produit",
+      "JSON-LD Product schema.org prêt pour Google Shopping",
+      "Jusqu'à 50 Mo par photo",
+      "Support par email sous 24h",
+      "Sans engagement, résiliable en un clic",
+    ],
+  },
+] as const;
+
+export function getPlan(id: PlanId): Plan {
+  const plan = PLANS.find((p) => p.id === id);
+  if (!plan) throw new Error(`Plan inconnu : ${id}`);
+  return plan;
+}
+
+// Backward-compat : certains endroits du back-end référencent encore PRO_PLAN.
 export const PRO_PLAN = {
   id: "pro",
   name: "Pro",
-  creditsPerMonth: 200,
-  priceEurCents: 8900,
-  priceDisplay: "89€/mois",
-  pricePerPhoto: "0,45€",
-  stripePriceEnvKey: "STRIPE_PRICE_PRO" as const,
-  features: [
-    "200 retouches par mois",
-    "1 crédit = 1 photo standard",
-    "Sans watermark",
-    "Tous les agents (Immobilier, Instagram, Vinted, Shopify)",
-    "Métadonnées SEO intégrées (EXIF + JSON-LD)",
-    "Jusqu'à 50 Mo par photo",
-    "Support prioritaire",
-    "Résiliable à tout moment",
-  ],
+  creditsPerMonth: PLANS[0].creditsPerMonth,
+  priceEurCents: PLANS[0].priceEurCents,
+  priceDisplay: PLANS[0].priceDisplay,
 } as const;
 
 export const FREE_SIGNUP_CREDITS = 5;
@@ -43,7 +118,7 @@ export const ALLOWED_IMAGE_TYPES = [
 export const PRESET_LABELS = {
   AIRBNB: "Immobilier",
   IMMOBILIER: "Immobilier",
-  INSTAGRAM: "Instagram / Réseaux",
-  VINTED: "Vinted / Marketplace",
-  SHOPIFY: "Shopify / E-commerce",
+  INSTAGRAM: "Réseaux sociaux",
+  VINTED: "E-commerce",
+  SHOPIFY: "E-commerce",
 } as const;

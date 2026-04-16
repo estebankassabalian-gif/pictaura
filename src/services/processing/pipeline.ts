@@ -1,14 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { JobStatus } from "@prisma/client";
+import { JobStatus, type Preset } from "@prisma/client";
 import { uploadProcessedPhoto } from "@/services/storage";
 import { refundCredits } from "@/services/credits";
-import { generatePhotoSEO, scorePhoto } from "@/lib/openai";
 import { getSignedDownloadUrl } from "@/lib/r2";
 import { sendJobCompletedEmail } from "@/lib/email";
-import { retouchPhoto } from "@/lib/gemini";
+import { retouchPhoto, generatePhotoSEO, scorePhoto } from "@/lib/gemini";
 import { applyWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
 import { AGENTS } from "@/config/agents";
+import { FREE_SIGNUP_CREDITS } from "@/config/plans";
 
 // Process up to 2 photos concurrently to cut total time in half
 const CONCURRENCY = 2;
@@ -38,6 +38,18 @@ export async function processJob(jobId: string): Promise<void> {
     const systemPrompt = agent?.systemPrompt ?? "You are a professional photo editor. Perform the requested edits with photorealistic, professional quality.";
     const isSubscribed = job.user?.isSubscribed === true || job.user?.role === "ADMIN";
 
+    // Watermark uniquement sur les FREE_SIGNUP_CREDITS (5) premières retouches d'un compte.
+    // Dès que l'utilisateur a traité 5 photos ou qu'il s'abonne, le watermark disparaît.
+    let completedBefore = 0;
+    if (!isSubscribed) {
+      completedBefore = await prisma.processedPhoto.count({
+        where: {
+          job: { userId: job.userId },
+          status: JobStatus.COMPLETED,
+        },
+      });
+    }
+
     let failedCount = 0;
     let successCount = 0;
 
@@ -46,9 +58,12 @@ export async function processJob(jobId: string): Promise<void> {
       const batch = job.photos.slice(i, i + CONCURRENCY);
 
       const results = await Promise.allSettled(
-        batch.map((photo) =>
-          processOnePhoto(photo, job, systemPrompt, isSubscribed)
-        )
+        batch.map((photo, idxInBatch) => {
+          // Index global dans le job (sert à calculer si on est dans la fenêtre free)
+          const globalIndex = completedBefore + i + idxInBatch;
+          const applyWm = !isSubscribed && globalIndex < FREE_SIGNUP_CREDITS;
+          return processOnePhoto(photo, job, systemPrompt, applyWm, job.user?.businessCity);
+        })
       );
 
       for (let j = 0; j < results.length; j++) {
@@ -123,7 +138,8 @@ async function processOnePhoto(
   photo: { id: string; originalKey: string; instruction: string | null; fileName: string },
   job: { id: string; userId: string; preset: string; subOption: string | null },
   systemPrompt: string,
-  isSubscribed: boolean
+  shouldWatermark: boolean,
+  userLocation?: string | null
 ): Promise<{ success: boolean }> {
   try {
     await prisma.processedPhoto.update({
@@ -143,8 +159,8 @@ async function processOnePhoto(
     const imageBase64 = inputBuffer.toString("base64");
     let outputBuffer = await retouchPhoto(imageBase64, instruction, systemPrompt);
 
-    // Apply watermark for non-subscribed users
-    if (!isSubscribed) {
+    // Watermark uniquement pour les 5 retouches offertes à l'inscription
+    if (shouldWatermark) {
       outputBuffer = await applyWatermark(outputBuffer);
     }
 
@@ -169,7 +185,7 @@ async function processOnePhoto(
 
     // SEO + Score run in background (non-blocking)
     // They update the DB when done — the user sees their photos instantly
-    runSeoAndScore(photo.id, outputBuffer, job.preset).catch((e) =>
+    runSeoAndScore(photo.id, outputBuffer, job.preset, userLocation ?? undefined).catch((e) =>
       console.error(`SEO/score background error for photo ${photo.id}:`, e)
     );
 
@@ -194,7 +210,8 @@ async function processOnePhoto(
 async function runSeoAndScore(
   photoId: string,
   outputBuffer: Buffer,
-  preset: string
+  preset: string,
+  userLocation?: string
 ): Promise<void> {
   let seoData = {
     altText: "", seoFileName: "", description: "",
@@ -205,8 +222,8 @@ async function runSeoAndScore(
   try {
     const outputBase64 = outputBuffer.toString("base64");
     [seoData, scoreData] = await Promise.all([
-      generatePhotoSEO(outputBase64, preset as any),
-      scorePhoto(outputBase64, preset as any),
+      generatePhotoSEO(outputBase64, preset as Preset, userLocation),
+      scorePhoto(outputBase64, preset as Preset),
     ]);
   } catch (e) {
     console.error("SEO/score error (non-blocking):", e);

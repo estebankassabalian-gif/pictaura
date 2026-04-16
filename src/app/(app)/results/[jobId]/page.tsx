@@ -55,7 +55,7 @@ type RetoucheState =
   | { step: "validating"; inpaintingJobId: string; resultUrl: string; originalUrl: string }
   | { step: "validated"; resultUrl: string; inpaintingJobId: string }; // legacy, kept for type safety
 
-const PRESETS = ["AIRBNB", "IMMOBILIER", "INSTAGRAM", "VINTED", "SHOPIFY"] as const;
+const PRESETS = ["AIRBNB", "IMMOBILIER", "INSTAGRAM", "SHOPIFY"] as const;
 
 // RetoucheChat
 function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset: string; onPhotoUpdated?: () => void }) {
@@ -218,32 +218,32 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
   if (photo.status !== "COMPLETED") return null;
 
   return (
-    <div className="mt-4 border-t border-white/5 pt-4">
-      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-        <Pencil className="w-4 h-4 text-accent-400" /> Retouche IA
+    <div className="mt-4 border-t border-ink/10 pt-4">
+      <h3 className="text-sm font-semibold text-ink mb-3 flex items-center gap-2">
+        <Pencil className="w-4 h-4 text-accent" /> Retouche IA
       </h3>
 
       {/* ANALYZING */}
       {state.step === "analyzing" && (
-        <div className="bg-blue-500/10 rounded-xl p-4 flex items-center gap-3">
-          <Search className="w-5 h-5 text-blue-400 animate-pulse" />
-          <p className="text-sm text-blue-400">Analyse de la photo en cours... (gratuit)</p>
+        <div className="bg-sun/15 border border-sun/40 rounded-xl p-4 flex items-center gap-3">
+          <Search className="w-5 h-5 text-accent animate-pulse" />
+          <p className="text-sm text-ink">Analyse de la photo en cours... (gratuit)</p>
         </div>
       )}
 
       {/* READY */}
       {state.step === "ready" && (
         <div className="space-y-3">
-          <div className="bg-[var(--surface-2)] rounded-xl p-3">
-            <p className="text-xs text-[var(--muted)] font-medium mb-1 flex items-center gap-1">
+          <div className="bg-cream-2 border border-ink/10 rounded-xl p-3">
+            <p className="text-xs text-ink-muted font-medium mb-1 flex items-center gap-1">
               <Search className="w-3 h-3" /> Analyse
             </p>
-            <p className="text-sm text-zinc-300">{state.analysis}</p>
+            <p className="text-sm text-ink">{state.analysis}</p>
           </div>
 
           {state.presetSuggestions.length > 0 && (
             <div>
-              <p className="text-xs text-[var(--muted)] font-medium mb-2 flex items-center gap-1">
+              <p className="text-xs text-ink-muted font-medium mb-2 flex items-center gap-1">
                 <Lightbulb className="w-3 h-3" /> Suggestions rapides
               </p>
               <div className="flex flex-wrap gap-2">
@@ -251,7 +251,7 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
                   <button
                     key={s.label}
                     onClick={() => handleSuggestionClick(s)}
-                    className="flex items-center gap-1 text-xs bg-[var(--surface)] border border-white/8 hover:border-accent-400 hover:bg-accent-500/10 hover:text-accent-400 text-zinc-300 px-3 py-1.5 rounded-lg transition-colors"
+                    className="flex items-center gap-1 text-xs bg-white border border-ink/15 hover:border-accent hover:bg-accent/5 hover:text-accent text-ink px-3 py-1.5 rounded-lg transition-colors"
                   >
                     <span>{s.icon}</span>
                     <span>{s.label}</span>
@@ -262,7 +262,7 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
           )}
 
           <div>
-            <p className="text-xs text-[var(--muted)] font-medium mb-1 flex items-center gap-1">
+            <p className="text-xs text-ink-muted font-medium mb-1 flex items-center gap-1">
               <MessageSquare className="w-3 h-3" /> Ou décrivez votre retouche
             </p>
             <div className="flex gap-2">
@@ -279,18 +279,18 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
                 maxLength={300}
                 rows={2}
                 placeholder='Ex: "Retire la voiture devant la maison"'
-                className="flex-1 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none bg-transparent text-white"
+                className="flex-1 border border-ink/15 bg-white rounded-xl px-3 py-2 text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 resize-none"
               />
               <button
                 onClick={() => handleRetouche(instruction)}
                 disabled={!instruction.trim()}
-                className="px-4 py-2 bg-gradient-to-r from-brand-600 to-accent-500 text-white rounded-xl text-sm font-semibold hover:from-brand-700 hover:to-accent-600 disabled:opacity-40 transition-all self-end"
+                className="px-4 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover disabled:opacity-40 transition-colors self-end shadow-md"
               >
                 <Send className="w-4 h-4 sm:hidden" />
                 <span className="hidden sm:inline">{INPAINTING_CREDITS_COST} crédit</span>
               </button>
             </div>
-            <p className="text-xs text-[var(--muted)] mt-1">
+            <p className="text-xs text-ink-muted mt-1">
               Le crédit est débité uniquement si vous validez le résultat.
             </p>
           </div>
@@ -299,11 +299,11 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
 
       {/* RETOUCHING */}
       {state.step === "retouching" && (
-        <div className="bg-accent-500/10 border border-accent-500/20 rounded-xl p-4 flex items-center gap-3">
-          <Loader2 className="w-5 h-5 text-accent-400 animate-spin" />
+        <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 flex items-center gap-3">
+          <Loader2 className="w-5 h-5 text-accent animate-spin" />
           <div>
-            <p className="text-sm font-semibold text-accent-300">Retouche IA en cours...</p>
-            <p className="text-xs text-accent-400/70 mt-0.5">Pictaura analyse et retouche votre photo (~20-40s)</p>
+            <p className="text-sm font-semibold text-accent">Retouche IA en cours...</p>
+            <p className="text-xs text-ink-muted mt-0.5">Pictaura analyse et retouche votre photo (~20-40s)</p>
           </div>
         </div>
       )}
@@ -311,19 +311,19 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
       {/* VALIDATING */}
       {state.step === "validating" && (
         <div className="space-y-3">
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-ink-muted">
             Résultat prêt — <strong>aucun crédit débité pour l'instant.</strong>
           </p>
 
-          <div className="rounded-xl overflow-hidden border border-white/8">
+          <div className="rounded-xl overflow-hidden border border-ink/10">
             <div className="grid grid-cols-2 gap-0">
               <div className="relative">
-                <p className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full z-10">Avant</p>
+                <p className="absolute top-2 left-2 bg-brand/80 text-cream text-xs px-2 py-0.5 rounded-full z-10">Avant</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={state.originalUrl} alt="Avant" className="w-full aspect-video object-cover" />
               </div>
               <div className="relative">
-                <p className="absolute top-2 left-2 bg-accent-500/80 text-white text-xs px-2 py-0.5 rounded-full z-10">Apres</p>
+                <p className="absolute top-2 left-2 bg-accent text-white text-xs px-2 py-0.5 rounded-full z-10">Apres</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={state.resultUrl} alt="Apres retouche" className="w-full aspect-video object-cover" />
               </div>
@@ -333,13 +333,13 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
           <div className="flex gap-3">
             <button
               onClick={() => handleValidate(state.inpaintingJobId, "approve")}
-              className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition-colors text-sm"
+              className="flex-1 flex items-center justify-center gap-2 bg-accent text-white py-3 rounded-xl font-semibold hover:bg-accent-hover transition-colors text-sm shadow-md"
             >
               <CheckCircle2 className="w-4 h-4" /> Valider — {INPAINTING_CREDITS_COST} credit
             </button>
             <button
               onClick={() => handleValidate(state.inpaintingJobId, "reject")}
-              className="flex-1 flex items-center justify-center gap-2 bg-white/5 text-zinc-300 py-3 rounded-xl font-semibold hover:bg-white/8 transition-colors text-sm border border-white/8"
+              className="flex-1 flex items-center justify-center gap-2 bg-white text-ink py-3 rounded-xl font-semibold hover:bg-cream-2 transition-colors text-sm border border-ink/15"
             >
               <XCircle className="w-4 h-4" /> Rejeter — gratuit
             </button>
@@ -350,10 +350,10 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
       {/* VALIDATED */}
       {state.step === "validated" && (
         <div className="space-y-3">
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          <div className="bg-sun/15 border border-sun/40 rounded-xl p-3 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-accent" />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-emerald-400">Retouche validée — 1 crédit débité</p>
+              <p className="text-sm font-semibold text-ink">Retouche validée — 1 crédit débité</p>
             </div>
             <button
               onClick={async () => {
@@ -370,18 +370,18 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
                   URL.revokeObjectURL(url);
                 } catch { /* ignore */ }
               }}
-              className="flex items-center gap-1 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors"
+              className="flex items-center gap-1 text-xs bg-accent text-white px-3 py-1.5 rounded-lg hover:bg-accent-hover transition-colors"
             >
               <Download className="w-3 h-3" /> Télécharger
             </button>
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={state.resultUrl} alt="Résultat retouche" className="w-full rounded-xl border border-white/8" />
+          <img src={state.resultUrl} alt="Résultat retouche" className="w-full rounded-xl border border-ink/10" />
 
           <button
             onClick={handleAffinement}
-            className="w-full flex items-center justify-center gap-2 text-sm text-accent-400 font-medium py-2 border border-accent-500/20 rounded-xl hover:bg-accent-500/10 transition-colors"
+            className="w-full flex items-center justify-center gap-2 text-sm text-accent font-medium py-2 border border-accent/30 rounded-xl hover:bg-accent/5 transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" /> Affiner encore (nouvelle retouche)
           </button>
@@ -390,7 +390,7 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
 
       {/* Error */}
       {error && (
-        <div className="mt-2 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl px-3 py-2">
+        <div className="mt-2 bg-accent/10 border border-accent/30 text-accent text-xs rounded-xl px-3 py-2">
           {error}
         </div>
       )}
@@ -528,16 +528,16 @@ export default function ResultsPage() {
         <div className="text-center">
           {fetchError ? (
             <>
-              <XCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
-              <p className="text-red-400 font-medium mb-2">{fetchError}</p>
-              <Link href="/dashboard" className="text-accent-400 hover:underline text-sm">
+              <XCircle className="w-10 h-10 text-accent mx-auto mb-4" />
+              <p className="text-accent font-medium mb-2">{fetchError}</p>
+              <Link href="/dashboard" className="text-accent hover:text-accent-hover hover:underline text-sm">
                 Retour au dashboard
               </Link>
             </>
           ) : (
             <>
-              <Loader2 className="w-10 h-10 text-accent-400 animate-spin mx-auto mb-4" />
-              <p className="text-zinc-400">Chargement...</p>
+              <Loader2 className="w-10 h-10 text-accent animate-spin mx-auto mb-4" />
+              <p className="text-ink-muted">Chargement...</p>
             </>
           )}
         </div>
@@ -555,10 +555,10 @@ export default function ResultsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-3xl md:text-4xl font-display tracking-tight text-ink">
             {PRESET_LABELS[job.preset as keyof typeof PRESET_LABELS] ?? job.preset}
           </h1>
-          <p className="text-zinc-400 mt-1">
+          <p className="text-ink-muted mt-1">
             {completedPhotos.length}/{job.photos.length} photos traitées
           </p>
         </div>
@@ -566,7 +566,7 @@ export default function ResultsPage() {
           <button
             onClick={completedPhotos.length === 1 ? () => downloadPhoto(completedPhotos[0].id) : handleDownloadAll}
             disabled={downloading}
-            className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-accent-500 text-white px-5 py-2.5 rounded-xl font-semibold hover:from-brand-700 hover:to-accent-600 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shadow-md"
           >
             <Download className="w-4 h-4" />
             {downloading ? "Téléchargement..." : completedPhotos.length === 1 ? "Télécharger la photo" : `Télécharger les ${completedPhotos.length} photos`}
@@ -576,9 +576,9 @@ export default function ResultsPage() {
 
       {/* Action error */}
       {actionError && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
+        <div className="bg-accent/10 border border-accent/30 text-accent text-sm rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
           <span>{actionError}</span>
-          <button onClick={() => setActionError("")} className="text-red-400/60 hover:text-red-400 ml-4">✕</button>
+          <button onClick={() => setActionError("")} className="text-accent/60 hover:text-accent ml-4">✕</button>
         </div>
       )}
 
@@ -591,22 +591,22 @@ export default function ResultsPage() {
         const estimatedSeconds = Math.round(remaining * 15);
 
         return (
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5 mb-6">
+          <div className="bg-white border border-ink/10 rounded-xl p-5 mb-6 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
-              <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+              <Loader2 className="w-6 h-6 text-accent animate-spin" />
               <div className="flex-1">
-                <p className="font-semibold text-blue-300">
+                <p className="font-semibold text-ink">
                   Traitement IA en cours — {completedPhotos.length}/{job.photos.length} terminées
                 </p>
-                <p className="text-xs text-blue-400/70 mt-0.5">
+                <p className="text-xs text-ink-muted mt-0.5">
                   {estimatedSeconds > 0 ? `~${estimatedSeconds}s restantes` : "Finalisation..."}
                   {processingPhotos.length > 0 && ` · ${processingPhotos.length} en cours`}
                 </p>
               </div>
             </div>
-            <div className="w-full bg-blue-500/20 rounded-full h-2.5 mb-3 overflow-hidden">
+            <div className="w-full bg-cream-2 rounded-full h-2.5 mb-3 overflow-hidden">
               <div
-                className="bg-gradient-to-r from-brand-500 to-accent-500 h-full rounded-full transition-all duration-500 ease-out"
+                className="bg-accent h-full rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${Math.max(3, (completedPhotos.length / Math.max(job.photos.length, 1)) * 100)}%` }}
               />
             </div>
@@ -630,18 +630,18 @@ export default function ResultsPage() {
 
       {/* Timeout warning */}
       {pollTimeout && isProcessing && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-5 mb-6">
+        <div className="bg-sun/15 border border-sun/40 rounded-xl p-5 mb-6">
           <div className="flex items-center gap-3">
-            <Clock className="w-6 h-6 text-amber-400" />
+            <Clock className="w-6 h-6 text-accent" />
             <div className="flex-1">
-              <p className="font-semibold text-amber-300">Le traitement prend plus de temps que prévu</p>
-              <p className="text-xs text-amber-400/70 mt-1">
+              <p className="font-semibold text-ink">Le traitement prend plus de temps que prévu</p>
+              <p className="text-xs text-ink-muted mt-1">
                 Rechargez la page dans quelques minutes. Si le problème persiste, contactez le support.
               </p>
             </div>
             <button
               onClick={() => { setPollTimeout(false); window.location.reload(); }}
-              className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition-colors text-sm whitespace-nowrap"
+              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg font-medium hover:bg-accent-hover transition-colors text-sm whitespace-nowrap shadow-md"
             >
               <RefreshCw className="w-4 h-4" /> Recharger
             </button>
@@ -651,9 +651,9 @@ export default function ResultsPage() {
 
       {/* Re-process with another preset */}
       {job.status === "COMPLETED" && (
-        <div className="bg-[var(--surface-2)] border border-white/8 rounded-xl p-4 mb-6">
-          <p className="text-sm font-semibold text-zinc-300 mb-2 flex items-center gap-2">
-            <RefreshCw className="w-4 h-4 text-accent-400" /> Essayer un autre preset (1 credit/photo)
+        <div className="bg-white border border-ink/10 rounded-xl p-4 mb-6 shadow-sm">
+          <p className="text-sm font-semibold text-ink mb-2 flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 text-accent" /> Essayer un autre preset (1 credit/photo)
           </p>
           <div className="flex gap-2 flex-wrap">
             {otherPresets.map((p) => (
@@ -661,7 +661,7 @@ export default function ResultsPage() {
                 key={p}
                 onClick={() => handleReprocess(p)}
                 disabled={reprocessing}
-                className="px-4 py-1.5 text-sm border border-white/10 rounded-lg hover:border-accent-400 hover:text-accent-400 text-zinc-400 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 text-sm border border-ink/15 bg-white rounded-lg hover:border-accent hover:text-accent text-ink-muted transition-colors disabled:opacity-50"
               >
                 {reprocessing ? "..." : PRESET_LABELS[p as keyof typeof PRESET_LABELS]?.split(" /")[0] ?? p}
               </button>
@@ -678,15 +678,15 @@ export default function ResultsPage() {
               key={photo.id}
               onClick={() => setActivePhoto(index)}
               className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                activePhoto === index ? "border-accent-500" : "border-white/8"
+                activePhoto === index ? "border-accent ring-2 ring-accent/25" : "border-ink/15"
               }`}
             >
               {photo.originalUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={photo.originalUrl} alt={photo.fileName} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                  {photo.status === "COMPLETED" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Clock className="w-4 h-4 text-zinc-500" />}
+                <div className="w-full h-full bg-cream-2 flex items-center justify-center">
+                  {photo.status === "COMPLETED" ? <CheckCircle2 className="w-4 h-4 text-accent" /> : <Clock className="w-4 h-4 text-ink-muted" />}
                 </div>
               )}
             </button>
@@ -696,8 +696,8 @@ export default function ResultsPage() {
 
       {/* Slider + SEO + Retouche */}
       {currentPhoto && (
-        <div className="bg-[var(--surface)] rounded-2xl border border-white/8 p-6 mb-6">
-          <h2 className="font-semibold text-white mb-4 truncate">{currentPhoto.fileName}</h2>
+        <div className="bg-white rounded-2xl border border-ink/10 p-6 mb-6 shadow-sm">
+          <h2 className="font-display text-lg text-ink mb-4 truncate">{currentPhoto.fileName}</h2>
 
           {currentPhoto.status === "COMPLETED" && currentPhoto.originalUrl && currentPhoto.processedUrl ? (
             <>
@@ -707,7 +707,7 @@ export default function ResultsPage() {
                 alt={currentPhoto.fileName}
               />
               <div className="flex items-center justify-between mt-3">
-                <div className="flex gap-4 text-xs text-[var(--muted)]">
+                <div className="flex gap-4 text-xs text-ink-muted">
                   {currentPhoto.fileSizeOriginal && (
                     <span>Original : {(currentPhoto.fileSizeOriginal / 1024).toFixed(0)} Ko</span>
                   )}
@@ -718,7 +718,7 @@ export default function ResultsPage() {
                 <button
                   onClick={() => downloadPhoto(currentPhoto.id)}
                   disabled={downloading}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-accent-400 hover:text-accent-300 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-hover transition-colors disabled:opacity-50"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Télécharger cette photo
@@ -726,31 +726,31 @@ export default function ResultsPage() {
               </div>
             </>
           ) : currentPhoto.status === "FAILED" ? (
-            <div className="bg-red-500/10 rounded-xl p-6 text-center">
-              <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-              <p className="text-red-400 font-medium">Échec du traitement — crédit remboursé</p>
+            <div className="bg-accent/10 border border-accent/30 rounded-xl p-6 text-center">
+              <XCircle className="w-8 h-8 text-accent mx-auto mb-2" />
+              <p className="text-accent font-medium">Échec du traitement — crédit remboursé</p>
             </div>
           ) : (
-            <div className="bg-[var(--surface-2)] rounded-xl p-12 text-center">
-              <Loader2 className="w-10 h-10 text-accent-400 animate-spin mx-auto mb-3" />
-              <p className="text-zinc-400">Traitement en cours...</p>
+            <div className="bg-cream-2 border border-ink/10 rounded-xl p-12 text-center">
+              <Loader2 className="w-10 h-10 text-accent animate-spin mx-auto mb-3" />
+              <p className="text-ink-muted">Traitement en cours...</p>
             </div>
           )}
 
           {/* Watermark notice */}
           {currentPhoto.status === "COMPLETED" && job.isWatermarked === true && (
-            <div className="mt-4 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between gap-4">
+            <div className="mt-4 bg-sun/15 border border-sun/40 rounded-xl p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="text-amber-400 text-base leading-none">&#128274;</span>
-                <p className="text-sm text-amber-300 leading-snug">
+                <span className="text-accent text-base leading-none">&#128274;</span>
+                <p className="text-sm text-ink leading-snug">
                   Vos photos contiennent un watermark Pictaura
                 </p>
               </div>
               <Link
                 href="/billing"
-                className="flex-shrink-0 text-xs font-semibold text-accent-400 hover:text-accent-300 transition-colors whitespace-nowrap"
+                className="flex-shrink-0 text-xs font-semibold text-accent hover:text-accent-hover transition-colors whitespace-nowrap"
               >
-                Passer au Pro →
+                S'abonner →
               </Link>
             </div>
           )}
@@ -759,20 +759,20 @@ export default function ResultsPage() {
           {currentPhoto.status === "COMPLETED" && (
             <div className="mt-6 space-y-3">
               {currentPhoto.photoScore !== null && (
-                <div className="bg-accent-500/10 border border-accent-500/20 rounded-xl p-4">
+                <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-semibold text-accent-300">
+                    <span className="text-sm font-semibold text-accent">
                       Score photo : {currentPhoto.photoScore}/10
                     </span>
-                    <div className="flex-1 h-2 bg-accent-500/15 rounded-full overflow-hidden">
+                    <div className="flex-1 h-2 bg-accent/15 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-accent-500 rounded-full"
+                        className="h-full bg-accent rounded-full"
                         style={{ width: `${(currentPhoto.photoScore / 10) * 100}%` }}
                       />
                     </div>
                   </div>
                   {currentPhoto.photoScoreReport && (
-                    <p className="text-xs text-accent-400/70">{currentPhoto.photoScoreReport}</p>
+                    <p className="text-xs text-ink-muted">{currentPhoto.photoScoreReport}</p>
                   )}
                 </div>
               )}
@@ -786,7 +786,7 @@ export default function ResultsPage() {
       )}
 
       <div className="text-center">
-        <Link href="/dashboard" className="text-accent-400 font-medium hover:underline inline-flex items-center gap-1">
+        <Link href="/dashboard" className="text-accent font-semibold hover:text-accent-hover hover:underline inline-flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" /> Retour au dashboard
         </Link>
       </div>

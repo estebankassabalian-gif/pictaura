@@ -8,14 +8,14 @@ import {
   LayoutDashboard,
   Building2,
   Camera,
-  ShoppingBag,
   Store,
   Wand2,
-  Film,
   CreditCard,
   Settings,
   Shield,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 import Logo from "@/components/brand/Logo";
 
@@ -36,7 +36,7 @@ const onboardingOptions: OnboardingOption[] = [
     href: "/immobilier",
     icon: Building2,
     color: "text-[#FF5A5F]",
-    bg: "bg-[#FF5A5F]/10 border-[#FF5A5F]/20",
+    bg: "bg-[#FF5A5F]/10 border-[#FF5A5F]/25",
     description: "Annonces, Airbnb, locations",
   },
   {
@@ -44,24 +44,16 @@ const onboardingOptions: OnboardingOption[] = [
     href: "/instagram",
     icon: Camera,
     color: "text-[#E1306C]",
-    bg: "bg-[#E1306C]/10 border-[#E1306C]/20",
+    bg: "bg-[#E1306C]/10 border-[#E1306C]/25",
     description: "Contenus visuels et stories",
-  },
-  {
-    label: "Vinted",
-    href: "/vinted",
-    icon: ShoppingBag,
-    color: "text-[#09B884]",
-    bg: "bg-[#09B884]/10 border-[#09B884]/20",
-    description: "Seconde main et marketplace",
   },
   {
     label: "E-commerce",
     href: "/shopify",
     icon: Store,
-    color: "text-[#96BF48]",
-    bg: "bg-[#96BF48]/10 border-[#96BF48]/20",
-    description: "Boutique Shopify et produits",
+    color: "text-[#09B884]",
+    bg: "bg-[#09B884]/10 border-[#09B884]/25",
+    description: "Shopify, Vinted, Etsy, marketplaces",
   },
 ];
 
@@ -76,7 +68,7 @@ function OnboardingModal() {
         setVisible(true);
       }
     } catch {
-      // localStorage peut être bloqué (SSR ou mode privé strict)
+      /* localStorage bloqué */
     }
   }, []);
 
@@ -97,26 +89,21 @@ function OnboardingModal() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(3,29,104,0.55)", backdropFilter: "blur(6px)" }}
     >
-      <div
-        className="w-full max-w-md rounded-2xl border border-white/10 p-6"
-        style={{ background: "#0f0f1a" }}
-      >
-        {/* Title */}
+      <div className="w-full max-w-md rounded-3xl border border-ink/10 bg-white p-6 shadow-lg">
         <div className="mb-6">
-          <div className="w-10 h-10 rounded-xl bg-[var(--surface-2)] border border-white/5 flex items-center justify-center mb-3">
-            <Logo variant="mark" size={28} />
+          <div className="w-12 h-12 rounded-xl bg-cream border border-ink/10 flex items-center justify-center mb-3">
+            <Logo variant="mark" size={28} tone="ink" />
           </div>
-          <h2 className="text-xl font-bold text-white leading-tight">
+          <h2 className="text-2xl font-display tracking-tight text-ink leading-tight">
             Quel est votre cas d&apos;usage ?
           </h2>
-          <p className="text-sm text-zinc-500 mt-1">
-            Selectionnez votre secteur pour commencer avec les bons reglages.
+          <p className="text-sm text-ink-muted mt-1">
+            Sélectionnez votre secteur pour démarrer avec les bons réglages.
           </p>
         </div>
 
-        {/* Options */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           {onboardingOptions.map((option) => {
             const Icon = option.icon;
@@ -127,10 +114,10 @@ function OnboardingModal() {
                 className={`flex flex-col items-start gap-2 p-4 rounded-xl border ${option.bg} hover:scale-[1.02] transition-transform text-left`}
               >
                 <Icon className={`w-5 h-5 ${option.color}`} />
-                <span className={`text-sm font-semibold ${option.color}`}>
+                <span className={`text-sm font-bold ${option.color}`}>
                   {option.label}
                 </span>
-                <span className="text-xs text-zinc-500 leading-snug">
+                <span className="text-xs text-ink-muted leading-snug">
                   {option.description}
                 </span>
               </button>
@@ -138,11 +125,10 @@ function OnboardingModal() {
           })}
         </div>
 
-        {/* Explore link */}
         <div className="text-center">
           <button
             onClick={dismiss}
-            className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            className="text-xs text-ink-muted hover:text-ink transition-colors"
           >
             Explorer d&apos;abord
           </button>
@@ -156,7 +142,7 @@ interface SidebarNavProps {
   userName: string;
   userEmail: string;
   userInitial: string;
-  credits: number; // -1 means unlimited (admin)
+  credits: number; // -1 = illimité (admin)
   isAdmin: boolean;
 }
 
@@ -165,68 +151,69 @@ const mainNav = [
 ];
 
 const toolNav = [
-  { href: "/immobilier", label: "Immobilier", icon: Building2, color: "text-[#FF5A5F]", bg: "bg-[#FF5A5F]/10" },
-  { href: "/instagram", label: "Instagram", icon: Camera, color: "text-[#E1306C]", bg: "bg-[#E1306C]/10" },
-  { href: "/vinted", label: "Vinted", icon: ShoppingBag, color: "text-[#09B884]", bg: "bg-[#09B884]/10" },
-  { href: "/shopify", label: "E-commerce", icon: Store, color: "text-[#96BF48]", bg: "bg-[#96BF48]/10" },
+  { href: "/immobilier", label: "Immobilier", icon: Building2 },
+  { href: "/instagram", label: "Réseaux sociaux", icon: Camera },
+  { href: "/shopify", label: "E-commerce", icon: Store },
 ];
 
 const extraNav = [
   { href: "/editor", label: "Éditeur libre", icon: Wand2 },
-  { href: "/reel", label: "Reels", icon: Film },
 ];
 
 const settingsNav = [
-  { href: "/billing", label: "Credits", icon: CreditCard },
+  { href: "/billing", label: "Crédits", icon: CreditCard },
   { href: "/account", label: "Compte", icon: Settings },
 ];
 
 export function SidebarNav({ userName, userEmail, userInitial, credits, isAdmin }: SidebarNavProps) {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  return (
+  // Close mobile menu on navigation
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const sidebarContent = (
     <>
-      <OnboardingModal />
-      <aside className="w-60 bg-[var(--surface)] border-r border-white/5 flex flex-col flex-shrink-0">
-      {/* Logo */}
-      <div className="p-5 border-b border-white/5">
+      <div className="p-5 border-b border-cream/10 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <Logo variant="mark" size={28} />
-          <span className="text-white font-bold tracking-tight font-display">Pictaura</span>
+          <Logo variant="mark" size={28} tone="cream" />
+          <span className="text-cream font-display tracking-tight">Pictaura</span>
         </Link>
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="md:hidden text-cream/70 hover:text-cream p-1"
+          aria-label="Fermer le menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {/* Main */}
         {mainNav.map((item) => (
           <NavItem key={item.href} {...item} active={pathname === item.href} />
         ))}
 
-        {/* Separator */}
-        <div className="!my-3 h-px bg-white/5" />
+        <div className="!my-3 h-px bg-cream/10" />
 
-        {/* 4 Expert Tools */}
         <div className="px-3 pb-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-cream/50">
             Outils experts
           </span>
         </div>
         {toolNav.map((item) => (
-          <NavItem key={item.href} href={item.href} label={item.label} icon={item.icon} active={pathname === item.href} activeColor={item.color} activeBg={item.bg} />
+          <NavItem key={item.href} {...item} active={pathname === item.href} />
         ))}
 
-        {/* Separator */}
-        <div className="!my-3 h-px bg-white/5" />
+        <div className="!my-3 h-px bg-cream/10" />
 
-        {/* Extra tools */}
         {extraNav.map((item) => (
           <NavItem key={item.href} {...item} active={pathname === item.href} />
         ))}
 
-        {/* Separator */}
-        <div className="!my-3 h-px bg-white/5" />
+        <div className="!my-3 h-px bg-cream/10" />
 
-        {/* Settings */}
         {settingsNav.map((item) => (
           <NavItem key={item.href} {...item} active={pathname === item.href} />
         ))}
@@ -236,36 +223,83 @@ export function SidebarNav({ userName, userEmail, userInitial, credits, isAdmin 
         )}
       </nav>
 
-      {/* Footer: credits + user */}
-      <div className="p-3 border-t border-white/5">
-        <div className="bg-accent-500/10 border border-accent-500/20 rounded-xl p-3 text-center mb-3">
-          <div className="text-2xl font-black text-accent-400">
+      <div className="p-3 border-t border-cream/10">
+        <div className="bg-accent/15 border border-accent/30 rounded-xl p-3 text-center mb-3">
+          <div className="text-2xl font-display text-sun">
             {credits === -1 ? "\u221E" : credits}
           </div>
-          <div className="text-[10px] text-accent-300/70 font-semibold uppercase tracking-wider">
+          <div className="text-[10px] text-cream/70 font-bold uppercase tracking-wider">
             crédits disponibles
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 text-sm px-1.5">
-          <div className="w-8 h-8 bg-accent-500/15 border border-accent-500/20 rounded-full flex items-center justify-center text-xs font-bold text-accent-400 flex-shrink-0">
+          <div className="w-8 h-8 bg-accent/20 border border-accent/40 rounded-full flex items-center justify-center text-xs font-bold text-sun flex-shrink-0">
             {userInitial}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-medium text-white truncate text-sm">{userName}</div>
-            <div className="text-[11px] text-[var(--muted)] truncate">{userEmail}</div>
+            <div className="font-semibold text-cream truncate text-sm">{userName}</div>
+            <div className="text-[11px] text-cream/60 truncate">{userEmail}</div>
           </div>
         </div>
 
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="mt-3 w-full flex items-center gap-2 text-xs text-[var(--muted)] hover:text-white text-left px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+          className="mt-3 w-full flex items-center gap-2 text-xs text-cream/70 hover:text-cream text-left px-2 py-1.5 rounded-lg hover:bg-cream/10 transition-colors"
         >
           <LogOut className="w-3.5 h-3.5" />
           Déconnexion
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      <OnboardingModal />
+
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-brand border-b border-brand-light/40 flex items-center justify-between px-4 py-3">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <Logo variant="mark" size={24} tone="cream" />
+          <span className="text-cream font-display tracking-tight text-sm">Pictaura</span>
+        </Link>
+        <div className="flex items-center gap-3">
+          <div className="bg-accent/15 border border-accent/30 rounded-lg px-2.5 py-1 flex items-center gap-1.5">
+            <span className="text-sm font-display text-sun">
+              {credits === -1 ? "\u221E" : credits}
+            </span>
+            <span className="text-[9px] text-cream/60 font-bold uppercase">cr.</span>
+          </div>
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="text-cream/80 hover:text-cream p-1"
+            aria-label="Ouvrir le menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-black/50"
+          onClick={() => setMobileOpen(false)}
+        >
+          <aside
+            className="w-72 h-full bg-brand text-cream flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-60 bg-brand text-cream border-r border-brand-light/40 flex-col flex-shrink-0">
+        {sidebarContent}
+      </aside>
     </>
   );
 }
@@ -275,29 +309,24 @@ function NavItem({
   label,
   icon: Icon,
   active,
-  activeColor,
-  activeBg,
 }: {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   active: boolean;
-  activeColor?: string;
-  activeBg?: string;
 }) {
-  const activeClasses = activeColor && activeBg
-    ? `${activeBg} ${activeColor}`
-    : "bg-accent-500/10 text-accent-400";
-
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+      className={`relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 ${
         active
-          ? activeClasses
-          : "text-zinc-400 hover:bg-white/5 hover:text-white"
+          ? "bg-accent/20 text-sun"
+          : "text-cream/75 hover:bg-cream/5 hover:text-cream"
       }`}
     >
+      {active && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-accent" aria-hidden="true" />
+      )}
       <Icon className="w-4 h-4 flex-shrink-0" />
       {label}
     </Link>

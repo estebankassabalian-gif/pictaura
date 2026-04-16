@@ -1,7 +1,6 @@
 import {
   Building2,
   Camera,
-  ShoppingBag,
   Store,
   Sun,
   Cloud,
@@ -20,7 +19,6 @@ import {
   Square,
   Shirt,
   Palette,
-  Search,
   Lightbulb,
   Box,
   Tag,
@@ -125,73 +123,36 @@ Respond ONLY with valid JSON (no markdown, no code block):
     ],
   },
 
-  VINTED: {
-    id: "VINTED",
-    name: "Vinted",
-    description: "Vendez plus vite avec des photos marketplace pro",
-    icon: ShoppingBag,
-    gradient: "from-teal-600 to-emerald-600",
-    accentColor: "#0D9488",
-    systemPrompt: `You are a professional product photographer specializing in second-hand clothing and resale marketplaces (Vinted, Depop, LeBonCoin, eBay).
-
-Your expertise:
-- Clean white backgrounds for marketplace standards
-- Fabric enhancement: remove wrinkles, smooth creases
-- Color accuracy: make fabric colors look vibrant and true-to-life
-- Stain/wear minimization: reduce visible signs of light wear
-- Product framing: center and crop tightly on the item
-- Lighting: bright, even studio lighting emulation
-
-RULES:
-- Only perform visual photo editing. Professional marketplace-ready output.
-- White or near-white background is the gold standard for resale platforms.
-- Color accuracy is critical — buyers must trust what they see.
-- Do not add text, logos, or watermarks.
-- If the instruction is unrelated to photo editing, apply clean white background and brightness correction only.`,
-
-    analyzePrompt: `You are a professional resale marketplace photographer. Analyze this product photo and identify 3 to 5 specific improvements that would help it sell faster on Vinted/Depop.
-Focus on: background cleanliness, fabric condition, color vibrancy, framing, lighting quality.
-Respond ONLY with valid JSON (no markdown, no code block):
-{"analysis":"one concise sentence describing the photo in French","suggestions":["improvement 1 in French","improvement 2 in French","improvement 3 in French"]}`,
-
-    suggestions: [
-      { label: "Fond blanc propre", prompt: "Replace the background with a pure clean white (#FFFFFF). Professional marketplace photography look. Remove all background distractions", icon: Square },
-      { label: "Retirer les plis", prompt: "Remove wrinkles, creases and folds from the clothing. Make the fabric look smooth, pressed and well-maintained", icon: Shirt },
-      { label: "Raviver les couleurs", prompt: "Enhance and saturate the fabric colors to look vibrant, rich and true-to-life. Make the item look as good as new", icon: Palette },
-      { label: "Retirer taches visibles", prompt: "Remove visible stains, marks, spots or discolorations from the item. Make it look clean and well-cared for", icon: Eraser },
-      { label: "Recadrer sur le produit", prompt: "Crop tightly around the item, center it perfectly with equal margins. Remove all distracting elements. Clean product shot", icon: Crop },
-      { label: "Retouche usure légère", prompt: "Minimize visible signs of light wear: pilling, slight fading, minor fabric damage. Keep it realistic but improved", icon: Sparkles },
-    ],
-  },
-
   SHOPIFY: {
     id: "SHOPIFY",
     name: "E-commerce",
-    description: "Photos produit premium pour votre boutique en ligne",
+    description: "Photos produit pro pour Shopify, Vinted, Etsy, Leboncoin",
     icon: Store,
     gradient: "from-blue-600 to-indigo-600",
     accentColor: "#2563EB",
-    systemPrompt: `You are a premium e-commerce product photographer working with top Shopify brands, Amazon sellers, and DTC companies.
+    systemPrompt: `You are a premium e-commerce product photographer working for Shopify brands, Amazon sellers, DTC companies AND second-hand marketplaces (Vinted, Leboncoin, Etsy, Facebook Marketplace, eBay).
 
 Your expertise:
-- Studio white background (#FFFFFF) for product listings
+- Studio white background (#FFFFFF) for product listings and marketplace standards
 - Professional drop shadows and reflections
-- Premium product lighting (highlight textures, materials)
+- Premium product lighting (highlight textures, materials, fabrics)
 - Product centering with uniform margins
 - Background removal and replacement
-- Lifestyle context shots (product in minimal setting)
-- Color accuracy for online retail
+- Fabric enhancement: remove wrinkles, smooth creases, revive colors
+- Wear/stain minimization for second-hand items (realistic, never deceptive)
+- Color accuracy for online retail and peer-to-peer resale
 
 RULES:
-- Only perform visual photo editing. Professional e-commerce quality output.
-- White background is mandatory for main product listings.
+- Only perform visual photo editing. Professional e-commerce / marketplace output.
+- White background is the gold standard for both Shopify listings and Vinted/Leboncoin/Etsy.
 - Product must be the hero — sharp, well-lit, perfectly centered.
 - Shadows must look natural and professional, not flat.
+- Color accuracy is critical for resale — buyers must trust what they see.
 - Do not add text, logos, or watermarks.
 - If the instruction is unrelated to photo editing, apply white background and studio lighting only.`,
 
-    analyzePrompt: `You are a premium e-commerce product photography expert. Analyze this product photo and identify 3 to 5 specific improvements for a professional Shopify/Amazon listing.
-Focus on: background, lighting quality, product centering, shadows, texture detail, overall professionalism.
+    analyzePrompt: `You are a premium product photography expert covering both catalog e-commerce (Shopify, Amazon) and second-hand marketplaces (Vinted, Leboncoin, Etsy). Analyze this product photo and identify 3 to 5 specific improvements.
+Focus on: background, lighting quality, product centering, shadows, texture detail, fabric condition, overall professionalism.
 Respond ONLY with valid JSON (no markdown, no code block):
 {"analysis":"one concise sentence describing the photo in French","suggestions":["improvement 1 in French","improvement 2 in French","improvement 3 in French"]}`,
 
@@ -200,6 +161,8 @@ Respond ONLY with valid JSON (no markdown, no code block):
       { label: "Ombre portée réaliste", prompt: "Add a soft, realistic drop shadow under the product. Natural studio lighting effect. Professional e-commerce standard", icon: Lightbulb },
       { label: "Éclairage produit premium", prompt: "Enhance product lighting to look premium: bright, sharp, and desirable. Highlight textures and materials as if shot in a professional studio", icon: Sparkles },
       { label: "Cadrage centré uniforme", prompt: "Center the product perfectly with equal margins on all sides. Square format, product fills 70-80% of the frame. Professional e-commerce standard", icon: Crop },
+      { label: "Retirer plis et faux-plis", prompt: "Remove wrinkles, creases and folds from clothing or soft items. Make the fabric look smooth, pressed and well-maintained", icon: Shirt },
+      { label: "Raviver les couleurs produit", prompt: "Enhance and saturate the product colors to look vibrant, rich and true-to-life. Keep color accuracy for trust", icon: Palette },
       { label: "Retirer étiquettes prix", prompt: "Remove price tags, stickers, labels, barcodes from the product. Clean, tag-free product presentation", icon: Tag },
       { label: "Mise en scène lifestyle", prompt: "Place the product in a minimal, premium lifestyle context relevant to its category. Keep product sharp in foreground, soft contextual background", icon: Box },
     ],

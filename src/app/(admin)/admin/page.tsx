@@ -54,12 +54,12 @@ export default async function AdminPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white mb-8 flex items-center gap-2">
-        <Shield className="w-6 h-6 text-accent-400" /> Administration
+      <h1 className="text-3xl md:text-4xl font-display tracking-tight text-ink mb-8 flex items-center gap-3">
+        <Shield className="w-7 h-7 text-accent" /> Administration
       </h1>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
         <AdminStat label="Utilisateurs" value={totalUsers} icon={Users} />
         <AdminStat label="Jobs total" value={totalJobs} icon={FolderOpen} />
         <AdminStat label="Photos traitées" value={totalPhotos} icon={ImageIcon} />
@@ -67,50 +67,50 @@ export default async function AdminPage() {
       </div>
 
       {/* Recent users */}
-      <h2 className="text-lg font-semibold text-white mb-4">Utilisateurs récents</h2>
-      <div className="bg-[var(--surface)] rounded-2xl border border-white/8 overflow-hidden mb-10">
+      <h2 className="font-display text-xl text-ink mb-4">Utilisateurs récents</h2>
+      <div className="bg-white rounded-2xl border border-ink/10 shadow-sm overflow-hidden mb-10">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--surface-2)] border-b border-white/8">
+          <thead className="bg-cream-2 border-b border-ink/10">
             <tr>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">Email</th>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">Credits</th>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">Jobs</th>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">Role</th>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">Date</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Email</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Crédits</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Jobs</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Rôle</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Date</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-ink/5">
             {recentUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-white/[0.02]">
+              <tr key={user.id} className="hover:bg-cream/60 transition-colors">
                 <td className="px-5 py-3">
-                  <div className="font-medium text-white">{user.email}</div>
+                  <div className="font-semibold text-ink">{user.email}</div>
                   {user.name && (
-                    <div className="text-xs text-zinc-500">{user.name}</div>
+                    <div className="text-xs text-ink-muted">{user.name}</div>
                   )}
                 </td>
-                <td className="px-5 py-3 text-zinc-300">{user.credits}</td>
-                <td className="px-5 py-3 text-zinc-300">{user._count.jobs}</td>
+                <td className="px-5 py-3 text-ink">{user.credits}</td>
+                <td className="px-5 py-3 text-ink">{user._count.jobs}</td>
                 <td className="px-5 py-3">
                   <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                       user.role === "ADMIN"
-                        ? "bg-accent-500/10 text-accent-400"
-                        : "bg-white/5 text-zinc-300"
+                        ? "bg-accent/10 text-accent"
+                        : "bg-brand/10 text-brand"
                     }`}
                   >
                     {user.role}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-zinc-500">
+                <td className="px-5 py-3 text-ink-muted">
                   {new Date(user.createdAt).toLocaleDateString("fr-FR")}
                 </td>
                 <td className="px-5 py-3 text-right">
                   <Link
                     href={`/admin/users/${user.id}`}
-                    className="text-accent-400 text-xs hover:underline"
+                    className="text-accent text-xs font-semibold hover:text-accent-hover hover:underline"
                   >
-                    Gerer
+                    Gérer
                   </Link>
                 </td>
               </tr>
@@ -120,31 +120,31 @@ export default async function AdminPage() {
       </div>
 
       {/* Recent jobs */}
-      <h2 className="text-lg font-semibold text-white mb-4">Jobs récents</h2>
-      <div className="bg-[var(--surface)] rounded-2xl border border-white/8 overflow-hidden">
+      <h2 className="font-display text-xl text-ink mb-4">Jobs récents</h2>
+      <div className="bg-white rounded-2xl border border-ink/10 shadow-sm overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--surface-2)] border-b border-white/8">
+          <thead className="bg-cream-2 border-b border-ink/10">
             <tr>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">User</th>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">Preset</th>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">Photos</th>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">Statut</th>
-              <th className="text-left px-5 py-3 font-medium text-zinc-400">Date</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Utilisateur</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Preset</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Photos</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Statut</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Date</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-ink/5">
             {recentJobs.map((job) => (
-              <tr key={job.id} className="hover:bg-white/[0.02]">
-                <td className="px-5 py-3 text-zinc-400">{job.user.email}</td>
-                <td className="px-5 py-3 font-medium text-white">{job.preset}</td>
-                <td className="px-5 py-3 text-zinc-300">{job._count.photos}</td>
+              <tr key={job.id} className="hover:bg-cream/60 transition-colors">
+                <td className="px-5 py-3 text-ink-muted">{job.user.email}</td>
+                <td className="px-5 py-3 font-semibold text-ink">{job.preset}</td>
+                <td className="px-5 py-3 text-ink">{job._count.photos}</td>
                 <td className="px-5 py-3">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClasses(job.status)}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusBadgeClasses(job.status)}`}>
                     {getStatusLabel(job.status)}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-zinc-500">
+                <td className="px-5 py-3 text-ink-muted">
                   {new Date(job.createdAt).toLocaleDateString("fr-FR")}
                 </td>
                 <td className="px-5 py-3 text-right">
@@ -171,10 +171,10 @@ function AdminStat({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="bg-[var(--surface)] rounded-2xl border border-white/8 p-5">
-      <Icon className="w-5 h-5 text-accent-400 mb-2" />
-      <div className="text-3xl font-bold text-white">{value.toLocaleString()}</div>
-      <div className="text-sm text-zinc-400 mt-0.5">{label}</div>
+    <div className="bg-white rounded-2xl border border-ink/10 shadow-sm p-5 hover:shadow-md transition-shadow">
+      <Icon className="w-5 h-5 text-accent mb-2" />
+      <div className="text-3xl font-display tracking-tight text-ink">{value.toLocaleString()}</div>
+      <div className="text-sm text-ink-muted mt-0.5">{label}</div>
     </div>
   );
 }
