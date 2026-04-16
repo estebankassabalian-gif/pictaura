@@ -86,7 +86,7 @@ const DASHBOARDS: Dashboard[] = [
       "HDR adaptatif intérieur / extérieur",
       "Verticalité et lumière corrigées",
       "Ciel bleu et jardin verdoyants",
-      "SEO Google gravé dans chaque photo",
+      "SEO gravé dans chaque photo",
     ],
     imageUrl:
       "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=85",
@@ -400,7 +400,7 @@ export default function LandingClient() {
           <div className="hidden md:flex items-center gap-8">
             {[
               ["#solutions", "Solutions"],
-              ["#seo", "SEO Google"],
+              ["#seo", "SEO"],
               ["#pricing", "Tarifs"],
               ["#faq", "FAQ"],
             ].map(([h, l]) => (
@@ -473,7 +473,7 @@ export default function LandingClient() {
             >
               <span className="text-cream">Retouche IA</span>
               <br />
-              <span className="text-cream">et SEO Google,</span>
+              <span className="text-cream">et SEO intégré,</span>
               <br />
               <span className="gradient-text">gravés dans la photo.</span>
             </motion.h1>
@@ -484,7 +484,7 @@ export default function LandingClient() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
             >
-              Pictaura retouche vos visuels et écrit le SEO Google directement
+              Pictaura retouche vos visuels et écrit le SEO directement
               dans le fichier — alt text, nom, description, schema.org. Prêt à
               publier sur Shopify, Instagram ou une annonce immobilière en 30
               secondes.
@@ -661,14 +661,14 @@ export default function LandingClient() {
               Le différenciateur Pictaura
             </span>
             <h2 className="text-display-lg font-display text-cream mb-4 leading-[1.05]">
-              Vos photos indexées par Google,
+              Vos photos optimisées pour le référencement,
               <br />
               <span className="gradient-text">gravées dans le fichier.</span>
             </h2>
             <p className="text-cream/80 leading-relaxed">
               Personne ne fait ça sur ce segment. Chaque photo Pictaura
               embarque ses métadonnées SEO directement dans le fichier —
-              Shopify et WordPress les lisent automatiquement à l&apos;import.
+              les moteurs de recherche, Shopify et WordPress les lisent automatiquement.
             </p>
           </FadeUp>
 
@@ -695,7 +695,7 @@ export default function LandingClient() {
                   {
                     Icon: Sparkles,
                     title: "Schema.org JSON-LD",
-                    desc: "Product, ImageObject, RealEstateListing — Google comprend immédiatement votre contenu.",
+                    desc: "Product, ImageObject, RealEstateListing — les algorithmes comprennent immédiatement votre contenu.",
                   },
                 ].map((item) => (
                   <li
@@ -852,7 +852,7 @@ export default function LandingClient() {
             {[
               {
                 q: "Qu'est-ce qui distingue Pictaura d'un filtre photo classique ?",
-                a: "Pictaura ne se contente pas de retoucher : il grave le SEO (alt text, nom de fichier sémantique, description, mots-clés, schema.org) directement dans le fichier. Shopify, WordPress et Google lisent ces métadonnées automatiquement. Vous gagnez la visibilité en plus de la qualité visuelle.",
+                a: "Pictaura ne se contente pas de retoucher : il grave le SEO (alt text, nom de fichier sémantique, description, mots-clés, schema.org) directement dans le fichier. Shopify, WordPress et les moteurs de recherche lisent ces métadonnées automatiquement. Vous gagnez en visibilité sur tous les algorithmes.",
               },
               {
                 q: "Comment fonctionnent les 3 plans ?",
@@ -936,7 +936,7 @@ export default function LandingClient() {
                 </span>
               </Link>
               <p className="text-cream/80 text-sm max-w-xs leading-relaxed">
-                Retouche IA et SEO Google, gravés dans vos photos. Immobilier,
+                Retouche IA et SEO, gravés dans vos photos. Immobilier,
                 réseaux sociaux, e-commerce — en 30 secondes.
               </p>
             </div>
@@ -949,7 +949,7 @@ export default function LandingClient() {
                 <ul className="space-y-3 text-cream/75">
                   {[
                     ["#solutions", "Solutions"],
-                    ["#seo", "SEO Google"],
+                    ["#seo", "SEO"],
                     ["#pricing", "Tarifs"],
                     ["#faq", "FAQ"],
                   ].map(([h, l]) => (

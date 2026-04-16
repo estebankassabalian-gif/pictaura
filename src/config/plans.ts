@@ -35,7 +35,7 @@ export const PLANS: readonly Plan[] = [
     features: [
       "300 retouches par mois",
       "Preset Immobilier : HDR, verticalité, lumière pro",
-      "Métadonnées SEO gravées pour Google (EXIF + JSON-LD)",
+      "Métadonnées SEO gravées dans l'image (EXIF + JSON-LD)",
       "Jusqu'à 50 Mo par photo — reflex pro compatible",
       "Support par email sous 24h",
       "Sans engagement, résiliable en un clic",
@@ -74,7 +74,7 @@ export const PLANS: readonly Plan[] = [
     features: [
       "300 retouches par mois",
       "Presets Shopify, Vinted, Etsy : fond blanc, cadrage produit",
-      "JSON-LD Product schema.org prêt pour Google Shopping",
+      "JSON-LD Product schema.org pour le référencement",
       "Jusqu'à 50 Mo par photo",
       "Support par email sous 24h",
       "Sans engagement, résiliable en un clic",
