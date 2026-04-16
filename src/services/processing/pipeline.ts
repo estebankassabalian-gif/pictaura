@@ -10,8 +10,8 @@ import { injectExifMetadata } from "@/services/processing/exif";
 import { AGENTS } from "@/config/agents";
 import { FREE_SIGNUP_CREDITS } from "@/config/plans";
 
-// Process up to 2 photos concurrently to cut total time in half
-const CONCURRENCY = 2;
+// Process up to 3 photos concurrently — Gemini handles parallel requests well
+const CONCURRENCY = 3;
 
 /**
  * Traite toutes les photos d'un job via Gemini IA.
