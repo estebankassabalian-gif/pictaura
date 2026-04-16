@@ -144,15 +144,15 @@ export default async function BillingPage({
           Aucune transaction pour l&apos;instant.
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-ink/10 overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-2xl border border-ink/10 overflow-x-auto shadow-sm">
+          <table className="w-full text-sm min-w-[480px]">
             <thead className="bg-cream-2 border-b border-ink/10">
               <tr>
-                <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Date</th>
-                <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Type</th>
-                <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Description</th>
-                <th className="text-right px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Crédits</th>
-                <th className="text-right px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Solde</th>
+                <th className="text-left px-4 md:px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Date</th>
+                <th className="text-left px-4 md:px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Type</th>
+                <th className="text-left px-4 md:px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs hidden sm:table-cell">Description</th>
+                <th className="text-right px-4 md:px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Crédits</th>
+                <th className="text-right px-4 md:px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Solde</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/5">
@@ -161,23 +161,23 @@ export default async function BillingPage({
                 const Icon = meta.icon;
                 return (
                   <tr key={tx.id} className="hover:bg-cream/60 transition-colors">
-                    <td className="px-5 py-3 text-ink-muted whitespace-nowrap text-xs">
+                    <td className="px-4 md:px-5 py-3 text-ink-muted whitespace-nowrap text-xs">
                       {new Date(tx.createdAt).toLocaleDateString("fr-FR", {
-                        day: "2-digit", month: "short", year: "numeric"
+                        day: "2-digit", month: "short"
                       })}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-4 md:px-5 py-3">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${meta.color}`}>
                         <Icon className="w-3 h-3" /> {meta.label}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-ink-muted text-xs max-w-xs truncate">
+                    <td className="px-4 md:px-5 py-3 text-ink-muted text-xs max-w-xs truncate hidden sm:table-cell">
                       {tx.description ?? "—"}
                     </td>
-                    <td className={`px-5 py-3 text-right font-bold ${tx.amount > 0 ? "text-accent" : "text-ink-muted"}`}>
+                    <td className={`px-4 md:px-5 py-3 text-right font-bold ${tx.amount > 0 ? "text-accent" : "text-ink-muted"}`}>
                       {tx.amount > 0 ? "+" : ""}{tx.amount}
                     </td>
-                    <td className="px-5 py-3 text-right text-ink-muted text-xs">
+                    <td className="px-4 md:px-5 py-3 text-right text-ink-muted text-xs">
                       {tx.balanceAfter}
                     </td>
                   </tr>

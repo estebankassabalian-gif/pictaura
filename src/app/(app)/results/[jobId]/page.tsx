@@ -553,12 +553,12 @@ export default function ResultsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-3xl md:text-4xl font-display tracking-tight text-ink">
+          <h1 className="text-2xl md:text-4xl font-display tracking-tight text-ink">
             {PRESET_LABELS[job.preset as keyof typeof PRESET_LABELS] ?? job.preset}
           </h1>
-          <p className="text-ink-muted mt-1">
+          <p className="text-ink-muted mt-1 text-sm">
             {completedPhotos.length}/{job.photos.length} photos traitées
           </p>
         </div>
@@ -566,7 +566,7 @@ export default function ResultsPage() {
           <button
             onClick={completedPhotos.length === 1 ? () => downloadPhoto(completedPhotos[0].id) : handleDownloadAll}
             disabled={downloading}
-            className="flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shadow-md"
+            className="flex items-center gap-2 bg-accent text-white px-4 md:px-5 py-2.5 rounded-xl font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shadow-md text-sm self-start sm:self-auto"
           >
             <Download className="w-4 h-4" />
             {downloading ? "Téléchargement..." : completedPhotos.length === 1 ? "Télécharger la photo" : `Télécharger les ${completedPhotos.length} photos`}
@@ -696,8 +696,8 @@ export default function ResultsPage() {
 
       {/* Slider + SEO + Retouche */}
       {currentPhoto && (
-        <div className="bg-white rounded-2xl border border-ink/10 p-6 mb-6 shadow-sm">
-          <h2 className="font-display text-lg text-ink mb-4 truncate">{currentPhoto.fileName}</h2>
+        <div className="bg-white rounded-2xl border border-ink/10 p-4 md:p-6 mb-6 shadow-sm">
+          <h2 className="font-display text-base md:text-lg text-ink mb-4 truncate">{currentPhoto.fileName}</h2>
 
           {currentPhoto.status === "COMPLETED" && currentPhoto.originalUrl && currentPhoto.processedUrl ? (
             <>

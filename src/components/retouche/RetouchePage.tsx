@@ -246,7 +246,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
           <div
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all mb-4 bg-white ${
+            className={`border-2 border-dashed rounded-2xl p-6 md:p-12 text-center cursor-pointer transition-all mb-4 bg-white ${
               isDragActive
                 ? "border-accent bg-accent/5"
                 : "border-ink/15 hover:border-accent hover:bg-cream-2"

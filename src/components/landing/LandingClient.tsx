@@ -107,9 +107,9 @@ const DASHBOARDS: Dashboard[] = [
       "Caption et alt text accrocheurs",
     ],
     imageUrl:
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&q=85",
-    beforeFilter: "grayscale(30%) brightness(0.75) contrast(0.85) saturate(0.5)",
-    afterFilter: "brightness(1.12) saturate(1.38) contrast(1.12)",
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&q=85",
+    beforeFilter: "grayscale(30%) brightness(0.78) contrast(0.85) saturate(0.5)",
+    afterFilter: "brightness(1.1) saturate(1.35) contrast(1.1)",
   },
   {
     planId: "ecommerce",

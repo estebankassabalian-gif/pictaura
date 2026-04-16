@@ -69,16 +69,16 @@ export default async function DashboardPage({
 
       {/* Bannière succès paiement */}
       {payment === "success" && (
-        <div className="bg-sun/15 border border-sun/40 text-ink rounded-2xl p-6 mb-8 flex items-center justify-between gap-4">
+        <div className="bg-sun/15 border border-sun/40 text-ink rounded-2xl p-4 md:p-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <p className="font-display text-lg mb-1">Abonnement activé</p>
+            <p className="font-display text-base md:text-lg mb-1">Abonnement activé</p>
             <p className="text-ink-muted text-sm">
-              Vos crédits mensuels ont été ajoutés à votre compte. Commencez à optimiser vos photos.
+              Vos crédits mensuels ont été ajoutés à votre compte.
             </p>
           </div>
           <Link
             href="/immobilier"
-            className="bg-accent text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-hover transition-colors whitespace-nowrap flex-shrink-0"
+            className="bg-accent text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-hover transition-colors whitespace-nowrap flex-shrink-0 text-center"
           >
             Commencer
           </Link>
@@ -87,18 +87,18 @@ export default async function DashboardPage({
 
       {/* Onboarding welcome */}
       {welcome === "true" && (
-        <div className="bg-accent/10 border border-accent/30 text-ink rounded-2xl p-6 mb-8 flex items-center justify-between gap-4">
+        <div className="bg-accent/10 border border-accent/30 text-ink rounded-2xl p-4 md:p-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <p className="font-display text-lg mb-1">
+            <p className="font-display text-base md:text-lg mb-1">
               Bienvenue sur Pictaura, {firstName} !
             </p>
             <p className="text-ink-muted text-sm">
-              Vous avez reçu <strong className="text-accent">{session.user.credits} crédits gratuits</strong> pour tester le service.
+              Vous avez reçu <strong className="text-accent">{session.user.credits} crédits gratuits</strong> pour tester.
             </p>
           </div>
           <Link
             href="/immobilier"
-            className="bg-accent text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-hover transition-colors whitespace-nowrap flex-shrink-0"
+            className="bg-accent text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-hover transition-colors whitespace-nowrap flex-shrink-0 text-center"
           >
             Commencer
           </Link>
@@ -114,21 +114,21 @@ export default async function DashboardPage({
 
       {/* Alerte low credits */}
       {!isAdmin && session.user.credits < 3 && (
-        <div className="bg-sun/15 border border-sun/40 rounded-xl p-5 mb-8 flex items-center justify-between">
+        <div className="bg-sun/15 border border-sun/40 rounded-xl p-4 md:p-5 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-accent flex-shrink-0" />
             <div>
-              <p className="font-semibold text-ink">
-                Il vous reste seulement {session.user.credits} crédit(s).
+              <p className="font-semibold text-ink text-sm md:text-base">
+                Il vous reste {session.user.credits} crédit(s).
               </p>
-              <p className="text-sm text-ink-muted mt-0.5">
+              <p className="text-xs md:text-sm text-ink-muted mt-0.5">
                 Abonnez-vous pour continuer à optimiser vos photos.
               </p>
             </div>
           </div>
           <Link
             href="/billing"
-            className="bg-accent text-white px-4 py-2 rounded-lg font-semibold hover:bg-accent-hover transition-colors whitespace-nowrap"
+            className="bg-accent text-white px-4 py-2 rounded-lg font-semibold hover:bg-accent-hover transition-colors whitespace-nowrap text-sm text-center"
           >
             Voir les abonnements
           </Link>
@@ -150,35 +150,35 @@ export default async function DashboardPage({
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-ink/10 overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-2xl border border-ink/10 overflow-x-auto shadow-sm">
+          <table className="w-full text-sm min-w-[500px]">
             <thead className="bg-cream-2 border-b border-ink/10">
               <tr>
-                <th className="text-left px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Plateforme</th>
-                <th className="text-left px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Photos</th>
-                <th className="text-left px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Statut</th>
-                <th className="text-left px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Date</th>
-                <th className="px-6 py-3"></th>
+                <th className="text-left px-4 md:px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Plateforme</th>
+                <th className="text-left px-4 md:px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Photos</th>
+                <th className="text-left px-4 md:px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Statut</th>
+                <th className="text-left px-4 md:px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs hidden sm:table-cell">Date</th>
+                <th className="px-4 md:px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/5">
               {recentJobs.map((job) => (
                 <tr key={job.id} className="hover:bg-cream/60 transition-colors">
-                  <td className="px-6 py-4 font-semibold text-ink">
+                  <td className="px-4 md:px-6 py-3 md:py-4 font-semibold text-ink">
                     {PRESET_LABELS[job.preset as Preset]}
                   </td>
-                  <td className="px-6 py-4 text-ink-muted">
+                  <td className="px-4 md:px-6 py-3 md:py-4 text-ink-muted">
                     {job._count.photos} photo(s)
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 md:px-6 py-3 md:py-4">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClasses(job.status)}`}>
                       {getStatusLabel(job.status)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-ink-muted">
+                  <td className="px-4 md:px-6 py-3 md:py-4 text-ink-muted hidden sm:table-cell">
                     {new Date(job.createdAt).toLocaleDateString("fr-FR")}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 md:px-6 py-3 md:py-4 text-right">
                     {(job.status === "COMPLETED" || job.status === "PROCESSING" || job.status === "PENDING") && (
                       <Link
                         href={`/results/${job.id}`}
