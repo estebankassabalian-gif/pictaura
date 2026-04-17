@@ -48,16 +48,41 @@ export async function POST(req: NextRequest) {
         mode: string;
       };
 
+      console.log(`📩 checkout.session.completed reçu — mode: ${session.mode}, customer: ${session.customer}, metadata:`, session.metadata);
+
       if (session.mode !== "subscription") break;
       const planFromMeta = resolvePlan(session.metadata?.planId);
 
-      const dbUser = session.customer
-        ? await prisma.user.findFirst({ where: { stripeCustomerId: session.customer }, select: { id: true } })
-        : null;
-      const userId = dbUser?.id;
+      // Résoudre l'utilisateur : d'abord par stripeCustomerId, sinon par metadata.userId
+      let userId: string | undefined;
+
+      if (session.customer) {
+        const dbUser = await prisma.user.findFirst({
+          where: { stripeCustomerId: session.customer },
+          select: { id: true },
+        });
+        userId = dbUser?.id;
+      }
+
+      // Fallback : utiliser le userId des metadata si le lookup customer échoue
+      if (!userId && session.metadata?.userId) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: session.metadata.userId },
+          select: { id: true },
+        });
+        if (dbUser) {
+          userId = dbUser.id;
+          // Mettre à jour le stripeCustomerId pour les prochains événements
+          await prisma.user.update({
+            where: { id: userId },
+            data: { stripeCustomerId: session.customer },
+          });
+          console.log(`🔗 stripeCustomerId ${session.customer} associé au user ${userId} via metadata fallback`);
+        }
+      }
 
       if (!userId) {
-        console.error("Impossible de résoudre l'utilisateur pour le customer:", session.customer);
+        console.error("❌ Impossible de résoudre l'utilisateur — customer:", session.customer, "metadata:", session.metadata);
         break;
       }
 
@@ -84,7 +109,7 @@ export async function POST(req: NextRequest) {
         );
         console.log(`✅ Abonnement ${planFromMeta.name} activé pour ${userId} — ${planFromMeta.creditsPerMonth} crédits ajoutés`);
       } catch (err) {
-        console.error("Erreur ajout crédits abonnement:", err);
+        console.error("❌ Erreur ajout crédits abonnement:", err);
       }
       break;
     }

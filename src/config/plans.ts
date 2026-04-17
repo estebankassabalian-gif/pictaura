@@ -1,5 +1,5 @@
 // ─── 3 Plans Pictaura — Immobilier / Réseaux / E-commerce ─────────────────
-// Chaque plan = 49,90 €/mois, 300 retouches/mois.
+// Chaque plan = 49,90 €/mois, 500 retouches/mois.
 // Créer 3 produits Stripe (type recurring, interval month), puis coller les
 // price_xxx dans .env :
 //   STRIPE_PRICE_IMMOBILIER=price_xxx
@@ -26,14 +26,14 @@ export const PLANS: readonly Plan[] = [
     id: "immobilier",
     name: "Immobilier",
     tagline: "Annonces qui se vendent plus vite",
-    creditsPerMonth: 300,
+    creditsPerMonth: 500,
     priceEurCents: 4990,
     priceDisplay: "49,90€/mois",
     stripePriceEnvKey: "STRIPE_PRICE_IMMOBILIER",
     preset: "IMMOBILIER",
     accentColor: "#F87005",
     features: [
-      "300 retouches par mois",
+      "500 retouches par mois",
       "Preset Immobilier : HDR, verticalité, lumière pro",
       "Métadonnées SEO gravées dans l'image (EXIF + JSON-LD)",
       "Jusqu'à 50 Mo par photo — reflex pro compatible",
@@ -45,14 +45,14 @@ export const PLANS: readonly Plan[] = [
     id: "social",
     name: "Réseaux sociaux",
     tagline: "Contenu qui capte le regard",
-    creditsPerMonth: 300,
+    creditsPerMonth: 500,
     priceEurCents: 4990,
     priceDisplay: "49,90€/mois",
     stripePriceEnvKey: "STRIPE_PRICE_SOCIAL",
     preset: "INSTAGRAM",
     accentColor: "#E1306C",
     features: [
-      "300 retouches par mois",
+      "500 retouches par mois",
       "Formats prêts à publier : 1:1 feed, 4:5 portrait, 9:16 Stories",
       "20 hashtags FR + EN générés par photo",
       "Alt text et caption accrocheurs injectés en EXIF",
@@ -65,14 +65,14 @@ export const PLANS: readonly Plan[] = [
     id: "ecommerce",
     name: "E-commerce",
     tagline: "Fiches produit prêtes à publier",
-    creditsPerMonth: 300,
+    creditsPerMonth: 500,
     priceEurCents: 4990,
     priceDisplay: "49,90€/mois",
     stripePriceEnvKey: "STRIPE_PRICE_ECOMMERCE",
     preset: "SHOPIFY",
     accentColor: "#09B884",
     features: [
-      "300 retouches par mois",
+      "500 retouches par mois",
       "Presets Shopify, Vinted, Etsy : fond blanc, cadrage produit",
       "JSON-LD Product schema.org pour le référencement",
       "Jusqu'à 50 Mo par photo",

@@ -33,21 +33,21 @@ export function SoftwareApplicationJsonLd() {
           name: "Immobilier",
           price: "49.90",
           priceCurrency: "EUR",
-          description: "300 retouches/mois — annonces immobilières optimisées par IA",
+          description: "500 retouches/mois — annonces immobilières optimisées par IA",
         },
         {
           "@type": "Offer",
           name: "Réseaux sociaux",
           price: "49.90",
           priceCurrency: "EUR",
-          description: "300 retouches/mois — contenus Instagram, TikTok, Stories",
+          description: "500 retouches/mois — contenus Instagram, TikTok, Stories",
         },
         {
           "@type": "Offer",
           name: "E-commerce",
           price: "49.90",
           priceCurrency: "EUR",
-          description: "300 retouches/mois — photos produit Shopify, Vinted, Etsy",
+          description: "500 retouches/mois — photos produit Shopify, Vinted, Etsy",
         },
       ],
     },
@@ -109,7 +109,7 @@ export function FaqJsonLd() {
         name: "Pictaura est-il gratuit ?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Oui, Pictaura offre 5 crédits gratuits à l'inscription, sans carte bancaire requise. 1 crédit = 1 photo traitée. Ensuite, des abonnements à 49,90€/mois (300 retouches) sont disponibles pour l'immobilier, les réseaux sociaux ou l'e-commerce.",
+          text: "Oui, Pictaura offre 5 crédits gratuits à l'inscription, sans carte bancaire requise. 1 crédit = 1 photo traitée. Ensuite, des abonnements à 49,90€/mois (500 retouches) sont disponibles pour l'immobilier, les réseaux sociaux ou l'e-commerce.",
         },
       },
       {

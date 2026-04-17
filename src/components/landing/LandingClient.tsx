@@ -797,7 +797,7 @@ export default function LandingClient() {
               Tarifs transparents
             </span>
             <h2 className="text-display-lg font-display text-ink mb-4 leading-[1.05]">
-              49,90€/mois, 300 retouches,
+              49,90€/mois, 500 retouches,
               <br />
               <span className="gradient-text">choisissez votre angle.</span>
             </h2>
@@ -856,7 +856,7 @@ export default function LandingClient() {
               },
               {
                 q: "Comment fonctionnent les 3 plans ?",
-                a: "Chaque plan coûte 49,90€/mois et inclut 300 retouches mensuelles. Ils activent un preset spécialisé : Immobilier (HDR, verticalité), Réseaux sociaux (formats Insta, filtre cinématique) ou E-commerce (fond blanc Shopify, ombre douce). Vous choisissez celui qui correspond à votre métier.",
+                a: "Chaque plan coûte 49,90€/mois et inclut 500 retouches mensuelles. Ils activent un preset spécialisé : Immobilier (HDR, verticalité), Réseaux sociaux (formats Insta, filtre cinématique) ou E-commerce (fond blanc Shopify, ombre douce). Vous choisissez celui qui correspond à votre métier.",
               },
               {
                 q: "Puis-je tester avant de payer ?",
