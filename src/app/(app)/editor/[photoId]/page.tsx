@@ -167,7 +167,7 @@ export default function EditorPage() {
 
           <div className="rounded-xl overflow-hidden border border-white/8">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={state.resultUrl} alt="Résultat retouche" className="w-full" />
+            <img src={state.resultUrl} alt="Résultat retouche" className="w-full" draggable={false} onContextMenu={(e) => e.preventDefault()} />
           </div>
 
           <div className="flex gap-3">
@@ -196,7 +196,7 @@ export default function EditorPage() {
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={state.resultUrl} alt="Résultat retouche" className="w-full rounded-xl border border-white/8" />
+          <img src={state.resultUrl} alt="Résultat retouche" className="w-full rounded-xl border border-white/8" draggable={false} onContextMenu={(e) => e.preventDefault()} />
 
           <div className="flex gap-3">
             <a

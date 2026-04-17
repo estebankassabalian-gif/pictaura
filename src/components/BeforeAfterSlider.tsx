@@ -53,8 +53,9 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl, alt = "" }: BeforeAfter
       <img
         src={afterUrl}
         alt={`Après — ${alt}`}
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
       />
 
       {/* Image AVANT (clippée à gauche du slider) */}
@@ -66,9 +67,10 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl, alt = "" }: BeforeAfter
         <img
           src={beforeUrl}
           alt={`Avant — ${alt}`}
-          className="absolute inset-0 h-full object-cover"
+          className="absolute inset-0 h-full object-cover pointer-events-none"
           style={{ width: containerRef.current?.getBoundingClientRect().width ?? "100%" }}
           draggable={false}
+          onContextMenu={(e) => e.preventDefault()}
         />
       </div>
 

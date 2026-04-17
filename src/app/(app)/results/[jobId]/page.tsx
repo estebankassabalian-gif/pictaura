@@ -325,7 +325,7 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
               <div className="relative">
                 <p className="absolute top-2 left-2 bg-accent text-white text-xs px-2 py-0.5 rounded-full z-10">Apres</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={state.resultUrl} alt="Apres retouche" className="w-full aspect-video object-cover" />
+                <img src={state.resultUrl} alt="Apres retouche" className="w-full aspect-video object-cover" draggable={false} onContextMenu={(e) => e.preventDefault()} />
               </div>
             </div>
           </div>
@@ -377,7 +377,7 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={state.resultUrl} alt="Résultat retouche" className="w-full rounded-xl border border-ink/10" />
+          <img src={state.resultUrl} alt="Résultat retouche" className="w-full rounded-xl border border-ink/10" draggable={false} onContextMenu={(e) => e.preventDefault()} />
 
           <button
             onClick={handleAffinement}
