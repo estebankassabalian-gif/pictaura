@@ -463,5 +463,5 @@ function buildEditPrompt(systemPrompt: string, instruction: string): string {
     ? `Professional photo editing context: ${expertiseLines}. `
     : "";
 
-  return `${context}Apply this edit to the photo: ${instruction}. Photorealistic, professional quality, no text, no watermarks, preserve the original scene and composition as much as possible.`;
+  return `${context}Apply this edit to the photo: ${instruction}. IMPORTANT: Keep the result strictly photorealistic. Do NOT generate, invent, or hallucinate any element that is not already in the original photo (no fake views through windows, no fake scenery, no fake objects). Only enhance what exists. Professional quality, no text, no watermarks, preserve the original scene and composition.`;
 }
