@@ -791,12 +791,7 @@ export default function ResultsPage() {
                     <p className="text-xs text-ink-muted">{currentPhoto.photoScoreReport}</p>
                   )}
                 </div>
-              ) : (
-                <div className="bg-cream-2 border border-ink/10 rounded-xl p-4 flex items-center gap-3">
-                  <Loader2 className="w-4 h-4 text-ink-muted animate-spin" />
-                  <span className="text-sm text-ink-muted">Score et métadonnées SEO en cours de calcul...</span>
-                </div>
-              )}
+              ) : null}
             </div>
           )}
 
