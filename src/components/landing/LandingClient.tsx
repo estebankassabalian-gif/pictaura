@@ -421,7 +421,7 @@ export default function LandingClient() {
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className={`text-sm font-bold transition-colors hidden md:block ${
+              className={`text-sm font-bold transition-colors ${
                 scrolled
                   ? "text-ink-muted hover:text-brand"
                   : "text-cream/85 hover:text-sun"
