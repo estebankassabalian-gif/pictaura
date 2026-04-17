@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PRESET_LABELS } from "@/config/plans";
 import { Preset } from "@prisma/client";
 import { getStatusBadgeClasses, getStatusLabel } from "@/config/agents";
-import { ImageIcon, CreditCard, FolderOpen, AlertTriangle, Plus, ArrowRight } from "lucide-react";
+import { ImageIcon, CreditCard, FolderOpen, AlertTriangle, Plus, ArrowRight, CheckCircle2 } from "lucide-react";
 import VoronoiBackground from "@/components/brand/VoronoiBackground";
 
 export default async function DashboardPage({
@@ -40,6 +40,17 @@ export default async function DashboardPage({
   const isAdmin = session.user.role === "ADMIN";
   const firstName = session.user.name?.split(" ")[0] ?? "";
 
+  // Dernier preset utilisé → lien "Nouvelle retouche"
+  const lastPreset = recentJobs[0]?.preset as Preset | undefined;
+  const presetRoutes: Record<string, string> = {
+    IMMOBILIER: "/immobilier",
+    AIRBNB: "/immobilier",
+    INSTAGRAM: "/instagram",
+    SHOPIFY: "/shopify",
+    VINTED: "/shopify",
+  };
+  const newRetoucheHref = lastPreset ? (presetRoutes[lastPreset] ?? "/immobilier") : "/immobilier";
+
   return (
     <div>
       {/* Hero salutation — bannière voronoï subtile */}
@@ -59,7 +70,7 @@ export default async function DashboardPage({
             </p>
           </div>
           <Link
-            href="/immobilier"
+            href={newRetoucheHref}
             className="inline-flex items-center gap-2 bg-accent text-white px-5 py-3 rounded-xl font-semibold hover:bg-accent-hover transition-colors shadow-md self-start md:self-auto"
           >
             <Plus className="w-4 h-4" /> Nouvelle retouche
@@ -67,21 +78,30 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      {/* Bannière succès paiement */}
+      {/* Écran succès paiement */}
       {payment === "success" && (
-        <div className="bg-sun/15 border border-sun/40 text-ink rounded-2xl p-4 md:p-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div>
-            <p className="font-display text-base md:text-lg mb-1">Abonnement activé</p>
-            <p className="text-ink-muted text-sm">
-              Vos crédits mensuels ont été ajoutés à votre compte.
+        <div className="relative overflow-hidden bg-white border border-sun/40 rounded-3xl p-8 md:p-12 mb-8 text-center shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-sun/10 via-transparent to-accent/5" aria-hidden="true" />
+          <div className="relative z-10">
+            <div className="w-16 h-16 bg-sun/20 rounded-full flex items-center justify-center mx-auto mb-5">
+              <CheckCircle2 className="w-8 h-8 text-accent" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-display text-ink mb-3">
+              Bienvenue dans Pictaura Pro !
+            </h2>
+            <p className="text-ink-muted text-base md:text-lg mb-2">
+              Vos <strong className="text-accent">{session.user.credits} crédits</strong> sont prêts.
             </p>
+            <p className="text-ink-muted text-sm mb-8">
+              1 crédit = 1 photo optimisée avec retouche IA, métadonnées SEO et score qualité.
+            </p>
+            <Link
+              href={newRetoucheHref}
+              className="inline-flex items-center gap-2 bg-accent text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-accent-hover transition-colors shadow-md text-base"
+            >
+              Commencer ma première retouche <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
-          <Link
-            href="/immobilier"
-            className="bg-accent text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-hover transition-colors whitespace-nowrap flex-shrink-0 text-center"
-          >
-            Commencer
-          </Link>
         </div>
       )}
 
@@ -97,7 +117,7 @@ export default async function DashboardPage({
             </p>
           </div>
           <Link
-            href="/immobilier"
+            href={newRetoucheHref}
             className="bg-accent text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-hover transition-colors whitespace-nowrap flex-shrink-0 text-center"
           >
             Commencer
@@ -143,7 +163,7 @@ export default async function DashboardPage({
           <ImageIcon className="w-12 h-12 text-ink-muted mx-auto mb-4" />
           <p className="text-ink-muted mb-4">Vous n&apos;avez pas encore effectué de retouche.</p>
           <Link
-            href="/immobilier"
+            href={newRetoucheHref}
             className="bg-accent text-white px-6 py-3 rounded-xl font-semibold hover:bg-accent-hover transition-colors inline-block shadow-md"
           >
             Commencer ma première retouche

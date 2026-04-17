@@ -472,10 +472,15 @@ export default function ResultsPage() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  const [downloadToast, setDownloadToast] = useState("");
+
   async function downloadPhoto(photoId: string) {
     setDownloading(true);
+    setDownloadToast("");
     try {
       await downloadSinglePhoto(photoId);
+      setDownloadToast("Photo téléchargée");
+      setTimeout(() => setDownloadToast(""), 3000);
     } catch {
       setActionError("Erreur lors du téléchargement");
     } finally {
@@ -487,6 +492,7 @@ export default function ResultsPage() {
     if (!job) return;
     setDownloading(true);
     setActionError("");
+    setDownloadToast("");
     try {
       const completed = job.photos.filter((p) => p.status === "COMPLETED");
       for (let i = 0; i < completed.length; i++) {
@@ -496,6 +502,8 @@ export default function ResultsPage() {
           await new Promise((r) => setTimeout(r, 800));
         }
       }
+      setDownloadToast(`${completed.length} photo(s) téléchargée(s)`);
+      setTimeout(() => setDownloadToast(""), 3000);
     } catch {
       setActionError("Erreur lors du téléchargement de certaines photos");
     } finally {
@@ -579,6 +587,14 @@ export default function ResultsPage() {
         <div className="bg-accent/10 border border-accent/30 text-accent text-sm rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
           <span>{actionError}</span>
           <button onClick={() => setActionError("")} className="text-accent/60 hover:text-accent ml-4">✕</button>
+        </div>
+      )}
+
+      {/* Download toast */}
+      {downloadToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-ink text-cream px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 text-sun" />
+          <span className="text-sm font-medium">{downloadToast}</span>
         </div>
       )}
 
@@ -758,7 +774,7 @@ export default function ResultsPage() {
           {/* Score + SEO */}
           {currentPhoto.status === "COMPLETED" && (
             <div className="mt-6 space-y-3">
-              {currentPhoto.photoScore !== null && (
+              {currentPhoto.photoScore !== null ? (
                 <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm font-semibold text-accent">
@@ -775,8 +791,12 @@ export default function ResultsPage() {
                     <p className="text-xs text-ink-muted">{currentPhoto.photoScoreReport}</p>
                   )}
                 </div>
+              ) : (
+                <div className="bg-cream-2 border border-ink/10 rounded-xl p-4 flex items-center gap-3">
+                  <Loader2 className="w-4 h-4 text-ink-muted animate-spin" />
+                  <span className="text-sm text-ink-muted">Score et métadonnées SEO en cours de calcul...</span>
+                </div>
               )}
-
             </div>
           )}
 
