@@ -72,8 +72,7 @@ export default function PolitiqueConfidentialitePage() {
             <ul className="text-ink-muted space-y-2 list-disc list-inside">
               <li><strong>Cloudflare R2</strong> — stockage des photos (USA, clauses contractuelles types)</li>
               <li><strong>Stripe</strong> — paiements (USA, certifié PCI-DSS)</li>
-              <li><strong>Replicate</strong> — traitement IA des photos (USA)</li>
-              <li><strong>Anthropic</strong> — génération de texte SEO (USA)</li>
+              <li><strong>Google (Gemini)</strong> — retouche IA et génération de métadonnées SEO (USA, clauses contractuelles types)</li>
               <li><strong>Resend</strong> — envoi d'emails transactionnels (USA)</li>
             </ul>
           </section>

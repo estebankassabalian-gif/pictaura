@@ -125,7 +125,7 @@ export function FaqJsonLd() {
         name: "Comment fonctionne la retouche sur instruction ?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "La retouche sur instruction permet de modifier une photo en langage naturel. Par exemple : 'Retire le canapé rouge', 'Débâche la piscine', 'Nettoie les taches sur le vêtement'. Pictaura utilise Claude (IA Anthropic) et FLUX inpainting pour exécuter la modification automatiquement en 30 à 60 secondes.",
+          text: "La retouche sur instruction permet de modifier une photo en langage naturel. Par exemple : 'Retire le canapé rouge', 'Débâche la piscine', 'Nettoie les taches sur le vêtement'. Pictaura utilise l'IA générative pour exécuter la modification automatiquement en 30 à 60 secondes.",
         },
       },
       {
