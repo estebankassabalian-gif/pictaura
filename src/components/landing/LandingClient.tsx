@@ -668,7 +668,7 @@ export default function LandingClient() {
             <p className="text-cream/80 leading-relaxed">
               Personne ne fait ça sur ce segment. Chaque photo Pictaura
               embarque ses métadonnées SEO directement dans le fichier —
-              les moteurs de recherche, Shopify et WordPress les lisent automatiquement.
+              les algorithmes référencent mieux vos photos sur toutes les plateformes.
             </p>
           </FadeUp>
 
@@ -852,7 +852,7 @@ export default function LandingClient() {
             {[
               {
                 q: "Qu'est-ce qui distingue Pictaura d'un filtre photo classique ?",
-                a: "Pictaura ne se contente pas de retoucher : il grave le SEO (alt text, nom de fichier sémantique, description, mots-clés, schema.org) directement dans le fichier. Shopify, WordPress et les moteurs de recherche lisent ces métadonnées automatiquement. Vous gagnez en visibilité sur tous les algorithmes.",
+                a: "Pictaura ne se contente pas de retoucher : il grave le SEO (alt text, nom de fichier sémantique, description, mots-clés, schema.org) directement dans le fichier. Les algorithmes référencent mieux vos photos sur toutes les plateformes.",
               },
               {
                 q: "Comment fonctionnent les 3 plans ?",
