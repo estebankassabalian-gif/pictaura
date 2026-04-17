@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     siteName: "Pictaura",
     title: "Pictaura — Des photos à la hauteur de votre vision",
     description:
-      "La retouche photo simple mais experte, centrée sur le regard humain. En 30 secondes, par l'IA. 5 crédits gratuits à l'inscription.",
+      "La retouche photo simple mais experte, centrée sur le regard humain. En quelques secondes, par l'IA. 5 crédits gratuits à l'inscription.",
     images: [
       {
         url: "/og-image.svg",
@@ -79,7 +79,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Pictaura — Des photos à la hauteur de votre vision",
     description:
-      "La retouche photo simple mais experte, centrée sur le regard humain. 30 secondes, par l'IA.",
+      "La retouche photo simple mais experte, centrée sur le regard humain. En quelques secondes, par l'IA.",
     images: ["/og-image.svg"],
     creator: "@pictaura_fr",
   },

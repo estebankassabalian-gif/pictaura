@@ -486,8 +486,8 @@ export default function LandingClient() {
             >
               Pictaura retouche vos visuels et écrit le SEO directement
               dans le fichier — alt text, nom, description, schema.org. Prêt à
-              publier sur Shopify, Instagram ou une annonce immobilière en 30
-              secondes.
+              publier sur Shopify, Instagram ou une annonce immobilière en
+              quelques secondes.
             </motion.p>
 
             <motion.div
@@ -513,7 +513,7 @@ export default function LandingClient() {
             >
               {[
                 "Immobilier · Social · E-commerce",
-                "Résultat en 30 secondes",
+                "Résultat en quelques secondes",
                 "Sans carte bancaire",
               ].map((t) => (
                 <span
@@ -868,7 +868,7 @@ export default function LandingClient() {
               },
               {
                 q: "Quels formats et tailles sont acceptés ?",
-                a: "JPEG, PNG, WEBP, HEIC et HEIF. Jusqu'à 50 Mo par photo — compatible avec les reflex professionnels. 5 photos maximum par lot pour garder un résultat optimal en 30 secondes.",
+                a: "JPEG, PNG, WEBP, HEIC et HEIF. Jusqu'à 50 Mo par photo — compatible avec les reflex professionnels. 5 photos maximum par lot pour garder un résultat optimal en moins d'une minute.",
               },
               {
                 q: "Puis-je annuler mon abonnement ?",
@@ -919,7 +919,7 @@ export default function LandingClient() {
             <ArrowRight className="w-5 h-5" />
           </Link>
           <p className="text-cream/60 text-xs mt-6">
-            Sans carte bancaire · Sans engagement · Résultat en 30 secondes
+            Sans carte bancaire · Sans engagement · Résultat en quelques secondes
           </p>
         </FadeUp>
       </section>
@@ -937,7 +937,7 @@ export default function LandingClient() {
               </Link>
               <p className="text-cream/80 text-sm max-w-xs leading-relaxed">
                 Retouche IA et SEO, gravés dans vos photos. Immobilier,
-                réseaux sociaux, e-commerce — en 30 secondes.
+                réseaux sociaux, e-commerce — en quelques secondes.
               </p>
             </div>
 

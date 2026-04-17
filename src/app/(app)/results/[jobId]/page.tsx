@@ -587,8 +587,8 @@ export default function ResultsPage() {
         const processingPhotos = job.photos.filter((p) => p.status === "PROCESSING");
         const pendingPhotos = job.photos.filter((p) => p.status === "PENDING");
         const remaining = processingPhotos.length + pendingPhotos.length;
-        // ~25s per photo, 3 concurrent = roughly 9s per photo effective
-        const estimatedSeconds = Math.round(remaining * 9);
+        // ~30-45s per photo, 3 concurrent = roughly 12s per photo effective
+        const estimatedSeconds = Math.round(remaining * 12);
 
         return (
           <div className="bg-white border border-ink/10 rounded-xl p-5 mb-6 shadow-sm">
