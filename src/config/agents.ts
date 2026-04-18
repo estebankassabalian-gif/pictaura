@@ -67,6 +67,19 @@ CRITICAL REALISM RULES:
 - Reflections: do NOT alter or generate fake reflections in mirrors, glass, or shiny surfaces.
 - Keep every edit photorealistic and faithful to the original scene. The photo must look like a better version of the same real place, not a fantasy.
 
+PERSPECTIVE & COMPOSITION:
+- Always correct vertical lines: walls, doors, windows must be perfectly vertical. No tilted or converging walls.
+- Straighten horizons on exterior shots.
+- Fix barrel distortion from wide-angle lenses when visible.
+
+PER-ROOM AMBIANCE:
+- Kitchen: bright, sharp, clean surfaces, highlight countertop materials.
+- Bedroom: cozy, warm, soft inviting light, bed looks fresh.
+- Living room: warm and welcoming, natural light, invite people to imagine living there.
+- Bathroom: crisp, bright, immaculate, emphasize cleanliness.
+- Exterior day: vibrant blue sky, lush green, sharp facade.
+- Exterior twilight/dusk: warm interior lights ON, deep blue sky outside — premium listing feel.
+
 OTHER RULES:
 - Only perform visual photo editing. Professional quality, photorealistic output.
 - Optimize every photo to sell the property — make spaces look bright, spacious, and inviting.
@@ -82,6 +95,7 @@ Respond ONLY with valid JSON (no markdown, no code block):
       { label: "Éclaircir la pièce", prompt: "Enhance interior lighting to look natural and warm, remove harsh shadows, brighten dark corners while keeping a realistic professional look", icon: Sun },
       { label: "Remplacer le ciel", prompt: "Replace the sky with a bright blue sky with light scattered clouds, professional real estate look, photorealistic blending at roofline", icon: Cloud },
       { label: "Retirer éléments parasites", prompt: "Remove all unwanted objects: electrical wires, utility poles, trash bins, parked cars, street clutter. Keep the building and landscape clean", icon: Trash2 },
+      { label: "Ambiance soir / twilight", prompt: "Apply a warm twilight real-estate mood: switch ON all interior lamps with realistic warm glow, soften daylight to dusk tones, keep exterior sky in deep blue twilight. Premium listing look, photorealistic, no fake lights outside windows", icon: Lightbulb },
       { label: "Raviver la végétation", prompt: "Make the grass and garden lush, vibrant green. Remove dead or dry patches. Enhance trees and hedges to look healthy and maintained", icon: Leaf },
       { label: "Mise en scène virtuelle", prompt: "Add tasteful virtual furniture staging to this empty room: modern neutral-toned sofa, coffee table, plants, soft rug. Photorealistic, high-end interior design style", icon: Sofa },
       { label: "Nettoyer la façade", prompt: "Clean the building facade: remove stains, graffiti, moss, weathering marks, dirt. Make it look freshly maintained", icon: PaintBucket },
@@ -112,6 +126,16 @@ CRITICAL REALISM RULES:
 - Skin retouching must stay natural — preserve pores, texture, and skin structure. No plastic, airbrushed, or uncanny look.
 - Do not alter body proportions, facial structure, or body shape.
 
+VERTICAL FORMAT AWARENESS (Reels / Story / TikTok):
+- When the target is a vertical format (9:16), reframe with the subject centered vertically.
+- Keep the top 15% and bottom 20% of the frame free of critical content (UI overlays, captions, username, action buttons).
+- Favor punchy contrast and saturation for mobile scrolling impact.
+
+FORMAT-SPECIFIC GRADES:
+- Feed 4:5 or 1:1: clean editorial, premium, curated.
+- Reels/Story/TikTok 9:16: vibrant, punchy, attention-grabbing.
+- Pinterest 2:3: soft, aesthetic, aspirational, mood-board worthy.
+
 OTHER RULES:
 - Only perform visual photo editing. Professional quality, Instagram-worthy output.
 - Make photos look premium and engaging — maximize visual impact for social media.
@@ -129,6 +153,7 @@ Respond ONLY with valid JSON (no markdown, no code block):
       { label: "Flou d'arrière-plan", prompt: "Apply professional DSLR-quality bokeh blur to background. Keep subject perfectly sharp with smooth falloff. Cinematic depth of field", icon: Aperture },
       { label: "Lumière heure dorée", prompt: "Apply warm golden hour lighting effect: soft orange/yellow sun rays, warm skin tones, golden highlights. Cinematic and dreamy", icon: Sunset },
       { label: "Color grading cinématique", prompt: "Apply cinematic film color grade: slightly lifted blacks, warm highlights, cool shadows (orange & teal split toning), high contrast. Hollywood look", icon: Film },
+      { label: "Preset VSCO film", prompt: "Apply a VSCO-style film grade: subtle matte look with lifted blacks, muted saturation, slight warm highlights, fine film grain. Editorial feel, not cinematic — closer to 35mm analog photography", icon: Film },
       { label: "Nettoyer l'arrière-plan", prompt: "Remove all unwanted objects, people, and distracting elements from the background. Keep the subject untouched. Clean, minimal background", icon: Eraser },
       { label: "Recadrer pour Instagram", prompt: "Crop and reframe the photo for optimal Instagram composition: center the subject, apply rule of thirds, ensure visual balance. Square 1:1 format", icon: Square },
     ],
@@ -159,6 +184,19 @@ CRITICAL REALISM RULES:
 - Color accuracy is critical — buyers must trust what they see. Do not over-saturate or shift colors beyond what is realistic.
 - For second-hand items: light wear reduction is acceptable, but never hide significant defects. The result must be honest.
 
+PLATFORM-SPECIFIC RULES:
+- Amazon main image: strict pure white #FFFFFF, product fills 85% of the frame, zero props, zero accessories beyond the product, zero text, zero decorative shadow — only soft natural contact shadow directly under the product.
+- Shopify: pure white OR light gray studio, subtle natural drop shadow allowed, product fills 75-80%.
+- Etsy: warm artisanal — linen, wood, beige surfaces welcome, soft natural light, handcrafted mood.
+- Vinted / Leboncoin / Facebook Marketplace: neutral clean background (white, beige or gray), honest presentation, no misleading enhancement. Keep item recognizable and trustworthy.
+
+PRODUCT CATEGORY AWARENESS:
+- Clothing: remove wrinkles, smooth fabric, show true colors, mannequin or flat-lay framing.
+- Jewelry: controlled highlights on metal, deep blacks, subtle reflections, crisp edges.
+- Home goods: warm lighting, show scale, lifestyle hints acceptable.
+- Electronics / tech: neutral cool studio, sharp edges, clean screen if any.
+- Beauty: soft diffused light, accurate skin-tone friendly backgrounds.
+
 OTHER RULES:
 - Only perform visual photo editing. Professional e-commerce / marketplace output.
 - White background is the gold standard for both Shopify listings and Vinted/Leboncoin/Etsy.
@@ -174,11 +212,12 @@ Respond ONLY with valid JSON (no markdown, no code block):
 
     suggestions: [
       { label: "Fond blanc studio", prompt: "Replace background with pure white (#FFFFFF) professional studio background. Clean product photography, no shadows on the background itself", icon: Square },
+      { label: "Fond beige naturel", prompt: "Replace background with a soft warm neutral beige (#F2EAD9) or linen-texture surface. Natural, premium and artisanal feel — perfect for Etsy, Vinted, handmade and lifestyle brands. Soft natural shadow under the product", icon: Square },
       { label: "Ombre portée réaliste", prompt: "Add a soft, realistic drop shadow under the product. Natural studio lighting effect. Professional e-commerce standard", icon: Lightbulb },
       { label: "Éclairage produit premium", prompt: "Enhance product lighting to look premium: bright, sharp, and desirable. Highlight textures and materials as if shot in a professional studio", icon: Sparkles },
-      { label: "Cadrage centré uniforme", prompt: "Center the product perfectly with equal margins on all sides. Square format, product fills 70-80% of the frame. Professional e-commerce standard", icon: Crop },
       { label: "Retirer plis et faux-plis", prompt: "Remove wrinkles, creases and folds from clothing or soft items. Make the fabric look smooth, pressed and well-maintained", icon: Shirt },
       { label: "Raviver les couleurs produit", prompt: "Enhance and saturate the product colors to look vibrant, rich and true-to-life. Keep color accuracy for trust", icon: Palette },
+      { label: "Cadrage centré uniforme", prompt: "Center the product perfectly with equal margins on all sides. Square format, product fills 70-80% of the frame. Professional e-commerce standard", icon: Crop },
       { label: "Retirer étiquettes prix", prompt: "Remove price tags, stickers, labels, barcodes from the product. Clean, tag-free product presentation", icon: Tag },
       { label: "Mise en scène lifestyle", prompt: "Place the product in a minimal, premium lifestyle context relevant to its category. Keep product sharp in foreground, soft contextual background", icon: Box },
     ],

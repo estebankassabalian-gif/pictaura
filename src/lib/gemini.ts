@@ -120,13 +120,21 @@ function buildSeoPrompt(preset: Preset, userLocation?: string): string {
   switch (preset) {
     case "AIRBNB":
     case "IMMOBILIER":
-      return `Tu es un expert SEO immobilier Google.${locHint} Analyse cette photo et retourne STRICTEMENT ce JSON :
+      return `Tu es un expert SEO immobilier Google + portails (SeLoger, Leboncoin, Idealista, Airbnb, Booking).${locHint}
+
+ÉTAPE 1 — Détecte (silencieusement) :
+- Type de pièce : salon, cuisine, chambre, salle de bain, entrée, bureau, terrasse, jardin, piscine, façade extérieure, vue, local, garage, cave, dressing.
+- Caractéristiques visibles : parquet / carrelage / pierre / béton ciré, poutres apparentes, cheminée, baie vitrée, balcon, hauteur sous plafond, moulures, îlot central, dressing, vasque double, douche italienne, verrière, etc.
+- Style : haussmannien, moderne, contemporain, loft, campagne, bord de mer, scandinave, industriel, provençal.
+- Qualité lumière : plein jour, golden hour, twilight, nuit.
+
+ÉTAPE 2 — Retourne STRICTEMENT ce JSON (tout en FR, sans inventer) :
 {
-  "altText": "description image SEO (max 120 chars, FR, mots-clés immo pertinents : type de pièce, caractéristiques visibles, lumière, style)",
-  "seoFileName": "nom-fichier-seo.jpg (max 60 chars, minuscules, tirets, ex: salon-lumineux-parquet-chevron-paris-11.jpg)",
-  "description": "description courte pour annonce (max 200 chars, accroche commerciale, caractéristiques clés)",
-  "keywords": ["mot-cle-1","mot-cle-2","mot-cle-3","mot-cle-4","mot-cle-5","mot-cle-6","mot-cle-7"],
-  "metaTitle": "titre SEO page annonce (max 60 chars)",
+  "altText": "description image SEO (max 120 chars, FR, type de pièce + 2 caractéristiques + style + lumière, ex: 'Salon lumineux haussmannien, parquet chevron et cheminée, Paris 11')",
+  "seoFileName": "nom-fichier-seo.jpg (max 60 chars, minuscules, tirets, inclure type de pièce + caractéristique clé + ville si connue)",
+  "description": "accroche commerciale pour annonce (max 200 chars, bénéfice émotionnel + caractéristiques fortes)",
+  "keywords": ["type-piece","caracteristique-1","caracteristique-2","style","atout-1","atout-2","${loc ? loc.toLowerCase().replace(/\s+/g, "-") : "ville"}"],
+  "metaTitle": "titre SEO annonce (max 60 chars, pattern : '[Type pièce] [atout clé] — [ville/quartier]')",
   "hashtags": "",
   "seoSchemaJson": {
     "@context": "https://schema.org",
@@ -140,26 +148,44 @@ function buildSeoPrompt(preset: Preset, userLocation?: string): string {
   ${imageObjectBlock}
 }`;
     case "INSTAGRAM":
-      return `Tu es un expert growth Instagram. Analyse cette photo et retourne STRICTEMENT ce JSON :
+      return `Tu es un expert growth Instagram / TikTok / Pinterest.
+
+ÉTAPE 1 — Détecte (silencieusement) :
+- Sujet : portrait, lifestyle, food, produit, paysage, animal, mode, beauté, fitness, voyage, deco, art.
+- Mood : cozy, minimaliste, vintage, moody, bold, soft, playful, luxe, streetwear, nature, urbain.
+- Style visuel : film, éditorial, golden hour, flat lay, mirror selfie, studio.
+- Saison / contexte visuel quand détectable.
+
+ÉTAPE 2 — Retourne STRICTEMENT ce JSON :
 {
-  "altText": "description image SEO Instagram (max 120 chars, FR, mots-clés visuels)",
-  "seoFileName": "nom-fichier-seo.jpg (max 60 chars, minuscules, tirets)",
-  "description": "caption Instagram accrocheur (max 200 chars, ton direct, 1 emoji max)",
-  "keywords": ["mot-cle-1","mot-cle-2","mot-cle-3","mot-cle-4","mot-cle-5"],
+  "altText": "description image SEO Instagram (max 120 chars, FR, sujet + mood + 1 détail visuel fort)",
+  "seoFileName": "nom-fichier-seo.jpg (max 60 chars, minuscules, tirets, sujet-mood-contexte)",
+  "description": "caption Instagram accrocheur (max 200 chars, hook direct, 1 emoji max, invite à enregistrer/commenter)",
+  "keywords": ["sujet","mood","style","contexte","detail-visuel"],
   "metaTitle": "",
-  "hashtags": "#tag1 #tag2 #tag3 ... (20 hashtags mix FR+EN, niche et large, séparés par espace)",
+  "hashtags": "#tag1 #tag2 ... (22 hashtags séparés par espace, stratégie : 6 viraux/larges FR+EN + 10 niche ciblés + 6 émergents/petits — couvrir sujet, mood, style, saison)",
   "seoSchemaJson": "",
   ${imageObjectBlock}
 }`;
     case "SHOPIFY":
     default:
-      return `Tu es un expert e-commerce Shopify / Google Shopping. Analyse cette photo et retourne STRICTEMENT ce JSON :
+      return `Tu es un expert e-commerce Shopify / Google Shopping / Amazon / Vinted / Etsy.
+
+ÉTAPE 1 — Détecte (silencieusement) :
+- Catégorie produit : vêtement, chaussures, bijou, accessoire, déco, maison, beauté, tech, bébé, sport, art, etc.
+- Pour les vêtements : type (robe, chemise, pull...), coupe, motif, matière visible (coton, laine, lin, cuir, soie, denim).
+- Couleur dominante + 1 couleur secondaire (termes commerciaux : beige, vert sauge, bleu marine, terracotta, écru...).
+- Matière / texture : lisse, mat, brillant, tissé, tricoté, métal, bois, céramique.
+- Marque visible (logo, étiquette) ou "générique" sinon.
+- Condition si perceptible : neuf, très bon état, bon état, occasion.
+
+ÉTAPE 2 — Retourne STRICTEMENT ce JSON (FR, honnête, sans inventer) :
 {
-  "altText": "description produit SEO (max 120 chars, FR, nom produit + caractéristiques visuelles)",
-  "seoFileName": "nom-produit-seo.jpg (max 60 chars, minuscules, tirets)",
-  "description": "description produit e-commerce (max 200 chars, bénéfices, matériaux, usage)",
-  "keywords": ["mot-cle-1","mot-cle-2","mot-cle-3","mot-cle-4","mot-cle-5","mot-cle-6"],
-  "metaTitle": "titre SEO produit (max 60 chars)",
+  "altText": "description produit SEO (max 120 chars, FR, pattern : '[Catégorie] [couleur] [matière] [marque] [détail]')",
+  "seoFileName": "nom-produit-seo.jpg (max 60 chars, minuscules, tirets, catégorie-couleur-matière-marque si visible)",
+  "description": "description produit (max 200 chars, bénéfice + matière + usage + mot-clé long-tail)",
+  "keywords": ["categorie","couleur-principale","matiere","marque-ou-style","usage","tendance"],
+  "metaTitle": "titre SEO produit (max 60 chars, pattern : '[Produit] [couleur] [marque] — [caractéristique]')",
   "hashtags": "",
   "seoSchemaJson": {
     "@context": "https://schema.org",
@@ -167,7 +193,9 @@ function buildSeoPrompt(preset: Preset, userLocation?: string): string {
     "name": "[nom produit]",
     "description": "[description]",
     "image": "[IMAGE_URL]",
-    "brand": { "@type": "Brand", "name": "[marque visible ou inférée]" },
+    "color": "[couleur dominante]",
+    "material": "[matière détectée ou 'non spécifié']",
+    "brand": { "@type": "Brand", "name": "[marque visible ou 'Sans marque']" },
     "sku": "[sku-auto-genere-a-partir-du-nom]",
     "offers": {
       "@type": "Offer",
@@ -253,7 +281,7 @@ export async function generatePhotoSEO(
         model: "gemini-2.5-flash",
         generationConfig: {
           responseMimeType: "application/json",
-          maxOutputTokens: 900,
+          maxOutputTokens: 1400,
           temperature: 0.4,
         } as unknown as Record<string, unknown>,
       });
@@ -409,7 +437,9 @@ export async function retouchPhoto(
   instruction: string,
   systemPrompt: string
 ): Promise<Buffer> {
-  const cleanInstruction = instruction.slice(0, 300);
+  // 1200 chars = user instruction (capped at 300 in UI) + optional platform hint (~400) + margin.
+  // Prompt injection is still checked on the full string.
+  const cleanInstruction = instruction.slice(0, 1200);
 
   if (hasPromptInjection(cleanInstruction)) {
     throw new Error("Instruction refusée : contenu non autorisé détecté");

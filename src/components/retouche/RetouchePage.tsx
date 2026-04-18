@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { MAX_PHOTOS_PER_BATCH, MAX_FILE_SIZE_MB } from "@/config/plans";
 import { AGENTS, type AgentSuggestion } from "@/config/agents";
+import { getPlatformsForPreset, getPlatformById } from "@/config/platforms";
 
 type Step = "upload" | "configure";
 
@@ -26,6 +27,7 @@ interface PhotoConfig {
   file: File;
   previewUrl: string;
   customInstruction: string;
+  platformId: string | null;
 }
 
 export function RetouchePage({ agentKey }: { agentKey: string }) {
@@ -80,6 +82,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
       file,
       previewUrl: URL.createObjectURL(file),
       customInstruction: "",
+      platformId: null,
     }));
 
     setPhotoConfigs(configs);
@@ -107,8 +110,19 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
     });
   }
 
+  function setPhotoPlatform(photoIndex: number, platformId: string | null) {
+    setPhotoConfigs((prev) => {
+      const next = [...prev];
+      next[photoIndex] = { ...next[photoIndex], platformId };
+      return next;
+    });
+  }
+
   function buildInstructionForPhoto(config: PhotoConfig): string {
-    return config.customInstruction.trim() || "Improve the overall quality of the photo.";
+    const userPart = config.customInstruction.trim() || "Improve the overall quality of the photo.";
+    const platform = config.platformId ? getPlatformById(agent.id, config.platformId) : undefined;
+    if (!platform) return userPart;
+    return `${userPart}\n\n${platform.promptHint}`;
   }
 
   const allInstructions = useMemo(() => {
@@ -376,6 +390,50 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
             {/* Instructions */}
             <div>
+              {/* Platform selector (optional) */}
+              {getPlatformsForPreset(agent.id).length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-baseline justify-between mb-2">
+                    <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider">
+                      Plateforme cible
+                    </h3>
+                    <span className="text-[10px] text-ink-muted/70">Optionnel</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setPhotoPlatform(activePhotoIndex, null)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-all ${
+                        currentConfig.platformId === null
+                          ? "border-accent bg-accent/10 text-accent font-medium"
+                          : "border-ink/15 bg-white text-ink-muted hover:border-accent/60 hover:text-accent"
+                      }`}
+                    >
+                      Aucune
+                    </button>
+                    {getPlatformsForPreset(agent.id).map((p) => {
+                      const PIcon = p.icon;
+                      const isSelected = currentConfig.platformId === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => setPhotoPlatform(activePhotoIndex, p.id)}
+                          title={`${p.description} — ${p.ratio} (${p.dimensions})`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-all ${
+                            isSelected
+                              ? "border-accent bg-accent/10 text-accent font-medium"
+                              : "border-ink/15 bg-white text-ink hover:border-accent hover:bg-accent/5 hover:text-accent"
+                          }`}
+                        >
+                          <PIcon className="w-3 h-3" />
+                          {p.name}
+                          <span className="text-[10px] opacity-70">{p.ratio}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="mb-4">
                 <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-2">Suggestions</h3>
                 <div className="flex flex-wrap gap-1.5">
