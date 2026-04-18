@@ -38,18 +38,45 @@ const SEO_FALLBACK: PhotoSeoResult = {
 };
 
 /**
- * Retry wrapper avec backoff exponentiel (2s, 4s, 8s).
+ * Retry-able = transient API errors (503 overload, 429 rate limit, 500/504, network).
+ * Non-retry-able = content safety blocks, invalid input, auth errors.
  */
+function isRetryableError(err: Error): boolean {
+  const msg = err.message.toLowerCase();
+  if (msg.includes("safety") || msg.includes("blocked") || msg.includes("refusée")) return false;
+  if (msg.includes("invalid") || msg.includes("unauthorized") || msg.includes("forbidden")) return false;
+  return (
+    msg.includes("503") ||
+    msg.includes("429") ||
+    msg.includes("500") ||
+    msg.includes("502") ||
+    msg.includes("504") ||
+    msg.includes("overloaded") ||
+    msg.includes("unavailable") ||
+    msg.includes("high demand") ||
+    msg.includes("timeout") ||
+    msg.includes("econnreset") ||
+    msg.includes("enotfound") ||
+    msg.includes("fetch failed")
+  );
+}
+
+/**
+ * Backoff progressif adapté aux pics Gemini : 2s, 5s, 10s, 20s, 30s (~67s total).
+ * Suffit à encaisser la majorité des spikes 503 "high demand" (typiquement 15-60s).
+ */
+const BACKOFF_MS = [2000, 5000, 10000, 20000, 30000];
+
 async function withRetry<T>(
   fn: () => Promise<T>,
   label: string,
-  maxRetries = 3
+  maxRetries = 5
 ): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       if (attempt > 0) {
-        const delay = Math.pow(2, attempt) * 1000;
+        const delay = BACKOFF_MS[attempt - 1] ?? 30000;
         console.log(`${label} retry ${attempt}/${maxRetries} in ${delay}ms`);
         await new Promise((r) => setTimeout(r, delay));
       }
@@ -57,6 +84,9 @@ async function withRetry<T>(
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       console.error(`${label} attempt ${attempt + 1} failed:`, lastError.message);
+      if (!isRetryableError(lastError)) {
+        throw lastError;
+      }
     }
   }
   throw lastError ?? new Error(`${label}: all retries failed`);
@@ -313,33 +343,33 @@ export async function analyzePhotoForRetouching(
   imageBase64: string,
   analyzePrompt: string
 ): Promise<{ analysis: string; suggestions: string[] }> {
-  const model = getGenAI().getGenerativeModel({
-    model: "gemini-2.5-flash",
-    generationConfig: {
-      responseMimeType: "application/json",
-      maxOutputTokens: 500,
-    } as any,
-  });
+  return await withRetry(async () => {
+    const model = getGenAI().getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 500,
+      } as unknown as Record<string, unknown>,
+    });
 
-  const result = await model.generateContent({
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-          {
-            text: `${analyzePrompt}
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+            {
+              text: `${analyzePrompt}
 
 IMPORTANT: Réponds UNIQUEMENT avec du JSON valide, sans markdown :
 {"analysis":"une phrase en français décrivant la photo","suggestions":["suggestion 1 en français","suggestion 2 en français","suggestion 3 en français"]}`,
-          },
-        ],
-      },
-    ],
-  });
+            },
+          ],
+        },
+      ],
+    });
 
-  const text = result.response.text();
-  try {
+    const text = result.response.text();
     const clean = text.replace(/```json\n?|\n?```/g, "").trim();
     const parsed = JSON.parse(clean);
     return {
@@ -348,12 +378,7 @@ IMPORTANT: Réponds UNIQUEMENT avec du JSON valide, sans markdown :
         ? parsed.suggestions.slice(0, 5)
         : [],
     };
-  } catch {
-    return {
-      analysis: "Photo prête à être retouchée",
-      suggestions: [],
-    };
-  }
+  }, "Gemini analyze");
 }
 
 /**
@@ -392,59 +417,37 @@ export async function retouchPhoto(
 
   const editPrompt = buildEditPrompt(systemPrompt, cleanInstruction);
 
-  const MAX_RETRIES = 3;
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      if (attempt > 0) {
-        // Exponential backoff: 2s, 4s
-        const delay = Math.pow(2, attempt) * 1000;
-        console.log(`Gemini retry ${attempt}/${MAX_RETRIES} after ${delay}ms...`);
-        await new Promise((r) => setTimeout(r, delay));
-      }
-
+  return await withRetry(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const model = getGenAI().getGenerativeModel({
+      model: "gemini-3.1-flash-image-preview",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const model = getGenAI().getGenerativeModel({
-        model: "gemini-3.1-flash-image-preview",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        generationConfig: { responseModalities: ["image"] } as any,
-      });
+      generationConfig: { responseModalities: ["image"] } as any,
+    });
 
-      const result = await model.generateContent({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-              { text: editPrompt },
-            ],
-          },
-        ],
-      });
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+            { text: editPrompt },
+          ],
+        },
+      ],
+    });
 
-      const parts = result.response.candidates?.[0]?.content?.parts ?? [];
-      for (const part of parts) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const inlineData = (part as any).inlineData;
-        if (inlineData?.data) {
-          return Buffer.from(inlineData.data, "base64");
-        }
+    const parts = result.response.candidates?.[0]?.content?.parts ?? [];
+    for (const part of parts) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const inlineData = (part as any).inlineData;
+      if (inlineData?.data) {
+        return Buffer.from(inlineData.data, "base64");
       }
-
-      throw new Error("Gemini : aucune image retournée par l'API");
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      const msg = lastError.message.toLowerCase();
-      // Don't retry on prompt injection or non-retryable errors
-      if (msg.includes("refusée") || msg.includes("blocked") || msg.includes("safety")) {
-        throw lastError;
-      }
-      console.error(`Gemini attempt ${attempt + 1}/${MAX_RETRIES} failed:`, lastError.message);
     }
-  }
 
-  throw lastError ?? new Error("Gemini : échec après 3 tentatives");
+    throw new Error("Gemini : aucune image retournée par l'API");
+  }, "Gemini retouch");
 }
 
 /**
