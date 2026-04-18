@@ -4,6 +4,10 @@ import { env } from "@/config/env";
 import { prisma } from "@/lib/prisma";
 import { addCreditsFromPurchase } from "@/services/credits";
 import { PLANS, type PlanId } from "@/config/plans";
+import {
+  sendSubscriptionCancellationScheduledEmail,
+  sendSubscriptionEndedEmail,
+} from "@/lib/email";
 
 function resolvePlan(metadataPlanId?: string | null) {
   if (!metadataPlanId) return PLANS[0];
@@ -165,7 +169,43 @@ export async function POST(req: NextRequest) {
       break;
     }
 
-    // ── Abonnement annulé ────────────────────────────────────
+    // ── Résiliation planifiée (user clique "annuler" — accès jusqu'à fin période) ──
+    case "customer.subscription.updated": {
+      const subscription = event.data.object as unknown as {
+        id: string;
+        customer: string;
+        cancel_at_period_end: boolean;
+        current_period_end: number;
+      };
+
+      if (!subscription.cancel_at_period_end) break;
+
+      const dbUser = subscription.customer
+        ? await prisma.user.findFirst({
+            where: { stripeCustomerId: subscription.customer },
+            select: { id: true, email: true, name: true },
+          })
+        : null;
+      if (!dbUser) break;
+
+      const endsAt = new Date(subscription.current_period_end * 1000);
+      await prisma.user.update({
+        where: { id: dbUser.id },
+        data: { subscriptionEndsAt: endsAt },
+      });
+
+      if (dbUser.email) {
+        sendSubscriptionCancellationScheduledEmail({
+          to: dbUser.email,
+          userName: dbUser.name ?? dbUser.email,
+          endsAt,
+        }).catch((err) => console.error("Email résiliation planifiée:", err));
+      }
+      console.log(`📅 Résiliation planifiée pour ${dbUser.id} — fin le ${endsAt.toISOString()}`);
+      break;
+    }
+
+    // ── Abonnement terminé (fin de période ou annulation immédiate) ──
     case "customer.subscription.deleted": {
       const subscription = event.data.object as unknown as {
         id: string;
@@ -173,23 +213,33 @@ export async function POST(req: NextRequest) {
       };
 
       const dbUser = subscription.customer
-        ? await prisma.user.findFirst({ where: { stripeCustomerId: subscription.customer }, select: { id: true } })
+        ? await prisma.user.findFirst({
+            where: { stripeCustomerId: subscription.customer },
+            select: { id: true, email: true, name: true, credits: true },
+          })
         : null;
-      const userId = dbUser?.id;
 
-      if (!userId) {
+      if (!dbUser) {
         console.error("Impossible de résoudre l'utilisateur pour l'annulation:", subscription.customer);
         break;
       }
 
       await prisma.user.update({
-        where: { id: userId },
+        where: { id: dbUser.id },
         data: {
           isSubscribed: false,
           stripeSubscriptionId: null,
         },
       });
-      console.log(`⚠️ Abonnement annulé pour ${userId}`);
+
+      if (dbUser.email) {
+        sendSubscriptionEndedEmail({
+          to: dbUser.email,
+          userName: dbUser.name ?? dbUser.email,
+          remainingCredits: dbUser.credits,
+        }).catch((err) => console.error("Email fin d'abonnement:", err));
+      }
+      console.log(`⚠️ Abonnement terminé pour ${dbUser.id}`);
       break;
     }
 

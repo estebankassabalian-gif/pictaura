@@ -157,6 +157,140 @@ export async function sendPasswordResetEmail({
 }
 
 /**
+ * Envoie un email de confirmation quand l'utilisateur demande la résiliation.
+ * L'accès reste actif jusqu'à `endsAt`.
+ */
+export async function sendSubscriptionCancellationScheduledEmail({
+  to,
+  userName,
+  endsAt,
+}: {
+  to: string;
+  userName: string;
+  endsAt: Date;
+}): Promise<void> {
+  const firstName = userName.split(" ")[0];
+  const endsAtFr = endsAt.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const billingUrl = `${APP_URL()}/billing`;
+
+  await getResend().emails.send({
+    from: `Pictaura <${FROM()}>`,
+    to,
+    subject: `Votre résiliation est enregistrée — accès jusqu'au ${endsAtFr}`,
+    html: `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; margin: 0; padding: 20px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #0f0f1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(248,112,5,0.15);">
+    <div style="background: linear-gradient(135deg, #031D68 0%, #f87005 100%); padding: 32px 32px 28px;">
+      <p style="color: white; font-size: 24px; font-weight: 800; margin: 0;">Pictaura</p>
+    </div>
+    <div style="padding: 32px;">
+      <h1 style="font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 12px;">Résiliation enregistrée</h1>
+      <p style="color: #a1a1aa; font-size: 14px; margin: 0 0 20px; line-height: 1.6;">
+        Bonjour ${firstName},<br><br>
+        Votre demande de résiliation est bien prise en compte. Vous conservez l'intégralité des fonctionnalités Premium jusqu'au <strong style="color: #f87005;">${endsAtFr}</strong>, date à laquelle votre abonnement prendra fin automatiquement.
+      </p>
+
+      <div style="background: rgba(248,112,5,0.08); border: 1px solid rgba(248,112,5,0.2); border-radius: 12px; padding: 18px 20px; margin-bottom: 24px;">
+        <p style="color: #ffa94d; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 8px;">Accès actif jusqu'au</p>
+        <p style="color: #f87005; font-size: 20px; font-weight: 700; margin: 0;">${endsAtFr}</p>
+      </div>
+
+      <p style="color: #a1a1aa; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
+        Les crédits restants sur votre compte ne seront pas supprimés — vous pouvez continuer à les utiliser jusqu'à épuisement.
+      </p>
+
+      <a href="${billingUrl}" style="display: block; background: linear-gradient(135deg, #031D68 0%, #f87005 100%); color: white; text-decoration: none; text-align: center; padding: 14px 24px; border-radius: 12px; font-weight: 700; font-size: 14px;">
+        Gérer mon abonnement
+      </a>
+
+      <p style="color: #52525b; font-size: 12px; margin: 20px 0 0; text-align: center; line-height: 1.5;">
+        Vous avez changé d'avis ? Vous pouvez réactiver votre abonnement depuis l'espace de facturation avant la date de fin.
+      </p>
+    </div>
+    <div style="border-top: 1px solid rgba(255,255,255,0.05); padding: 16px 32px; text-align: center;">
+      <p style="color: #3f3f46; font-size: 11px; margin: 0;">Pictaura · <a href="${APP_URL()}" style="color: #3f3f46; text-decoration: none;">pictaura.app</a></p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim(),
+  });
+}
+
+/**
+ * Envoie un email quand l'abonnement prend effectivement fin (après la période en cours).
+ */
+export async function sendSubscriptionEndedEmail({
+  to,
+  userName,
+  remainingCredits,
+}: {
+  to: string;
+  userName: string;
+  remainingCredits: number;
+}): Promise<void> {
+  const firstName = userName.split(" ")[0];
+  const billingUrl = `${APP_URL()}/billing`;
+
+  await getResend().emails.send({
+    from: `Pictaura <${FROM()}>`,
+    to,
+    subject: "Votre abonnement Pictaura est terminé",
+    html: `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; margin: 0; padding: 20px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #0f0f1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(248,112,5,0.15);">
+    <div style="background: linear-gradient(135deg, #031D68 0%, #f87005 100%); padding: 32px 32px 28px;">
+      <p style="color: white; font-size: 24px; font-weight: 800; margin: 0;">Pictaura</p>
+    </div>
+    <div style="padding: 32px;">
+      <h1 style="font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 12px;">À bientôt, ${firstName}</h1>
+      <p style="color: #a1a1aa; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
+        Votre abonnement Pictaura a pris fin aujourd'hui. Merci d'avoir fait confiance à notre plateforme pour optimiser vos photos.
+      </p>
+
+      ${
+        remainingCredits > 0
+          ? `<div style="background: rgba(248,112,5,0.08); border: 1px solid rgba(248,112,5,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+        <p style="color: #f87005; font-size: 36px; font-weight: 900; margin: 0; line-height: 1;">${remainingCredits}</p>
+        <p style="color: #ffa94d; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin: 6px 0 0;">crédits encore disponibles</p>
+      </div>
+      <p style="color: #a1a1aa; font-size: 13px; margin: 0 0 24px; line-height: 1.6;">
+        Vos crédits restants ne sont pas perdus — vous pouvez continuer à les utiliser à tout moment.
+      </p>`
+          : `<p style="color: #a1a1aa; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
+        Votre solde de crédits est à zéro. Pour reprendre la retouche, il vous suffit de réactiver un abonnement.
+      </p>`
+      }
+
+      <a href="${billingUrl}" style="display: block; background: linear-gradient(135deg, #031D68 0%, #f87005 100%); color: white; text-decoration: none; text-align: center; padding: 14px 24px; border-radius: 12px; font-weight: 700; font-size: 14px;">
+        Reprendre un abonnement
+      </a>
+
+      <p style="color: #52525b; font-size: 12px; margin: 20px 0 0; text-align: center; line-height: 1.5;">
+        Un retour à nous faire sur votre expérience ? Répondez simplement à cet email, nous lisons tout.
+      </p>
+    </div>
+    <div style="border-top: 1px solid rgba(255,255,255,0.05); padding: 16px 32px; text-align: center;">
+      <p style="color: #3f3f46; font-size: 11px; margin: 0;">Pictaura · <a href="${APP_URL()}" style="color: #3f3f46; text-decoration: none;">pictaura.app</a></p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim(),
+  });
+}
+
+/**
  * Envoie un email de bienvenue après la création d'un compte.
  */
 export async function sendWelcomeEmail({
