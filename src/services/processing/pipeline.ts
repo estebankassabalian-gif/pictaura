@@ -3,7 +3,6 @@ import { JobStatus, type Preset } from "@prisma/client";
 import { uploadProcessedPhoto } from "@/services/storage";
 import { refundCredits } from "@/services/credits";
 import { getSignedDownloadUrl } from "@/lib/r2";
-import { sendJobCompletedEmail } from "@/lib/email";
 import { retouchPhoto, generatePhotoSEO, scorePhoto } from "@/lib/gemini";
 import { applyWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
@@ -97,18 +96,6 @@ export async function processJob(jobId: string): Promise<void> {
         errorMsg: failedCount > 0 ? `${failedCount} photo(s) en echec` : null,
       },
     });
-
-    if (job.user?.email && job.user.name) {
-      sendJobCompletedEmail({
-        to: job.user.email,
-        userName: job.user.name,
-        preset: job.preset,
-        photoCount: job.photos.length,
-        jobId,
-        successCount,
-        failedCount,
-      }).catch((err) => console.error("Email notification error:", err));
-    }
   } catch (error) {
     console.error(`Job ${jobId} crashed:`, error);
     await prisma.processingJob.update({
