@@ -4,13 +4,61 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ForceFailButton from "./ForceFailButton";
 import { getStatusBadgeClasses, getStatusLabel } from "@/config/agents";
-import { Users, FolderOpen, ImageIcon, CreditCard, Shield } from "lucide-react";
+import { Users, FolderOpen, ImageIcon, CreditCard, Shield, UserPlus } from "lucide-react";
+import bcrypt from "bcryptjs";
+import { TransactionType } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 export default async function AdminPage() {
   const session = await auth();
 
   if (!session?.user || session.user.role !== "ADMIN") {
     redirect("/dashboard");
+  }
+
+  async function createTestAccount(formData: FormData) {
+    "use server";
+    const currentSession = await auth();
+    if (!currentSession?.user || currentSession.user.role !== "ADMIN") return;
+
+    const name = String(formData.get("name") ?? "").trim();
+    const emailRaw = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+    const credits = parseInt(String(formData.get("credits") ?? "300"), 10);
+
+    if (!name || !emailRaw || password.length < 8 || isNaN(credits) || credits < 0 || credits > 10000) return;
+
+    const email = emailRaw.toLowerCase();
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return;
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          name,
+          email,
+          passwordHash,
+          credits,
+          isSubscribed: true,
+          emailVerified: new Date(),
+        },
+      });
+      if (credits > 0) {
+        await tx.creditTransaction.create({
+          data: {
+            userId: newUser.id,
+            type: TransactionType.ADMIN_GRANT,
+            amount: credits,
+            balanceAfter: credits,
+            description: `Compte de test — ${credits} crédits offerts`,
+          },
+        });
+      }
+    });
+
+    revalidatePath("/admin");
   }
 
   const [
@@ -64,6 +112,52 @@ export default async function AdminPage() {
         <AdminStat label="Jobs total" value={totalJobs} icon={FolderOpen} />
         <AdminStat label="Photos traitées" value={totalPhotos} icon={ImageIcon} />
         <AdminStat label="Crédits vendus" value={totalCreditsSOLD} icon={CreditCard} />
+      </div>
+
+      {/* Créer un compte de test */}
+      <div className="bg-white rounded-2xl border border-ink/10 shadow-sm p-6 mb-10">
+        <h2 className="font-display text-xl text-ink mb-2 flex items-center gap-2">
+          <UserPlus className="w-5 h-5 text-accent" /> Créer un compte de test
+        </h2>
+        <p className="text-sm text-ink-muted mb-4">
+          Compte prêt à l'emploi : mot de passe défini, crédits crédités, watermark désactivé.
+        </p>
+        <form action={createTestAccount} className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <input
+            name="name"
+            required
+            placeholder="Nom complet"
+            className="border border-ink/15 rounded-lg px-3 py-2 text-sm md:col-span-1"
+          />
+          <input
+            name="email"
+            type="email"
+            required
+            placeholder="email@exemple.com"
+            className="border border-ink/15 rounded-lg px-3 py-2 text-sm md:col-span-2"
+          />
+          <input
+            name="password"
+            required
+            minLength={8}
+            placeholder="Mot de passe (min 8)"
+            className="border border-ink/15 rounded-lg px-3 py-2 text-sm md:col-span-1"
+          />
+          <input
+            name="credits"
+            type="number"
+            min="0"
+            max="10000"
+            defaultValue="300"
+            className="border border-ink/15 rounded-lg px-3 py-2 text-sm md:col-span-1"
+          />
+          <button
+            type="submit"
+            className="md:col-span-5 bg-accent text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-accent-hover transition-colors"
+          >
+            Créer le compte
+          </button>
+        </form>
       </div>
 
       {/* Recent users */}
