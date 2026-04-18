@@ -37,6 +37,21 @@ export default async function AdminUserPage({
     revalidatePath(`/admin/users/${userId}`);
   }
 
+  async function toggleSubscription() {
+    "use server";
+    const currentSession = await auth();
+    if (!currentSession?.user || currentSession.user.role !== "ADMIN") return;
+
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { isSubscribed: true } });
+    if (!target) return;
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isSubscribed: !target.isSubscribed },
+    });
+    revalidatePath(`/admin/users/${userId}`);
+  }
+
   return (
     <div className="max-w-3xl">
       <div className="flex items-center gap-2 text-sm text-zinc-500 mb-6">
@@ -48,7 +63,7 @@ export default async function AdminUserPage({
       <h1 className="text-2xl font-bold mb-6">{user.name ?? user.email}</h1>
 
       {/* ── Infos ────────────────────────────────────────── */}
-      <div className="bg-surface rounded-2xl border border-white/8 p-6 mb-6 grid grid-cols-3 gap-4">
+      <div className="bg-surface rounded-2xl border border-white/8 p-6 mb-6 grid grid-cols-4 gap-4">
         <div>
           <p className="text-sm text-zinc-500">Email</p>
           <p className="font-medium">{user.email}</p>
@@ -61,6 +76,34 @@ export default async function AdminUserPage({
           <p className="text-sm text-zinc-500">Rôle</p>
           <p className="font-medium">{user.role}</p>
         </div>
+        <div>
+          <p className="text-sm text-zinc-500">Watermark</p>
+          <p className="font-medium">{user.isSubscribed ? "Retiré" : "Actif"}</p>
+        </div>
+      </div>
+
+      {/* ── Watermark toggle ─────────────────────────────── */}
+      <div className="bg-surface rounded-2xl border border-white/8 p-6 mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h2 className="font-semibold text-white mb-1">Statut abonnement / watermark</h2>
+          <p className="text-sm text-zinc-400">
+            {user.isSubscribed
+              ? "Compte premium — aucune photo n'est watermarkée."
+              : "Compte gratuit — les photos au-delà des crédits offerts sont watermarkées."}
+          </p>
+        </div>
+        <form action={toggleSubscription}>
+          <button
+            type="submit"
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              user.isSubscribed
+                ? "bg-white/10 text-white hover:bg-white/15"
+                : "bg-brand-600 text-white hover:bg-brand-700"
+            }`}
+          >
+            {user.isSubscribed ? "Remettre le watermark" : "Retirer le watermark"}
+          </button>
+        </form>
       </div>
 
       {/* ── Grant credits ────────────────────────────────── */}
