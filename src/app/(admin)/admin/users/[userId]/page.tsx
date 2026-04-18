@@ -52,6 +52,24 @@ export default async function AdminUserPage({
     revalidatePath(`/admin/users/${userId}`);
   }
 
+  async function updateEmail(formData: FormData) {
+    "use server";
+    const currentSession = await auth();
+    if (!currentSession?.user || currentSession.user.role !== "ADMIN") return;
+
+    const raw = String(formData.get("email") ?? "").trim().toLowerCase();
+    if (!raw || !raw.includes("@")) return;
+
+    const conflict = await prisma.user.findUnique({ where: { email: raw }, select: { id: true } });
+    if (conflict && conflict.id !== userId) return;
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { email: raw },
+    });
+    revalidatePath(`/admin/users/${userId}`);
+  }
+
   return (
     <div className="max-w-3xl">
       <div className="flex items-center gap-2 text-sm text-zinc-500 mb-6">
@@ -102,6 +120,26 @@ export default async function AdminUserPage({
             }`}
           >
             {user.isSubscribed ? "Remettre le watermark" : "Retirer le watermark"}
+          </button>
+        </form>
+      </div>
+
+      {/* ── Modifier email ────────────────────────────────── */}
+      <div className="bg-surface rounded-2xl border border-white/8 p-6 mb-6">
+        <h2 className="font-semibold text-white mb-4">Modifier l&apos;email</h2>
+        <form action={updateEmail} className="flex gap-3">
+          <input
+            name="email"
+            type="email"
+            required
+            defaultValue={user.email}
+            className="border border-white/10 rounded-lg px-3 py-2 text-sm flex-1"
+          />
+          <button
+            type="submit"
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700"
+          >
+            Enregistrer
           </button>
         </form>
       </div>
