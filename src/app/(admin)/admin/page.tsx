@@ -61,6 +61,24 @@ export default async function AdminPage() {
     revalidatePath("/admin");
   }
 
+  async function toggleUserSubscription(formData: FormData) {
+    "use server";
+    const currentSession = await auth();
+    if (!currentSession?.user || currentSession.user.role !== "ADMIN") return;
+
+    const targetId = String(formData.get("userId") ?? "");
+    if (!targetId) return;
+
+    const target = await prisma.user.findUnique({ where: { id: targetId }, select: { isSubscribed: true } });
+    if (!target) return;
+
+    await prisma.user.update({
+      where: { id: targetId },
+      data: { isSubscribed: !target.isSubscribed },
+    });
+    revalidatePath("/admin");
+  }
+
   const [
     totalUsers,
     totalJobs,
@@ -80,6 +98,7 @@ export default async function AdminPage() {
         name: true,
         credits: true,
         role: true,
+        isSubscribed: true,
         createdAt: true,
         _count: { select: { jobs: true } },
       },
@@ -170,6 +189,7 @@ export default async function AdminPage() {
               <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Crédits</th>
               <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Jobs</th>
               <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Rôle</th>
+              <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Premium</th>
               <th className="text-left px-5 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Date</th>
               <th className="px-5 py-3"></th>
             </tr>
@@ -195,6 +215,27 @@ export default async function AdminPage() {
                   >
                     {user.role}
                   </span>
+                </td>
+                <td className="px-5 py-3">
+                  <form action={toggleUserSubscription} className="inline-flex items-center gap-2">
+                    <input type="hidden" name="userId" value={user.id} />
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        user.isSubscribed
+                          ? "bg-green-100 text-green-700"
+                          : "bg-ink/5 text-ink-muted"
+                      }`}
+                    >
+                      {user.isSubscribed ? "Premium" : "Gratuit"}
+                    </span>
+                    <button
+                      type="submit"
+                      className="text-xs font-semibold text-accent hover:underline"
+                      title={user.isSubscribed ? "Remettre le watermark" : "Retirer le watermark"}
+                    >
+                      {user.isSubscribed ? "Désactiver" : "Activer"}
+                    </button>
+                  </form>
                 </td>
                 <td className="px-5 py-3 text-ink-muted">
                   {new Date(user.createdAt).toLocaleDateString("fr-FR")}
