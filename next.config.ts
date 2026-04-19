@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -46,7 +47,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.r2.cloudflarestorage.com https://lh3.googleusercontent.com https://images.unsplash.com",
               "font-src 'self'",
-              "connect-src 'self' https://api.stripe.com",
+              "connect-src 'self' https://api.stripe.com https://*.sentry.io",
               "frame-src https://js.stripe.com https://hooks.stripe.com",
             ].join("; "),
           },
@@ -56,4 +57,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  telemetry: false,
+  widenClientFileUpload: true,
+  sourcemaps: { disable: true },
+  disableLogger: true,
+  tunnelRoute: "/monitoring",
+});

@@ -21,6 +21,7 @@
     "@aws-sdk/s3-request-presigner": "^3.726.1",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.4.1",
+    "@sentry/nextjs": "^10.49.0",
     "@types/fluent-ffmpeg": "^2.1.28",
     "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",

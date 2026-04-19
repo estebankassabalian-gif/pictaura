@@ -59,6 +59,10 @@ const envSchema = z.object({
   // App
   NEXT_PUBLIC_APP_URL: z.string().url(),
   ADMIN_EMAIL: z.string().email(),
+
+  // Sentry (optionnel — monitoring d'erreurs)
+  SENTRY_DSN: optionalStr,
+  NEXT_PUBLIC_SENTRY_DSN: optionalStr,
 });
 
 // Validate at startup — throws clear error if any var is missing

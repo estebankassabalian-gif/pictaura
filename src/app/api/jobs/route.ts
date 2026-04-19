@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Preset } from "@prisma/client";
 import { deductCreditsAtomic, refundCredits } from "@/services/credits";
 import { MAX_PHOTOS_PER_BATCH } from "@/config/plans";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { v4 as uuidv4 } from "uuid";
 
 const MAX_CONCURRENT_JOBS = 3;
@@ -20,6 +21,14 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.user.id;
+
+  // Burst protection : 20 créations de jobs max par minute par user (admin exempt)
+  if (session.user.role !== "ADMIN" && !checkRateLimit(`jobs:${userId}`, 20, 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Trop de requêtes. Réessayez dans quelques secondes." },
+      { status: 429 }
+    );
+  }
 
   try {
     const body = await req.json();

@@ -1042,11 +1042,18 @@ export default function LandingClient() {
                 </h3>
                 <ul className="space-y-3 text-cream/75">
                   <li>
-                    <Link
-                      href="/cgu"
-                      className="hover:text-sun transition-colors"
-                    >
+                    <Link href="/cgu" className="hover:text-sun transition-colors">
                       CGU
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/cgv" className="hover:text-sun transition-colors">
+                      CGV
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/mentions-legales" className="hover:text-sun transition-colors">
+                      Mentions légales
                     </Link>
                   </li>
                   <li>
@@ -1058,10 +1065,7 @@ export default function LandingClient() {
                     </Link>
                   </li>
                   <li>
-                    <Link
-                      href="/contact"
-                      className="hover:text-sun transition-colors"
-                    >
+                    <Link href="/contact" className="hover:text-sun transition-colors">
                       Contact
                     </Link>
                   </li>

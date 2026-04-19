@@ -6,6 +6,7 @@ import { uploadToR2, getSignedDownloadUrl } from "@/lib/r2";
 import { v4 as uuidv4 } from "uuid";
 import { MAX_FILE_SIZE_BYTES, REEL_CREDITS_COST } from "@/config/plans";
 import { detectMimeFromMagicBytes } from "@/services/storage";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
 
@@ -24,6 +25,14 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.user.id;
+
+  // Burst protection : 10 reels/min max par user (admin exempt)
+  if (session.user.role !== "ADMIN" && !checkRateLimit(`reel:${userId}`, 10, 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Trop de requêtes. Réessayez dans quelques secondes." },
+      { status: 429 }
+    );
+  }
 
   const formData = await req.formData();
   const photo = formData.get("photo") as File | null;
