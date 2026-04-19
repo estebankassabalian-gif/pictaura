@@ -31,14 +31,17 @@ const envSchema = z.object({
   R2_BUCKET_NAME: z.string().min(1),
   R2_PUBLIC_DOMAIN: optionalStr,
 
-  // Stripe — 3 abonnements (Immobilier / Réseaux / E-commerce), tous à 49,90€/mois.
-  // STRIPE_PRICE_PRO reste pour la rétro-compat tant que les 3 prix ne sont pas créés.
+  // Stripe — 3 tiers (Starter / Pro / Business), chacun avec un prix mensuel et annuel.
+  // + 1 pack one-shot (30 crédits, paiement unique).
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
-  STRIPE_PRICE_PRO: optionalPrefixed("price_"),
-  STRIPE_PRICE_IMMOBILIER: optionalPrefixed("price_"),
-  STRIPE_PRICE_SOCIAL: optionalPrefixed("price_"),
-  STRIPE_PRICE_ECOMMERCE: optionalPrefixed("price_"),
+  STRIPE_PRICE_STARTER_MONTHLY: optionalPrefixed("price_"),
+  STRIPE_PRICE_STARTER_ANNUAL: optionalPrefixed("price_"),
+  STRIPE_PRICE_PRO_MONTHLY: optionalPrefixed("price_"),
+  STRIPE_PRICE_PRO_ANNUAL: optionalPrefixed("price_"),
+  STRIPE_PRICE_BUSINESS_MONTHLY: optionalPrefixed("price_"),
+  STRIPE_PRICE_BUSINESS_ANNUAL: optionalPrefixed("price_"),
+  STRIPE_PRICE_ONESHOT_PACK30: optionalPrefixed("price_"),
 
   // Replicate (legacy — plus utilisé, gardé optionnel pour rétro-compat)
   REPLICATE_API_TOKEN: optionalStr,

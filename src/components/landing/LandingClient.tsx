@@ -3,7 +3,17 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PLANS, FREE_SIGNUP_CREDITS, type PlanId } from "@/config/plans";
+import {
+  PLANS,
+  ONESHOT_PACK,
+  FREE_SIGNUP_CREDITS,
+  formatEur,
+  getPriceEurCents,
+  type BillingInterval,
+} from "@/config/plans";
+
+// Segments marketing sur la landing (découplés des plans de pricing).
+type SegmentId = "immobilier" | "social" | "ecommerce";
 import BeforeAfterHero from "@/components/landing/BeforeAfterHero";
 import Logo from "@/components/brand/Logo";
 import {
@@ -62,7 +72,7 @@ const BRANDS: { name: string; color: string }[] = [
 
 /* ── Dashboards data ──────────────────────────────────────────── */
 type Dashboard = {
-  planId: PlanId;
+  segmentId: SegmentId;
   name: string;
   tagline: string;
   Icon: typeof Home;
@@ -76,7 +86,7 @@ type Dashboard = {
 
 const DASHBOARDS: Dashboard[] = [
   {
-    planId: "immobilier",
+    segmentId: "immobilier",
     name: "Immobilier",
     tagline: "Des annonces qui se vendent plus vite",
     Icon: Home,
@@ -94,7 +104,7 @@ const DASHBOARDS: Dashboard[] = [
     afterFilter: "brightness(1.18) saturate(1.3) contrast(1.1)",
   },
   {
-    planId: "social",
+    segmentId: "social",
     name: "Réseaux sociaux",
     tagline: "Un feed qui capte le regard",
     Icon: Camera,
@@ -112,7 +122,7 @@ const DASHBOARDS: Dashboard[] = [
     afterFilter: "brightness(1.1) saturate(1.35) contrast(1.1)",
   },
   {
-    planId: "ecommerce",
+    segmentId: "ecommerce",
     name: "E-commerce",
     tagline: "Des fiches produit prêtes à publier",
     Icon: ShoppingBag,
@@ -248,11 +258,18 @@ function PricingCard({
   plan,
   featured,
   delay,
+  interval,
 }: {
   plan: (typeof PLANS)[number];
   featured: boolean;
   delay: number;
+  interval: BillingInterval;
 }) {
+  const cents = getPriceEurCents(plan, interval);
+  const annualSavings =
+    interval === "year"
+      ? Math.round((plan.monthlyPriceEurCents * 12 - plan.annualPriceEurCents) / 100)
+      : 0;
   return (
     <FadeUp delay={delay}>
       <div
@@ -290,25 +307,35 @@ function PricingCard({
           {plan.tagline}
         </p>
 
-        <div className="mb-5">
+        <div className="mb-1">
           <span
             className={`text-5xl font-display ${
               featured ? "text-sun" : "text-ink"
             }`}
           >
-            {plan.priceDisplay.split("/")[0]}
+            {formatEur(cents)}
           </span>
           <span
             className={`text-sm ml-1 ${
               featured ? "text-cream/80" : "text-ink-muted"
             }`}
           >
-            /mois
+            {interval === "year" ? "/an" : "/mois"}
           </span>
         </div>
 
+        {interval === "year" && annualSavings > 0 && (
+          <div
+            className={`text-[11px] font-semibold mb-4 ${
+              featured ? "text-sun" : "text-accent"
+            }`}
+          >
+            Économisez {annualSavings}€/an
+          </div>
+        )}
+
         <div
-          className={`text-sm font-bold mb-6 ${
+          className={`text-sm font-bold mb-6 mt-4 ${
             featured ? "text-cream" : "text-brand"
           }`}
         >
@@ -352,6 +379,7 @@ function PricingCard({
 /* ── Main ──────────────────────────────────────────────────────── */
 export default function LandingClient() {
   const [scrolled, setScrolled] = useState(false);
+  const [pricingInterval, setPricingInterval] = useState<BillingInterval>("month");
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40);
@@ -638,7 +666,7 @@ export default function LandingClient() {
 
           <div className="grid md:grid-cols-3 gap-7">
             {DASHBOARDS.map((d, i) => (
-              <DashboardCard key={d.planId} d={d} delay={i * 0.1} />
+              <DashboardCard key={d.segmentId} d={d} delay={i * 0.1} />
             ))}
           </div>
         </div>
@@ -792,32 +820,76 @@ export default function LandingClient() {
           style={{ background: "rgba(255, 251, 245, 0.82)" }}
         />
         <div className="relative max-w-6xl mx-auto">
-          <FadeUp className="text-center mb-16 max-w-2xl mx-auto">
+          <FadeUp className="text-center mb-10 max-w-2xl mx-auto">
             <span className="inline-flex items-center gap-2 text-[11px] font-bold tracking-[0.15em] uppercase px-4 py-1.5 rounded-full border border-brand/25 bg-brand/10 text-brand mb-5">
               Tarifs transparents
             </span>
             <h2 className="text-display-lg font-display text-ink mb-4 leading-[1.05]">
-              49,90€/mois, 500 retouches,
+              Choisissez votre plan,
               <br />
-              <span className="gradient-text">choisissez votre angle.</span>
+              <span className="gradient-text">payez ce que vous utilisez.</span>
             </h2>
             <p className="text-ink-muted leading-relaxed">
-              Tous les plans démarrent avec {FREE_SIGNUP_CREDITS} retouches
-              offertes à l&apos;inscription. Sans carte bancaire. Sans
-              engagement.
+              {FREE_SIGNUP_CREDITS} retouches offertes à l&apos;inscription.
+              Sans carte bancaire. Sans engagement. Résiliable en un clic.
             </p>
           </FadeUp>
+
+          <div className="flex justify-center mb-12">
+            <div className="inline-flex bg-white border border-ink-soft rounded-full p-1 shadow-sm">
+              <button
+                onClick={() => setPricingInterval("month")}
+                className={`px-5 py-2 text-xs font-semibold rounded-full transition-colors ${
+                  pricingInterval === "month" ? "bg-ink text-cream" : "text-ink-muted"
+                }`}
+              >
+                Mensuel
+              </button>
+              <button
+                onClick={() => setPricingInterval("year")}
+                className={`px-5 py-2 text-xs font-semibold rounded-full transition-colors ${
+                  pricingInterval === "year" ? "bg-ink text-cream" : "text-ink-muted"
+                }`}
+              >
+                Annuel <span className="text-accent ml-1">-20%</span>
+              </button>
+            </div>
+          </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {PLANS.map((plan, i) => (
               <PricingCard
                 key={plan.id}
                 plan={plan}
-                featured={i === 1}
+                featured={plan.highlighted ?? false}
                 delay={i * 0.1}
+                interval={pricingInterval}
               />
             ))}
           </div>
+
+          {/* Pack one-shot */}
+          <FadeUp delay={0.3}>
+            <div className="mt-10 bg-white/95 rounded-3xl border border-ink-soft p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-6 shadow-[0_10px_30px_rgba(3,29,104,0.08)]">
+              <div className="flex-1">
+                <div className="text-[11px] font-bold tracking-[0.15em] uppercase text-accent mb-2">
+                  Pas prêt à vous abonner&nbsp;?
+                </div>
+                <div className="text-xl font-display text-ink mb-1">
+                  {ONESHOT_PACK.name} — {formatEur(ONESHOT_PACK.priceEurCents)}
+                </div>
+                <div className="text-sm text-ink-muted">
+                  Paiement unique. Les crédits ne s&apos;expirent pas. Idéal pour tester sans engagement.
+                </div>
+              </div>
+              <Link
+                href="/register"
+                className="w-full md:w-auto md:min-w-[220px] text-center bg-ink text-cream py-3.5 px-6 rounded-xl font-bold text-sm hover:bg-brand transition-colors"
+              >
+                Créer un compte
+              </Link>
+            </div>
+          </FadeUp>
 
           <p className="text-center text-xs text-ink-muted mt-10">
             Remboursement automatique en cas d&apos;échec de traitement ·{" "}
@@ -856,7 +928,7 @@ export default function LandingClient() {
               },
               {
                 q: "Comment fonctionnent les 3 plans ?",
-                a: "Chaque plan coûte 49,90€/mois et inclut 500 retouches mensuelles. Ils activent un preset spécialisé : Immobilier (HDR, verticalité), Réseaux sociaux (formats Insta, filtre cinématique) ou E-commerce (fond blanc Shopify, ombre douce). Vous choisissez celui qui correspond à votre métier.",
+                a: "Starter (14,90€/mois, 100 retouches), Pro (39,90€/mois, 400 retouches) ou Business (89,90€/mois, 1200 retouches). Tous les plans donnent accès à tous les presets (Immobilier, Réseaux sociaux, E-commerce) et à toutes les fonctionnalités. L'abonnement annuel offre -20%. Pas prêt à vous abonner ? Le pack 30 crédits à 9,90€ est sans engagement.",
               },
               {
                 q: "Puis-je tester avant de payer ?",

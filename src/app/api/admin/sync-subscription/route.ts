@@ -51,14 +51,18 @@ export async function POST(req: NextRequest) {
 
   const activeSub = subscriptions.data[0];
   const periodEnd = new Date(activeSub.current_period_end * 1000);
-  const subMeta = activeSub.metadata as { planId?: string } | undefined;
-  const plan = PLANS.find((p) => p.id === subMeta?.planId) ?? PLANS[0];
+  const subMeta = activeSub.metadata as { planId?: string; interval?: string } | undefined;
+  // Par défaut : "pro" — tier du milieu, plus proche des anciens abonnés legacy (500 crédits).
+  const plan = PLANS.find((p) => p.id === subMeta?.planId) ?? PLANS[1];
+  const interval = subMeta?.interval === "year" ? "year" : "month";
 
   // Activer l'abonnement en DB
   await prisma.user.update({
     where: { id: user.id },
     data: {
       isSubscribed: true,
+      planId: plan.id,
+      billingInterval: interval,
       stripeSubscriptionId: activeSub.id,
       subscriptionEndsAt: periodEnd,
     },

@@ -1,86 +1,121 @@
-// ─── 3 Plans Pictaura — Immobilier / Réseaux / E-commerce ─────────────────
-// Chaque plan = 49,90 €/mois, 500 retouches/mois.
-// Créer 3 produits Stripe (type recurring, interval month), puis coller les
-// price_xxx dans .env :
-//   STRIPE_PRICE_IMMOBILIER=price_xxx
-//   STRIPE_PRICE_SOCIAL=price_xxx
-//   STRIPE_PRICE_ECOMMERCE=price_xxx
+// ─── Pictaura — 3 plans tier-based + pack one-shot ────────────────────────
+// Chaque plan a 2 prix Stripe : mensuel + annuel (-20% sur l'annuel).
+// Le pack one-shot est un paiement unique (30 crédits, 9,90€).
+//
+// Clés Stripe à placer dans .env :
+//   STRIPE_PRICE_STARTER_MONTHLY=price_xxx
+//   STRIPE_PRICE_STARTER_ANNUAL=price_xxx
+//   STRIPE_PRICE_PRO_MONTHLY=price_xxx
+//   STRIPE_PRICE_PRO_ANNUAL=price_xxx
+//   STRIPE_PRICE_BUSINESS_MONTHLY=price_xxx
+//   STRIPE_PRICE_BUSINESS_ANNUAL=price_xxx
+//   STRIPE_PRICE_ONESHOT_PACK30=price_xxx
 
-export type PlanId = "immobilier" | "social" | "ecommerce";
+export type PlanId = "starter" | "pro" | "business";
+export type BillingInterval = "month" | "year";
+
+export type StripePriceEnvKey =
+  | "STRIPE_PRICE_STARTER_MONTHLY"
+  | "STRIPE_PRICE_STARTER_ANNUAL"
+  | "STRIPE_PRICE_PRO_MONTHLY"
+  | "STRIPE_PRICE_PRO_ANNUAL"
+  | "STRIPE_PRICE_BUSINESS_MONTHLY"
+  | "STRIPE_PRICE_BUSINESS_ANNUAL"
+  | "STRIPE_PRICE_ONESHOT_PACK30";
 
 export interface Plan {
   id: PlanId;
   name: string;
   tagline: string;
   creditsPerMonth: number;
-  priceEurCents: number;
-  priceDisplay: string;
-  stripePriceEnvKey: "STRIPE_PRICE_IMMOBILIER" | "STRIPE_PRICE_SOCIAL" | "STRIPE_PRICE_ECOMMERCE";
-  preset: "IMMOBILIER" | "INSTAGRAM" | "SHOPIFY";
+  monthlyPriceEurCents: number;
+  annualPriceEurCents: number;
+  stripePriceEnvKeyMonthly: StripePriceEnvKey;
+  stripePriceEnvKeyAnnual: StripePriceEnvKey;
   accentColor: string;
+  highlighted?: boolean;
   features: readonly string[];
 }
 
 export const PLANS: readonly Plan[] = [
   {
-    id: "immobilier",
-    name: "Immobilier",
-    tagline: "Annonces qui se vendent plus vite",
-    creditsPerMonth: 500,
-    priceEurCents: 4990,
-    priceDisplay: "49,90€/mois",
-    stripePriceEnvKey: "STRIPE_PRICE_IMMOBILIER",
-    preset: "IMMOBILIER",
+    id: "starter",
+    name: "Starter",
+    tagline: "Pour lancer vos annonces",
+    creditsPerMonth: 100,
+    monthlyPriceEurCents: 1490,
+    annualPriceEurCents: 14300,
+    stripePriceEnvKeyMonthly: "STRIPE_PRICE_STARTER_MONTHLY",
+    stripePriceEnvKeyAnnual: "STRIPE_PRICE_STARTER_ANNUAL",
     accentColor: "#F87005",
     features: [
-      "500 retouches par mois",
-      "Preset Immobilier : HDR, verticalité, lumière pro",
-      "Métadonnées SEO gravées dans l'image (EXIF + JSON-LD)",
-      "Jusqu'à 50 Mo par photo — reflex pro compatible",
-      "Support par email sous 24h",
-      "Sans engagement, résiliable en un clic",
-    ],
-  },
-  {
-    id: "social",
-    name: "Réseaux sociaux",
-    tagline: "Contenu qui capte le regard",
-    creditsPerMonth: 500,
-    priceEurCents: 4990,
-    priceDisplay: "49,90€/mois",
-    stripePriceEnvKey: "STRIPE_PRICE_SOCIAL",
-    preset: "INSTAGRAM",
-    accentColor: "#E1306C",
-    features: [
-      "500 retouches par mois",
-      "Formats prêts à publier : 1:1 feed, 4:5 portrait, 9:16 Stories",
-      "20 hashtags FR + EN générés par photo",
-      "Alt text et caption accrocheurs injectés en EXIF",
+      "100 retouches IA par mois",
+      "Tous les presets : Immobilier, Réseaux sociaux, E-commerce",
+      "Tous les formats plateformes (Vinted, Shopify, Instagram, Stories, Reels…)",
+      "Métadonnées SEO + EXIF automatiques",
+      "Hashtags FR + EN générés",
       "Jusqu'à 50 Mo par photo",
-      "Support par email sous 24h",
+      "Support par email sous 48h",
       "Sans engagement, résiliable en un clic",
     ],
   },
   {
-    id: "ecommerce",
-    name: "E-commerce",
-    tagline: "Fiches produit prêtes à publier",
-    creditsPerMonth: 500,
-    priceEurCents: 4990,
-    priceDisplay: "49,90€/mois",
-    stripePriceEnvKey: "STRIPE_PRICE_ECOMMERCE",
-    preset: "SHOPIFY",
+    id: "pro",
+    name: "Pro",
+    tagline: "Pour les agences actives",
+    creditsPerMonth: 400,
+    monthlyPriceEurCents: 3990,
+    annualPriceEurCents: 38300,
+    stripePriceEnvKeyMonthly: "STRIPE_PRICE_PRO_MONTHLY",
+    stripePriceEnvKeyAnnual: "STRIPE_PRICE_PRO_ANNUAL",
+    accentColor: "#E1306C",
+    highlighted: true,
+    features: [
+      "400 retouches IA par mois",
+      "Tout Starter inclus",
+      "Scoring IA de vos photos (note /10 + recommandations)",
+      "JSON-LD schema.org pour le référencement",
+      "Support prioritaire sous 24h",
+      "Accès aux nouveautés en avant-première",
+    ],
+  },
+  {
+    id: "business",
+    name: "Business",
+    tagline: "Pour les gros volumes",
+    creditsPerMonth: 1200,
+    monthlyPriceEurCents: 8990,
+    annualPriceEurCents: 86300,
+    stripePriceEnvKeyMonthly: "STRIPE_PRICE_BUSINESS_MONTHLY",
+    stripePriceEnvKeyAnnual: "STRIPE_PRICE_BUSINESS_ANNUAL",
     accentColor: "#09B884",
     features: [
-      "500 retouches par mois",
-      "Presets Shopify, Vinted, Etsy : fond blanc, cadrage produit",
-      "JSON-LD Product schema.org pour le référencement",
-      "Jusqu'à 50 Mo par photo",
-      "Support par email sous 24h",
-      "Sans engagement, résiliable en un clic",
+      "1 200 retouches IA par mois",
+      "Tout Pro inclus",
+      "Support dédié par email",
+      "Facturation entreprise (TVA)",
+      "Engagement qualité : remboursement crédit si résultat non satisfaisant",
     ],
   },
 ] as const;
+
+export interface OneShotPack {
+  id: string;
+  name: string;
+  tagline: string;
+  credits: number;
+  priceEurCents: number;
+  stripePriceEnvKey: StripePriceEnvKey;
+}
+
+export const ONESHOT_PACK: OneShotPack = {
+  id: "pack30",
+  name: "Pack 30 crédits",
+  tagline: "Testez sans abonnement",
+  credits: 30,
+  priceEurCents: 990,
+  stripePriceEnvKey: "STRIPE_PRICE_ONESHOT_PACK30",
+};
 
 export function getPlan(id: PlanId): Plan {
   const plan = PLANS.find((p) => p.id === id);
@@ -88,13 +123,40 @@ export function getPlan(id: PlanId): Plan {
   return plan;
 }
 
-// Backward-compat : certains endroits du back-end référencent encore PRO_PLAN.
+export function getStripePriceEnvKey(
+  planId: PlanId,
+  interval: BillingInterval
+): StripePriceEnvKey {
+  const plan = getPlan(planId);
+  return interval === "year"
+    ? plan.stripePriceEnvKeyAnnual
+    : plan.stripePriceEnvKeyMonthly;
+}
+
+export function getPriceEurCents(plan: Plan, interval: BillingInterval): number {
+  return interval === "year" ? plan.annualPriceEurCents : plan.monthlyPriceEurCents;
+}
+
+export function formatEur(cents: number): string {
+  const euros = cents / 100;
+  if (Number.isInteger(euros)) return `${euros}€`;
+  return `${euros.toFixed(2).replace(".", ",")}€`;
+}
+
+export function formatPriceDisplay(plan: Plan, interval: BillingInterval): string {
+  const cents = getPriceEurCents(plan, interval);
+  const suffix = interval === "year" ? "/an" : "/mois";
+  return `${formatEur(cents)}${suffix}`;
+}
+
+// Backward-compat : l'ancien PRO_PLAN pointait vers le seul plan existant.
+// Il pointe désormais vers le nouveau plan "pro" (le plus proche de l'ancien 49,90€/500).
 export const PRO_PLAN = {
   id: "pro",
   name: "Pro",
-  creditsPerMonth: PLANS[0].creditsPerMonth,
-  priceEurCents: PLANS[0].priceEurCents,
-  priceDisplay: PLANS[0].priceDisplay,
+  creditsPerMonth: PLANS[1].creditsPerMonth,
+  priceEurCents: PLANS[1].monthlyPriceEurCents,
+  priceDisplay: formatPriceDisplay(PLANS[1], "month"),
 } as const;
 
 export const FREE_SIGNUP_CREDITS = 5;
@@ -102,7 +164,7 @@ export const FREE_SIGNUP_CREDITS = 5;
 export const INPAINTING_CREDITS_COST = 1;
 export const INSTAGRAM_HD_CREDITS_COST = 2;
 export const REEL_CREDITS_COST = 3;
-export const MAX_PHOTOS_PER_BATCH = 5;
+export const MAX_PHOTOS_PER_BATCH = 30;
 export const MAX_FILE_SIZE_MB = 50;
 export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 

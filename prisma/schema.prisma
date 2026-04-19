@@ -50,6 +50,8 @@ model User {
   credits          Int       @default(0)
   isActive         Boolean   @default(true)
   isSubscribed         Boolean   @default(false) // true = watermark retiré + features premium
+  planId               String?   // "starter" | "pro" | "business" | null — null = pas d'abonnement actif
+  billingInterval      String?   // "month" | "year" | null
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique
   subscriptionEndsAt   DateTime? // Fin de période courante (pour ne pas couper avant expiration)

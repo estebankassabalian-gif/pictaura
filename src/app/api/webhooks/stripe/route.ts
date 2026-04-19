@@ -3,16 +3,20 @@ import { stripe } from "@/lib/stripe";
 import { env } from "@/config/env";
 import { prisma } from "@/lib/prisma";
 import { addCreditsFromPurchase } from "@/services/credits";
-import { PLANS, type PlanId } from "@/config/plans";
+import { PLANS, type PlanId, type BillingInterval } from "@/config/plans";
 import {
   sendSubscriptionCancellationScheduledEmail,
   sendSubscriptionEndedEmail,
 } from "@/lib/email";
 
 function resolvePlan(metadataPlanId?: string | null) {
-  if (!metadataPlanId) return PLANS[0];
+  if (!metadataPlanId) return PLANS[1]; // Par défaut : Pro (tier du milieu)
   const plan = PLANS.find((p) => p.id === (metadataPlanId as PlanId));
-  return plan ?? PLANS[0];
+  return plan ?? PLANS[1];
+}
+
+function resolveInterval(metadataInterval?: string | null): BillingInterval {
+  return metadataInterval === "year" ? "year" : "month";
 }
 
 export async function POST(req: NextRequest) {
@@ -43,21 +47,70 @@ export async function POST(req: NextRequest) {
   }
 
   switch (event.type) {
-    // ── Nouvel abonnement créé via Checkout ──────────────────
+    // ── Nouvel abonnement OU pack one-shot via Checkout ──────────────
     case "checkout.session.completed": {
       const session = event.data.object as unknown as {
-        metadata: { userId: string; planId: string };
-        subscription: string;
+        id: string;
+        metadata: Record<string, string | undefined>;
+        subscription: string | null;
         customer: string;
         mode: string;
+        payment_intent: string | null;
       };
 
-      console.log(`📩 checkout.session.completed reçu — mode: ${session.mode}, customer: ${session.customer}, metadata:`, session.metadata);
+      console.log(`📩 checkout.session.completed — mode: ${session.mode}, customer: ${session.customer}, metadata:`, session.metadata);
 
+      // ─── Mode "payment" : pack one-shot de crédits ───────────────
+      if (session.mode === "payment") {
+        if (session.metadata?.kind !== "pack") break;
+
+        const packCredits = parseInt(session.metadata.packCredits ?? "0", 10);
+        if (!packCredits || packCredits <= 0) {
+          console.error("❌ Pack one-shot sans crédits valides:", session.metadata);
+          break;
+        }
+
+        // Résoudre le user (customer ou metadata)
+        let userId: string | undefined;
+        if (session.customer) {
+          const dbUser = await prisma.user.findFirst({
+            where: { stripeCustomerId: session.customer },
+            select: { id: true },
+          });
+          userId = dbUser?.id;
+        }
+        if (!userId && session.metadata?.userId) {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: session.metadata.userId },
+            select: { id: true },
+          });
+          userId = dbUser?.id;
+        }
+
+        if (!userId) {
+          console.error("❌ Pack one-shot — user non résolu:", session.metadata);
+          break;
+        }
+
+        try {
+          await addCreditsFromPurchase(
+            userId,
+            packCredits,
+            `pack_${session.id}`,
+            `Pack ${packCredits} crédits — achat unique`
+          );
+          console.log(`✅ Pack ${packCredits} crédits ajouté pour ${userId}`);
+        } catch (err) {
+          console.error("❌ Erreur crédit pack:", err);
+        }
+        break;
+      }
+
+      // ─── Mode "subscription" : nouvel abonnement ──────────────────
       if (session.mode !== "subscription") break;
       const planFromMeta = resolvePlan(session.metadata?.planId);
+      const intervalFromMeta = resolveInterval(session.metadata?.interval);
 
-      // Résoudre l'utilisateur : d'abord par stripeCustomerId, sinon par metadata.userId
       let userId: string | undefined;
 
       if (session.customer) {
@@ -68,7 +121,6 @@ export async function POST(req: NextRequest) {
         userId = dbUser?.id;
       }
 
-      // Fallback : utiliser le userId des metadata si le lookup customer échoue
       if (!userId && session.metadata?.userId) {
         const dbUser = await prisma.user.findUnique({
           where: { id: session.metadata.userId },
@@ -76,7 +128,6 @@ export async function POST(req: NextRequest) {
         });
         if (dbUser) {
           userId = dbUser.id;
-          // Mettre à jour le stripeCustomerId pour les prochains événements
           await prisma.user.update({
             where: { id: userId },
             data: { stripeCustomerId: session.customer },
@@ -90,15 +141,20 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      // Récupérer les détails de la subscription pour la date de fin
+      if (!session.subscription) {
+        console.error("❌ Session subscription sans subscription id:", session.id);
+        break;
+      }
+
       const subscription = await stripe.subscriptions.retrieve(session.subscription);
       const periodEnd = new Date(subscription.current_period_end * 1000);
 
-      // Activer l'abonnement + créditer les photos mensuelles
       await prisma.user.update({
         where: { id: userId },
         data: {
           isSubscribed: true,
+          planId: planFromMeta.id,
+          billingInterval: intervalFromMeta,
           stripeSubscriptionId: session.subscription,
           subscriptionEndsAt: periodEnd,
         },
@@ -111,14 +167,14 @@ export async function POST(req: NextRequest) {
           `sub_initial_${session.subscription}`,
           `Abonnement ${planFromMeta.name} — ${planFromMeta.creditsPerMonth} crédits`
         );
-        console.log(`✅ Abonnement ${planFromMeta.name} activé pour ${userId} — ${planFromMeta.creditsPerMonth} crédits ajoutés`);
+        console.log(`✅ Abonnement ${planFromMeta.name} (${intervalFromMeta}) activé pour ${userId} — ${planFromMeta.creditsPerMonth} crédits`);
       } catch (err) {
         console.error("❌ Erreur ajout crédits abonnement:", err);
       }
       break;
     }
 
-    // ── Renouvellement mensuel (facture payée) ───────────────
+    // ── Renouvellement mensuel/annuel (facture payée) ────────────
     case "invoice.payment_succeeded": {
       const invoice = event.data.object as unknown as {
         id: string;
@@ -127,10 +183,7 @@ export async function POST(req: NextRequest) {
         billing_reason: string;
       };
 
-      // Ignorer la première facture (déjà gérée par checkout.session.completed)
       if (invoice.billing_reason === "subscription_create") break;
-
-      // Ignorer les factures sans abonnement (factures one-time)
       if (!invoice.subscription) break;
 
       const dbUser = invoice.customer
@@ -143,17 +196,21 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      // Récupérer la nouvelle période
       const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
       const periodEnd = new Date(subscription.current_period_end * 1000);
 
+      const subMeta = subscription.metadata as { planId?: string; interval?: string } | undefined;
+      const planRenewal = resolvePlan(subMeta?.planId);
+      const intervalRenewal = resolveInterval(subMeta?.interval);
+
       await prisma.user.update({
         where: { id: userId },
-        data: { subscriptionEndsAt: periodEnd },
+        data: {
+          subscriptionEndsAt: periodEnd,
+          planId: planRenewal.id,
+          billingInterval: intervalRenewal,
+        },
       });
-
-      const subMeta = subscription.metadata as { planId?: string } | undefined;
-      const planRenewal = resolvePlan(subMeta?.planId);
 
       try {
         await addCreditsFromPurchase(
@@ -162,14 +219,14 @@ export async function POST(req: NextRequest) {
           `invoice_${invoice.id}`,
           `Renouvellement ${planRenewal.name} — ${planRenewal.creditsPerMonth} crédits`
         );
-        console.log(`✅ Renouvellement ${planRenewal.name} pour ${userId} — ${planRenewal.creditsPerMonth} crédits ajoutés`);
+        console.log(`✅ Renouvellement ${planRenewal.name} pour ${userId} — ${planRenewal.creditsPerMonth} crédits`);
       } catch (err) {
         console.error("Erreur ajout crédits renouvellement:", err);
       }
       break;
     }
 
-    // ── Résiliation planifiée (user clique "annuler" — accès jusqu'à fin période) ──
+    // ── Résiliation planifiée ────────────────────────────────────
     case "customer.subscription.updated": {
       const subscription = event.data.object as unknown as {
         id: string;
@@ -205,7 +262,7 @@ export async function POST(req: NextRequest) {
       break;
     }
 
-    // ── Abonnement terminé (fin de période ou annulation immédiate) ──
+    // ── Abonnement terminé ───────────────────────────────────────
     case "customer.subscription.deleted": {
       const subscription = event.data.object as unknown as {
         id: string;
@@ -228,6 +285,8 @@ export async function POST(req: NextRequest) {
         where: { id: dbUser.id },
         data: {
           isSubscribed: false,
+          planId: null,
+          billingInterval: null,
           stripeSubscriptionId: null,
         },
       });

@@ -1,9 +1,9 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PLANS } from "@/config/plans";
-import SubscribeButton from "./BuyButton";
+import PricingGrid from "./PricingGrid";
 import ManageSubscriptionButton from "./ManageButton";
-import { Check, X } from "lucide-react";
+import { X } from "lucide-react";
 import {
   CreditCard,
   Gift,
@@ -62,7 +62,7 @@ export default async function BillingPage({
           ? "Compte administrateur — crédits illimités."
           : isSubscribed
           ? `Abonnement actif — ${session.user.credits} crédit(s) restants.`
-          : `${session.user.credits} crédit(s) disponibles — choisissez un plan pour ${PLANS[0].creditsPerMonth} retouches/mois.`}
+          : `${session.user.credits} crédit(s) disponibles — choisissez un plan dès ${PLANS[0].creditsPerMonth} retouches/mois.`}
       </p>
 
       {!isAdmin && (
@@ -78,51 +78,7 @@ export default async function BillingPage({
         </div>
       )}
 
-      {!isAdmin && !isSubscribed && (
-        <div className="mb-10">
-          <h2 className="text-lg font-display text-ink mb-4">Choisissez votre plan</h2>
-          <div className="grid md:grid-cols-3 gap-5">
-            {PLANS.map((plan) => (
-              <div
-                key={plan.id}
-                className="bg-white rounded-2xl border border-ink-soft shadow-sm p-6 flex flex-col"
-                style={{ borderTop: `4px solid ${plan.accentColor}` }}
-              >
-                <div className="mb-4">
-                  <div className="text-base font-display text-ink">{plan.name}</div>
-                  <div className="text-xs text-ink-muted">{plan.tagline}</div>
-                </div>
-                <div className="mb-1">
-                  <span className="text-4xl font-display text-ink">
-                    {plan.priceDisplay.split("/")[0]}
-                  </span>
-                  <span className="text-sm text-ink-muted ml-1">/mois</span>
-                </div>
-                <div className="text-xs font-bold mb-5" style={{ color: plan.accentColor }}>
-                  {plan.creditsPerMonth} retouches par mois
-                </div>
-
-                <ul className="space-y-2 mb-6 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-xs text-ink">
-                      <Check
-                        className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"
-                        style={{ color: plan.accentColor }}
-                      />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <SubscribeButton
-                  planId={plan.id}
-                  label={`S'abonner — ${plan.priceDisplay}`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {!isAdmin && !isSubscribed && <PricingGrid />}
 
       {!isAdmin && isSubscribed && (
         <div className="bg-sun/15 border border-sun/40 rounded-2xl p-6 mb-10">
@@ -131,7 +87,7 @@ export default async function BillingPage({
             <span className="font-display text-ink">Abonnement actif</span>
           </div>
           <p className="text-sm text-ink-muted mb-3">
-            {PLANS[0].creditsPerMonth} crédits renouvelés chaque mois automatiquement.
+            Vos crédits sont renouvelés automatiquement à chaque période.
           </p>
           <ManageSubscriptionButton />
         </div>
