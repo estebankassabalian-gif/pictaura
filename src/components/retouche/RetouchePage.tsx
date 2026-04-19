@@ -169,9 +169,15 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
       for (let i = 0; i < files.length; i++) {
         setUploadProgress(`Upload photo ${i + 1}/${files.length}...`);
 
+        // En mode "appliquer à toutes", toutes les photos reprennent la plateforme
+        // choisie sur la photo 0 (même logique que customInstruction).
+        const sourceConfig = applyToAll ? photoConfigs[0] : photoConfigs[i];
+        const platformId = sourceConfig?.platformId ?? "";
+
         const formData = new FormData();
         formData.append("photo", files[i]);
         formData.append("instruction", allInstructions[i] || "");
+        if (platformId) formData.append("platformId", platformId);
 
         const photoRes = await fetch(`/api/jobs/${jobId}/photos`, {
           method: "POST",

@@ -20,6 +20,10 @@ export interface Platform {
   name: string;
   ratio: string;
   dimensions: string;
+  /** Target width in px — used by the post-process Sharp crop */
+  width: number;
+  /** Target height in px — used by the post-process Sharp crop */
+  height: number;
   description: string;
   icon: LucideIcon;
   /** Prompt hint appended to the user instruction to orient the retouche */
@@ -37,6 +41,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Instagram Feed",
       ratio: "4:5",
       dimensions: "1080×1350",
+      width: 1080,
+      height: 1350,
       description: "Portrait — format feed recommandé",
       icon: Camera,
       promptHint:
@@ -47,6 +53,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Instagram Carré",
       ratio: "1:1",
       dimensions: "1080×1080",
+      width: 1080,
+      height: 1080,
       description: "Format carré classique",
       icon: ImageLucide,
       promptHint:
@@ -57,6 +65,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Reels / Story",
       ratio: "9:16",
       dimensions: "1080×1920",
+      width: 1080,
+      height: 1920,
       description: "Vertical plein écran",
       icon: Video,
       promptHint:
@@ -67,6 +77,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "TikTok",
       ratio: "9:16",
       dimensions: "1080×1920",
+      width: 1080,
+      height: 1920,
       description: "Vertical mobile-first",
       icon: Music2,
       promptHint:
@@ -77,6 +89,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Pinterest",
       ratio: "2:3",
       dimensions: "1000×1500",
+      width: 1000,
+      height: 1500,
       description: "Épingle verticale optimale",
       icon: ImageLucide,
       promptHint:
@@ -90,6 +104,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Shopify",
       ratio: "1:1",
       dimensions: "2048×2048",
+      width: 2048,
+      height: 2048,
       description: "Boutique en ligne — fond blanc",
       icon: Store,
       promptHint:
@@ -100,6 +116,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Amazon",
       ratio: "1:1",
       dimensions: "2000×2000",
+      width: 2000,
+      height: 2000,
       description: "Standard Amazon — fond blanc strict",
       icon: ShoppingBag,
       promptHint:
@@ -110,6 +128,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Etsy",
       ratio: "1:1",
       dimensions: "2000×2000",
+      width: 2000,
+      height: 2000,
       description: "Artisanal — ambiance chaleureuse",
       icon: Package,
       promptHint:
@@ -120,6 +140,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Vinted",
       ratio: "3:4",
       dimensions: "1200×1600",
+      width: 1200,
+      height: 1600,
       description: "Seconde main — portrait neutre",
       icon: Shirt,
       promptHint:
@@ -130,6 +152,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Leboncoin",
       ratio: "4:3",
       dimensions: "1200×900",
+      width: 1200,
+      height: 900,
       description: "Annonce claire et nette",
       icon: Tag,
       promptHint:
@@ -143,6 +167,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "SeLoger",
       ratio: "4:3",
       dimensions: "1200×900",
+      width: 1200,
+      height: 900,
       description: "Annonces immobilières FR",
       icon: Home,
       promptHint:
@@ -153,6 +179,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Airbnb",
       ratio: "16:9",
       dimensions: "2048×1152",
+      width: 2048,
+      height: 1152,
       description: "Location courte durée",
       icon: BedDouble,
       promptHint:
@@ -163,6 +191,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Booking",
       ratio: "3:2",
       dimensions: "1500×1000",
+      width: 1500,
+      height: 1000,
       description: "Hôtellerie & voyageurs",
       icon: Building2,
       promptHint:
@@ -173,6 +203,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Leboncoin Immo",
       ratio: "4:3",
       dimensions: "1200×900",
+      width: 1200,
+      height: 900,
       description: "Petites annonces immo",
       icon: MapPin,
       promptHint:
@@ -183,6 +215,8 @@ export const PLATFORMS: Record<string, Platform[]> = {
       name: "Idealista",
       ratio: "4:3",
       dimensions: "1200×900",
+      width: 1200,
+      height: 900,
       description: "Marché espagnol / européen",
       icon: Home,
       promptHint:

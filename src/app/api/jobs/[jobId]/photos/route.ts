@@ -42,6 +42,10 @@ export async function POST(
     const formData = await req.formData();
     const file = formData.get("photo") as File | null;
     const instruction = (formData.get("instruction") as string | null) || null;
+    const rawPlatformId = (formData.get("platformId") as string | null) || null;
+    // Whitelist : platformId doit matcher le format des IDs déclarés dans platforms.ts
+    // (lettres, chiffres, tirets — pas d'injection de chemin ou de payload inattendu).
+    const platformId = rawPlatformId && /^[a-z0-9-]{1,40}$/i.test(rawPlatformId) ? rawPlatformId : null;
 
     if (!file) {
       return NextResponse.json({ error: "Aucune photo fournie" }, { status: 400 });
@@ -97,6 +101,7 @@ export async function POST(
         fileName: file.name,
         fileSizeOriginal: file.size,
         instruction: photoInstruction,
+        platformId,
         status: "PENDING",
       },
     });

@@ -144,6 +144,7 @@ model ProcessedPhoto {
   processedKey       String?       // Clé R2 permanente du fichier traité
   fileName           String        // Nom original du fichier
   instruction        String?       @db.Text // Prompt de retouche spécifique à cette photo
+  platformId         String?       // ID de plateforme cible (cf. src/config/platforms.ts) — drive le post-crop
   fileSizeOriginal   Int?          // Octets
   fileSizeProcessed  Int?
   status             JobStatus     @default(PENDING)

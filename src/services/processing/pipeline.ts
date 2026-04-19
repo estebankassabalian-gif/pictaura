@@ -6,6 +6,7 @@ import { getSignedDownloadUrl } from "@/lib/r2";
 import { retouchPhoto, generatePhotoSEO, scorePhoto } from "@/lib/gemini";
 import { applyWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
+import { cropToPlatform } from "@/services/processing/platform-crop";
 import { AGENTS } from "@/config/agents";
 import { FREE_SIGNUP_CREDITS } from "@/config/plans";
 
@@ -122,7 +123,7 @@ export async function processJob(jobId: string): Promise<void> {
  * SEO + Score run in the background (non-blocking) to avoid delaying the next photo.
  */
 async function processOnePhoto(
-  photo: { id: string; originalKey: string; instruction: string | null; fileName: string },
+  photo: { id: string; originalKey: string; instruction: string | null; platformId: string | null; fileName: string },
   job: { id: string; userId: string; preset: string; subOption: string | null },
   systemPrompt: string,
   shouldWatermark: boolean,
@@ -145,6 +146,10 @@ async function processOnePhoto(
     // Retouch via Gemini
     const imageBase64 = inputBuffer.toString("base64");
     let outputBuffer = await retouchPhoto(imageBase64, instruction, systemPrompt);
+
+    // Force exact platform dimensions (Gemini ne respecte pas toujours le ratio demandé).
+    // No-op si pas de plateforme sélectionnée.
+    outputBuffer = await cropToPlatform(outputBuffer, job.preset, photo.platformId);
 
     // Watermark uniquement pour les 5 retouches offertes à l'inscription
     if (shouldWatermark) {
