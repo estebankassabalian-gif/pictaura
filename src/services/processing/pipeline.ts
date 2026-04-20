@@ -230,6 +230,9 @@ async function runSeoAndScore(
         seoFileName: seoData.seoFileName,
         description: seoData.description,
         keywords: seoData.keywords,
+        metaTitle: seoData.metaTitle,
+        hashtags: seoData.hashtags,
+        schemaJsonLd: seoData.seoSchemaJson,
         preset,
       });
 

@@ -8,6 +8,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import * as Sentry from "@sentry/nextjs";
 import { env } from "@/config/env";
 import type { Preset } from "@prisma/client";
 
@@ -27,10 +28,14 @@ export interface PhotoSeoResult {
   seoSchemaJson: string;
 }
 
+// Fallback volontairement VIDE : si Gemini plante, on ne persiste RIEN
+// plutôt que d'injecter un nom générique "photo-optimisee.jpg" qui casse
+// tout le SEO (nom fichier, alt text, JSON-LD, EXIF). Le pipeline écrit
+// `|| null` donc null → download/zip utilisent leur fallback preset-based.
 const SEO_FALLBACK: PhotoSeoResult = {
-  altText: "Photo optimisée par Pictaura",
-  seoFileName: "photo-optimisee.jpg",
-  description: "Photo optimisée par IA",
+  altText: "",
+  seoFileName: "",
+  description: "",
   keywords: "",
   metaTitle: "",
   hashtags: "",
@@ -304,6 +309,10 @@ export async function generatePhotoSEO(
     }, "Gemini SEO");
   } catch (err) {
     console.error("generatePhotoSEO: all retries failed, falling back", err);
+    Sentry.captureException(err, {
+      tags: { module: "gemini", stage: "seo_fallback", preset },
+      level: "error",
+    });
     return SEO_FALLBACK;
   }
 }
@@ -359,7 +368,11 @@ Réponds UNIQUEMENT en JSON : {"score": <0-10 avec 1 décimale>, "report": "<2-3
     }, "Gemini score");
   } catch (err) {
     console.error("scorePhoto: all retries failed, falling back", err);
-    return { score: 7, report: "Photo traitée avec succès." };
+    Sentry.captureException(err, {
+      tags: { module: "gemini", stage: "score_fallback", preset },
+      level: "warning",
+    });
+    return { score: 0, report: "" };
   }
 }
 

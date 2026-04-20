@@ -12,7 +12,7 @@ export function SoftwareApplicationJsonLd() {
     applicationCategory: "MultimediaApplication",
     operatingSystem: "Web",
     description:
-      "Pictaura est un outil de retouche photo par intelligence artificielle pour les annonces Airbnb, les ventes Vinted, les posts Instagram et les boutiques Shopify. Optimisation automatique en quelques secondes.",
+      "Pictaura est un outil de retouche photo par intelligence artificielle pour les annonces Airbnb, les ventes Vinted, les posts Instagram et les boutiques Shopify. Optimisation automatique en 1 à 2 minutes par photo.",
     url: APP_URL,
     offers: {
       "@type": "AggregateOffer",
@@ -100,7 +100,7 @@ export function FaqJsonLd() {
         name: "Comment optimiser ses photos pour Airbnb ?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Pictaura optimise automatiquement vos photos Airbnb : redimensionnement à 1920×1280 pixels (ratio 3:2), amélioration de la luminosité et du contraste, upscaling IA pour une netteté maximale, et compression JPEG optimisée. En quelques secondes, vos photos sont prêtes à être publiées.",
+          text: "Pictaura optimise automatiquement vos photos Airbnb : redimensionnement à 1920×1280 pixels (ratio 3:2), amélioration de la luminosité et du contraste, upscaling IA pour une netteté maximale, et compression JPEG optimisée. En 1 à 2 minutes par photo, vos visuels sont prêts à être publiés.",
         },
       },
       {
@@ -132,7 +132,7 @@ export function FaqJsonLd() {
         name: "Comment fonctionne la retouche sur instruction ?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "La retouche sur instruction permet de modifier une photo en langage naturel. Par exemple : 'Retire le canapé rouge', 'Débâche la piscine', 'Nettoie les taches sur le vêtement'. Pictaura utilise l'IA générative pour exécuter la modification automatiquement en moins d'une minute.",
+          text: "La retouche sur instruction permet de modifier une photo en langage naturel. Par exemple : 'Retire le canapé rouge', 'Débâche la piscine', 'Nettoie les taches sur le vêtement'. Pictaura utilise l'IA générative pour exécuter la modification automatiquement en 1 à 2 minutes.",
         },
       },
       {

@@ -46,9 +46,6 @@ const envSchema = z.object({
   // Replicate (legacy — plus utilisé, gardé optionnel pour rétro-compat)
   REPLICATE_API_TOKEN: optionalStr,
 
-  // OpenAI (legacy — migré vers Gemini, gardé pour rétro-compat si présent)
-  OPENAI_API_KEY: optionalPrefixed("sk-"),
-
   // Google AI (Gemini) — requis pour l'analyse et la retouche photo
   GOOGLE_AI_KEY: z.string().min(1),
 

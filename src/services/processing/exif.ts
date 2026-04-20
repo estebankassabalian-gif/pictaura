@@ -5,6 +5,9 @@ interface ExifData {
   seoFileName?: string;
   description?: string;
   keywords?: string;
+  metaTitle?: string;
+  hashtags?: string;
+  schemaJsonLd?: string;
   preset?: string;
 }
 
@@ -54,21 +57,36 @@ function injectXmpApp1(jpegBuffer: Buffer, xmpPacket: string): Buffer {
 function buildXmpPacket(data: {
   title: string;
   description: string;
+  altText: string;
   keywords: string[];
+  metaTitle: string;
+  hashtags: string;
+  schemaJsonLd: string;
+  preset: string;
 }): string {
   const title = escapeXml(data.title);
   const description = escapeXml(data.description);
+  const altText = escapeXml(data.altText);
+  const metaTitle = escapeXml(data.metaTitle);
+  const hashtags = escapeXml(data.hashtags);
+  const preset = escapeXml(data.preset);
+  const schema = escapeXml(data.schemaJsonLd);
   const subjects = data.keywords
     .map((k) => `          <rdf:li>${escapeXml(k)}</rdf:li>`)
     .join("\n");
 
+  // Namespace custom pictaura: pour embarquer payload complet (metaTitle,
+  // hashtags, JSON-LD) lu nativement par exiftool et utilisable côté CMS
+  // (extracteur XMP générique). Lightroom/Photoshop continuent à lire dc: standard.
   return `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Pictaura 1.0">
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
     <rdf:Description rdf:about=""
       xmlns:dc="http://purl.org/dc/elements/1.1/"
       xmlns:xmp="http://ns.adobe.com/xap/1.0/"
-      xmlns:xmpRights="http://ns.adobe.com/xap/1.0/rights/">
+      xmlns:xmpRights="http://ns.adobe.com/xap/1.0/rights/"
+      xmlns:Iptc4xmpCore="http://iptc.org/std/Iptc4xmpCore/1.0/xmlns/"
+      xmlns:pictaura="https://pictaura.app/ns/1.0/">
       <dc:title>
         <rdf:Alt><rdf:li xml:lang="x-default">${title}</rdf:li></rdf:Alt>
       </dc:title>
@@ -84,9 +102,18 @@ function buildXmpPacket(data: {
 ${subjects}
         </rdf:Bag>
       </dc:subject>
+      <Iptc4xmpCore:AltTextAccessibility>
+        <rdf:Alt><rdf:li xml:lang="x-default">${altText}</rdf:li></rdf:Alt>
+      </Iptc4xmpCore:AltTextAccessibility>
       <xmp:CreatorTool>Pictaura IA</xmp:CreatorTool>
+      <xmp:Label>${preset}</xmp:Label>
       <xmpRights:Marked>True</xmpRights:Marked>
       <xmpRights:WebStatement>https://pictaura.app/licence</xmpRights:WebStatement>
+      <pictaura:preset>${preset}</pictaura:preset>
+      <pictaura:altText>${altText}</pictaura:altText>
+      <pictaura:metaTitle>${metaTitle}</pictaura:metaTitle>
+      <pictaura:hashtags>${hashtags}</pictaura:hashtags>
+      <pictaura:schemaJsonLd>${schema}</pictaura:schemaJsonLd>
     </rdf:Description>
   </rdf:RDF>
 </x:xmpmeta>
@@ -119,8 +146,14 @@ export async function injectExifMetadata(
   data: ExifData
 ): Promise<Buffer> {
   try {
-    const description = sanitizeExif(data.altText || data.description || "");
-    const title = sanitizeExif((data.seoFileName || "").replace(/\.jpg$/i, "").replace(/-/g, " "));
+    const altText = sanitizeExif(data.altText || "", 500);
+    const description = sanitizeExif(data.altText || data.description || "", 500);
+    const title = sanitizeExif(
+      data.metaTitle || (data.seoFileName || "").replace(/\.jpg$/i, "").replace(/-/g, " "),
+      255
+    );
+    const metaTitle = sanitizeExif(data.metaTitle || "", 255);
+    const hashtags = sanitizeExif(data.hashtags || "", 600);
 
     // Keywords : dé-sérialiser si JSON array
     let keywordsStr = "";
@@ -149,10 +182,25 @@ export async function injectExifMetadata(
       keywordArray = keywordsStr ? keywordsStr.split(/[;,]/).map((s) => s.trim()).filter(Boolean) : [];
     }
 
+    // JSON-LD : compacter (retirer sauts de ligne) pour tenir dans XMP <65KB
+    let schemaCompact = "";
+    if (data.schemaJsonLd) {
+      try {
+        schemaCompact = JSON.stringify(JSON.parse(data.schemaJsonLd));
+      } catch {
+        schemaCompact = "";
+      }
+    }
+
     const xmpPacket = buildXmpPacket({
       title,
       description,
+      altText,
       keywords: keywordArray,
+      metaTitle,
+      hashtags,
+      schemaJsonLd: schemaCompact,
+      preset: data.preset || "",
     });
 
     // Sharp 0.33 n'expose pas withMetadata({ xmp }), on injecte l'APP1 XMP

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ForceFailButton from "./ForceFailButton";
+import RegenSeoButton from "./RegenSeoButton";
 import { getStatusBadgeClasses, getStatusLabel } from "@/config/agents";
 import { Users, FolderOpen, ImageIcon, CreditCard, Shield, UserPlus } from "lucide-react";
 import bcrypt from "bcryptjs";
@@ -283,9 +284,12 @@ export default async function AdminPage() {
                   {new Date(job.createdAt).toLocaleDateString("fr-FR")}
                 </td>
                 <td className="px-5 py-3 text-right">
-                  {(job.status === "PENDING" || job.status === "PROCESSING") && (
-                    <ForceFailButton jobId={job.id} />
-                  )}
+                  <div className="flex items-center gap-3 justify-end">
+                    {(job.status === "PENDING" || job.status === "PROCESSING") && (
+                      <ForceFailButton jobId={job.id} />
+                    )}
+                    {job.status === "COMPLETED" && <RegenSeoButton jobId={job.id} />}
+                  </div>
                 </td>
               </tr>
             ))}

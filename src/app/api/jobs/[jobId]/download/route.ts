@@ -49,11 +49,35 @@ export async function GET(
       ? `${photo.seoFileName.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "-")}.jpg`
       : `pictaura-${job.preset.toLowerCase()}-${photo.fileName.replace(/\.[^.]+$/, "")}.jpg`;
 
+    // Headers HTTP pour exposer le SEO sans avoir besoin du ZIP.
+    // UTF-8 → base64 car les headers HTTP sont ASCII-only (RFC 7230).
+    // Côté client : atob(decodeURIComponent(escape(header))) ou Buffer.from(h, 'base64').toString('utf8').
+    const encodeHeader = (val: string | null | undefined): string =>
+      val ? Buffer.from(val, "utf8").toString("base64") : "";
+
+    const seoHeaders: Record<string, string> = {};
+    const altB64 = encodeHeader(photo.seoAltText);
+    const descB64 = encodeHeader(photo.seoDescription);
+    const metaTitleB64 = encodeHeader(photo.seoMetaTitle);
+    const keywordsB64 = encodeHeader(photo.seoKeywords);
+    const hashtagsB64 = encodeHeader(photo.seoHashtags);
+    const schemaB64 = encodeHeader(photo.seoSchemaJson);
+    if (altB64) seoHeaders["X-Pictaura-Alt-Text-B64"] = altB64;
+    if (descB64) seoHeaders["X-Pictaura-Description-B64"] = descB64;
+    if (metaTitleB64) seoHeaders["X-Pictaura-Meta-Title-B64"] = metaTitleB64;
+    if (keywordsB64) seoHeaders["X-Pictaura-Keywords-B64"] = keywordsB64;
+    if (hashtagsB64) seoHeaders["X-Pictaura-Hashtags-B64"] = hashtagsB64;
+    if (schemaB64) seoHeaders["X-Pictaura-Schema-JsonLd-B64"] = schemaB64;
+    if (photo.photoScore != null) seoHeaders["X-Pictaura-Score"] = String(photo.photoScore);
+    seoHeaders["X-Pictaura-Preset"] = job.preset;
+
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "image/jpeg",
         "Content-Disposition": `attachment; filename="${fileName.replace(/["\\]/g, "_")}"`,
         "Cache-Control": "no-store",
+        "Access-Control-Expose-Headers": Object.keys(seoHeaders).join(", "),
+        ...seoHeaders,
       },
     });
   } catch (error) {

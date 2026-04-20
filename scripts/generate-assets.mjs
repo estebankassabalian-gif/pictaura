@@ -21,28 +21,35 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(__dirname, "../public");
 
-// ─── Pictaura brand colors ──────────────────────────────────────────────────────
-const ORANGE = "#f97316"; // primary
-const DARK   = "#111827"; // text
+// ─── Pictaura brand colors (v2 — cream/navy/orange) ─────────────────────────
+const ORANGE = "#F87005"; // accent
+const DARK   = "#031D68"; // navy ink
+const CREAM  = "#FFFBF5"; // background
 
-// ─── SVG icon (sun/sparkle — scalable) ───────────────────────────────────────
+// ─── SVG icon — Pictaura mark (triangle + iris + 3 rays) ────────────────────
+// Reprend le design de public/logo-mark.svg, adapté carré pour PWA.
 function iconSvg(size) {
-  const cx = size / 2;
-  const r  = size * 0.25;
-  const ray = size * 0.12;
-  const gap = size * 0.05;
-  const sw  = Math.max(1.5, size * 0.05);
-  const o   = cx - r - gap - ray; // ray start (outer)
-  const i   = cx - r - gap;       // ray end (inner)
+  const rx = size * 0.22; // rounded corners like iOS/Android
+  const sw = Math.max(1.8, size * 0.055);
+
+  // Coords normalisés 0-100 puis scaled. Logo-mark viewBox 0 0 88 64,
+  // on centre dans un carré en ajustant.
+  // Scale factor basé sur size / 100 pour faire tenir tout l'icon proprement.
+  const s = size / 100;
+  const x = (n) => n * s;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-  <rect width="${size}" height="${size}" rx="${size * 0.18}" fill="${ORANGE}"/>
-  <circle cx="${cx}" cy="${cx}" r="${r}" fill="white"/>
-  <!-- rays -->
-  <line x1="${cx}" y1="${o}" x2="${cx}" y2="${i}" stroke="white" stroke-width="${sw}" stroke-linecap="round"/>
-  <line x1="${cx}" y1="${size - o}" x2="${cx}" y2="${size - i}" stroke="white" stroke-width="${sw}" stroke-linecap="round"/>
-  <line x1="${o}" y1="${cx}" x2="${i}" y2="${cx}" stroke="white" stroke-width="${sw}" stroke-linecap="round"/>
-  <line x1="${size - o}" y1="${cx}" x2="${size - i}" y2="${cx}" stroke="white" stroke-width="${sw}" stroke-linecap="round"/>
+  <rect width="${size}" height="${size}" rx="${rx}" fill="${CREAM}"/>
+  <!-- Triangle (top edge) -->
+  <path d="M ${x(18)} ${x(50)} L ${x(45)} ${x(20)}" stroke="${DARK}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M ${x(18)} ${x(50)} L ${x(45)} ${x(80)}" stroke="${DARK}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M ${x(45)} ${x(20)} Q ${x(58)} ${x(50)} ${x(45)} ${x(80)}" stroke="${DARK}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Iris -->
+  <ellipse cx="${x(47)}" cy="${x(50)}" rx="${x(9)}" ry="${x(14)}" fill="${DARK}"/>
+  <!-- 3 rays -->
+  <line x1="${x(52)}" y1="${x(26)}" x2="${x(82)}" y2="${x(14)}" stroke="${DARK}" stroke-width="${sw}" stroke-linecap="round"/>
+  <line x1="${x(58)}" y1="${x(50)}" x2="${x(92)}" y2="${x(50)}" stroke="#FFC529" stroke-width="${sw}" stroke-linecap="round"/>
+  <line x1="${x(52)}" y1="${x(74)}" x2="${x(82)}" y2="${x(86)}" stroke="${ORANGE}" stroke-width="${sw}" stroke-linecap="round"/>
 </svg>`;
 }
 

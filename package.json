@@ -15,7 +15,6 @@
     "generate:assets": "node scripts/generate-assets.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.36.3",
     "@auth/prisma-adapter": "^2.11.1",
     "@aws-sdk/client-s3": "^3.726.1",
     "@aws-sdk/s3-request-presigner": "^3.726.1",
@@ -31,7 +30,6 @@
     "lucide-react": "^1.7.0",
     "next": "^15.2.1",
     "next-auth": "^5.0.0-beta.25",
-    "openai": "^6.32.0",
     "react": "^19.0.0",
     "react-compare-image": "^3.4.0",
     "react-dom": "^19.0.0",
