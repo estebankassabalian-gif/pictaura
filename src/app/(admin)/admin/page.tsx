@@ -5,9 +5,9 @@ import Link from "next/link";
 import ForceFailButton from "./ForceFailButton";
 import RegenSeoButton from "./RegenSeoButton";
 import { getStatusBadgeClasses, getStatusLabel } from "@/config/agents";
-import { Users, FolderOpen, ImageIcon, CreditCard, Shield, UserPlus } from "lucide-react";
+import { Users, FolderOpen, ImageIcon, CreditCard, Shield, UserPlus, Sparkles, ThumbsUp, TrendingUp, Activity } from "lucide-react";
 import bcrypt from "bcryptjs";
-import { TransactionType } from "@prisma/client";
+import { JobStatus, TransactionType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export default async function AdminPage() {
@@ -120,6 +120,49 @@ export default async function AdminPage() {
   });
   const totalCreditsSOLD = revenueData._sum.amount ?? 0;
 
+  // ─── Métriques business (KPIs pour piloter testeurs / prod) ───────────
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [
+    seoTotalCompleted,
+    seoWithMetadata,
+    inpaintCompleted,
+    inpaintRejected,
+    inpaintAwaiting,
+    creditsConsumed7d,
+    jobsCreated7d,
+    activeUsers7d,
+  ] = await Promise.all([
+    prisma.processedPhoto.count({ where: { status: JobStatus.COMPLETED } }),
+    prisma.processedPhoto.count({
+      where: { status: JobStatus.COMPLETED, seoFileName: { not: null } },
+    }),
+    prisma.inpaintingJob.count({ where: { status: JobStatus.COMPLETED } }),
+    prisma.inpaintingJob.count({ where: { status: JobStatus.REJECTED } }),
+    prisma.inpaintingJob.count({ where: { status: JobStatus.AWAITING_VALIDATION } }),
+    prisma.creditTransaction.aggregate({
+      where: { type: TransactionType.USAGE, createdAt: { gte: sevenDaysAgo } },
+      _sum: { amount: true },
+    }),
+    prisma.processingJob.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+    prisma.processingJob.findMany({
+      where: { createdAt: { gte: sevenDaysAgo } },
+      distinct: ["userId"],
+      select: { userId: true },
+    }),
+  ]);
+
+  const seoSuccessRate = seoTotalCompleted > 0
+    ? Math.round((seoWithMetadata / seoTotalCompleted) * 100)
+    : 0;
+  const inpaintTotalDecided = inpaintCompleted + inpaintRejected;
+  const inpaintApproveRate = inpaintTotalDecided > 0
+    ? Math.round((inpaintCompleted / inpaintTotalDecided) * 100)
+    : 0;
+  const creditsConsumed7dValue = Math.abs(creditsConsumed7d._sum.amount ?? 0);
+  const dailyCreditsAvg = Math.round(creditsConsumed7dValue / 7);
+  const activeUsersCount = activeUsers7d.length;
+
   return (
     <div>
       <h1 className="text-3xl md:text-4xl font-display tracking-tight text-ink mb-8 flex items-center gap-3">
@@ -127,11 +170,39 @@ export default async function AdminPage() {
       </h1>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <AdminStat label="Utilisateurs" value={totalUsers} icon={Users} />
         <AdminStat label="Jobs total" value={totalJobs} icon={FolderOpen} />
         <AdminStat label="Photos traitées" value={totalPhotos} icon={ImageIcon} />
         <AdminStat label="Crédits vendus" value={totalCreditsSOLD} icon={CreditCard} />
+      </div>
+
+      {/* Métriques business — KPIs pour piloter les testeurs */}
+      <h2 className="font-display text-xl text-ink mb-3 flex items-center gap-2">
+        <TrendingUp className="w-5 h-5 text-accent" /> Métriques business (7 derniers jours)
+      </h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        <AdminStat
+          label={`SEO injecté (${seoWithMetadata}/${seoTotalCompleted})`}
+          value={`${seoSuccessRate}%`}
+          icon={Sparkles}
+          accent={seoSuccessRate >= 95 ? "good" : seoSuccessRate >= 80 ? "warn" : "bad"}
+        />
+        <AdminStat
+          label={`Retouches IA acceptées (${inpaintCompleted}/${inpaintTotalDecided})${inpaintAwaiting > 0 ? ` · ${inpaintAwaiting} en attente` : ""}`}
+          value={`${inpaintApproveRate}%`}
+          icon={ThumbsUp}
+        />
+        <AdminStat
+          label={`Crédits consommés (~${dailyCreditsAvg}/jour)`}
+          value={creditsConsumed7dValue}
+          icon={Activity}
+        />
+        <AdminStat
+          label={`Utilisateurs actifs · ${jobsCreated7d} jobs`}
+          value={activeUsersCount}
+          icon={Users}
+        />
       </div>
 
       {/* Créer un compte de test */}
@@ -304,15 +375,23 @@ function AdminStat({
   label,
   value,
   icon: Icon,
+  accent,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   icon: React.ComponentType<{ className?: string }>;
+  accent?: "good" | "warn" | "bad";
 }) {
+  const accentClass =
+    accent === "good" ? "text-green-700"
+    : accent === "warn" ? "text-amber-600"
+    : accent === "bad" ? "text-red-600"
+    : "text-ink";
+  const formatted = typeof value === "number" ? value.toLocaleString() : value;
   return (
     <div className="bg-white rounded-2xl border border-ink/10 shadow-sm p-5 hover:shadow-md transition-shadow">
       <Icon className="w-5 h-5 text-accent mb-2" />
-      <div className="text-3xl font-display tracking-tight text-ink">{value.toLocaleString()}</div>
+      <div className={`text-3xl font-display tracking-tight ${accentClass}`}>{formatted}</div>
       <div className="text-sm text-ink-muted mt-0.5">{label}</div>
     </div>
   );
