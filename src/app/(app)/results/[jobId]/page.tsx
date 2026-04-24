@@ -771,30 +771,6 @@ export default function ResultsPage() {
             </div>
           )}
 
-          {/* Score + SEO */}
-          {currentPhoto.status === "COMPLETED" && (
-            <div className="mt-6 space-y-3">
-              {currentPhoto.photoScore !== null ? (
-                <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-semibold text-accent">
-                      Score photo : {currentPhoto.photoScore}/10
-                    </span>
-                    <div className="flex-1 h-2 bg-accent/15 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-accent rounded-full"
-                        style={{ width: `${(currentPhoto.photoScore / 10) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  {currentPhoto.photoScoreReport && (
-                    <p className="text-xs text-ink-muted">{currentPhoto.photoScoreReport}</p>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          )}
-
           {/* Retouche IA inline */}
           <RetoucheChat photo={currentPhoto} preset={job.preset} onPhotoUpdated={fetchJob} />
         </div>
