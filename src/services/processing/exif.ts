@@ -1,5 +1,3 @@
-import sharp from "sharp";
-
 interface ExifData {
   altText?: string;
   seoFileName?: string;
@@ -20,38 +18,205 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-/**
- * Construit un paquet XMP (Dublin Core) lu nativement par Lightroom, Photoshop,
- * WordPress (plugin Image SEO), Shopify (app metadata) et Google Images.
- * Les CMS modernes privilégient XMP sur IPTC/EXIF pour l'import auto.
- */
+// ============================================================================
+// Byte-level EXIF + XMP APP1 injection — NO JPEG re-encode, preserves pixel fidelity
+// ============================================================================
+//
+// Sharp's `withMetadata({ exif })` requires going through Sharp's pipeline which
+// always re-encodes the JPEG → small but cumulative quality loss. By writing the
+// APP1 segments directly into the JPEG byte stream we keep the original pixel
+// data 100% intact and only add metadata to the file header.
+//
+// JPEG segment layout (from start of file):
+//   0xFFD8 (SOI)
+//   [APP0 JFIF segment if present — kept verbatim]
+//   [APP1 EXIF segment — we replace]
+//   [APP1 XMP segment — we replace]
+//   ...quantization tables, scan data, etc... (untouched, pixels preserved)
+//   0xFFD9 (EOI)
+
+const EXIF_HEADER = Buffer.from([0x45, 0x78, 0x69, 0x66, 0x00, 0x00]); // "Exif\0\0"
+const TIFF_HEADER_LE = Buffer.from([0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00]); // "II" + 0x2A00 + offset=8
 const XMP_NAMESPACE = "http://ns.adobe.com/xap/1.0/\0";
 
+interface IfdEntry {
+  tag: number;
+  type: 1 | 2; // 1=BYTE (used for Windows XP* UTF-16LE strings), 2=ASCII (NUL-terminated)
+  data: Buffer; // raw bytes for the value (will go inline if ≤4 bytes, else in data area)
+}
+
+function asciiZ(str: string): Buffer {
+  // ASCII NUL-terminated. Drop non-ASCII to avoid invalid UTF-8 in pure-ASCII tag.
+  const clean = str.replace(/[^\x20-\x7E]/g, "");
+  return Buffer.concat([Buffer.from(clean, "ascii"), Buffer.from([0])]);
+}
+
+function utf16leZ(str: string): Buffer {
+  // Windows XP* tags: UTF-16LE, NUL-terminated (2-byte NUL).
+  return Buffer.concat([Buffer.from(str, "utf16le"), Buffer.from([0, 0])]);
+}
+
 /**
- * Injecte un segment APP1 XMP dans un buffer JPEG, juste après le marqueur
- * SOI (0xFFD8). Non-destructif : si le buffer n'est pas un JPEG valide ou
- * si le XMP dépasse 65 500 octets, renvoie le buffer d'origine.
+ * Build a TIFF/IFD0 byte stream from the given entries.
+ * Layout: TIFF header (8 bytes) | IFD entry count (2) | entries (12 × N) | next IFD offset (4) | data area
  */
-function injectXmpApp1(jpegBuffer: Buffer, xmpPacket: string): Buffer {
-  // SOI marker check
+function buildTiffIfd0(entries: IfdEntry[]): Buffer {
+  // IFD0 spec requires entries sorted by tag ID
+  entries.sort((a, b) => a.tag - b.tag);
+
+  const count = entries.length;
+  const ifdHeaderSize = 2 + count * 12 + 4; // count field + entries + next-IFD offset
+  // Data area offsets are relative to start of TIFF (i.e. start of TIFF_HEADER_LE).
+  // TIFF header is 8 bytes, then IFD0, then data.
+  let dataOffset = 8 + ifdHeaderSize;
+
+  const ifdBuf = Buffer.alloc(ifdHeaderSize);
+  const dataChunks: Buffer[] = [];
+
+  ifdBuf.writeUInt16LE(count, 0);
+  let pos = 2;
+  for (const entry of entries) {
+    ifdBuf.writeUInt16LE(entry.tag, pos);
+    ifdBuf.writeUInt16LE(entry.type, pos + 2);
+    ifdBuf.writeUInt32LE(entry.data.length, pos + 4);
+
+    if (entry.data.length <= 4) {
+      // Inline value, zero-padded
+      const inline = Buffer.alloc(4);
+      entry.data.copy(inline);
+      inline.copy(ifdBuf, pos + 8);
+    } else {
+      ifdBuf.writeUInt32LE(dataOffset, pos + 8);
+      dataChunks.push(entry.data);
+      // Word-align data area (TIFF requires offsets at even byte boundaries)
+      if (entry.data.length % 2 === 1) {
+        dataChunks.push(Buffer.from([0]));
+        dataOffset += 1;
+      }
+      dataOffset += entry.data.length;
+    }
+    pos += 12;
+  }
+  // Next IFD offset = 0 (no IFD1)
+  ifdBuf.writeUInt32LE(0, pos);
+
+  return Buffer.concat([TIFF_HEADER_LE, ifdBuf, ...dataChunks]);
+}
+
+/** Wrap TIFF data in an APP1 EXIF segment marker. Returns empty if too large. */
+function buildExifApp1Segment(tiffData: Buffer): Buffer {
+  const payload = Buffer.concat([EXIF_HEADER, tiffData]);
+  const segLength = 2 + payload.length; // 2 = length field itself
+  if (segLength > 65535) {
+    console.warn("EXIF segment too large for single APP1, skipping");
+    return Buffer.alloc(0);
+  }
+  const marker = Buffer.from([0xff, 0xe1, (segLength >> 8) & 0xff, segLength & 0xff]);
+  return Buffer.concat([marker, payload]);
+}
+
+/** Build XMP APP1 segment (Adobe XMP wrapped in APP1). */
+function buildXmpApp1Segment(xmpPacket: string): Buffer {
+  const payload = Buffer.concat([
+    Buffer.from(XMP_NAMESPACE, "binary"),
+    Buffer.from(xmpPacket, "utf8"),
+  ]);
+  const segLength = 2 + payload.length;
+  if (segLength > 65535) {
+    console.warn("XMP packet too large for single APP1, skipping");
+    return Buffer.alloc(0);
+  }
+  const marker = Buffer.from([0xff, 0xe1, (segLength >> 8) & 0xff, segLength & 0xff]);
+  return Buffer.concat([marker, payload]);
+}
+
+/**
+ * Remove any existing APP1 (EXIF or XMP) segments from a JPEG without re-encoding.
+ * Walks the segment list, copies non-APP1 segments verbatim, drops APP1, and copies
+ * the scan data (SOS onward) byte-for-byte. Pixel data is never touched.
+ */
+function stripExistingApp1(jpegBuffer: Buffer): Buffer {
   if (jpegBuffer.length < 4 || jpegBuffer[0] !== 0xff || jpegBuffer[1] !== 0xd8) {
     return jpegBuffer;
   }
 
-  const nsBuffer = Buffer.from(XMP_NAMESPACE, "binary");
-  const xmpBuffer = Buffer.from(xmpPacket, "utf8");
-  const payload = Buffer.concat([nsBuffer, xmpBuffer]);
+  const out: Buffer[] = [Buffer.from([0xff, 0xd8])]; // SOI
+  let pos = 2;
+  while (pos < jpegBuffer.length - 1) {
+    if (jpegBuffer[pos] !== 0xff) break;
+    const marker = jpegBuffer[pos + 1];
 
-  // APP1 length = 2 (length field) + payload. Max 65535.
-  const segLength = 2 + payload.length;
-  if (segLength > 65535) {
-    console.warn("XMP packet too large for single APP1 segment, skipping");
+    // SOS = start of scan; rest of file is image data, copy verbatim
+    if (marker === 0xda) {
+      out.push(jpegBuffer.subarray(pos));
+      return Buffer.concat(out);
+    }
+
+    // Standalone markers without length: RST0-RST7 (0xD0-0xD7), SOI, EOI, TEM
+    if ((marker >= 0xd0 && marker <= 0xd9) || marker === 0x01) {
+      out.push(jpegBuffer.subarray(pos, pos + 2));
+      pos += 2;
+      continue;
+    }
+
+    // Segments with 2-byte big-endian length
+    if (pos + 4 > jpegBuffer.length) break;
+    const segLen = jpegBuffer.readUInt16BE(pos + 2);
+    if (segLen < 2 || pos + 2 + segLen > jpegBuffer.length) break;
+
+    if (marker === 0xe1) {
+      // Drop APP1 (existing EXIF or XMP — we'll re-insert our own)
+      pos += 2 + segLen;
+    } else {
+      out.push(jpegBuffer.subarray(pos, pos + 2 + segLen));
+      pos += 2 + segLen;
+    }
+  }
+  return Buffer.concat(out);
+}
+
+/**
+ * Inject EXIF (IFD0) + XMP into a JPEG byte stream without re-encoding pixels.
+ * Returns a new buffer with the same image data but updated metadata.
+ */
+function injectMetadataApp1(
+  jpegBuffer: Buffer,
+  exifFields: { description?: string; software?: string; copyright?: string; xpTitle?: string; xpKeywords?: string; xpComment?: string },
+  xmpPacket: string
+): Buffer {
+  if (jpegBuffer.length < 4 || jpegBuffer[0] !== 0xff || jpegBuffer[1] !== 0xd8) {
     return jpegBuffer;
   }
 
-  const marker = Buffer.from([0xff, 0xe1, (segLength >> 8) & 0xff, segLength & 0xff]);
-  // Insert after SOI (first 2 bytes)
-  return Buffer.concat([jpegBuffer.subarray(0, 2), marker, payload, jpegBuffer.subarray(2)]);
+  // Standard EXIF tag IDs
+  const TAG = {
+    ImageDescription: 0x010e,
+    Software:         0x0131,
+    Copyright:        0x8298,
+    XPTitle:          0x9c9b,
+    XPComment:        0x9c9c,
+    XPKeywords:       0x9c9e,
+  };
+
+  const entries: IfdEntry[] = [];
+  if (exifFields.description) entries.push({ tag: TAG.ImageDescription, type: 2, data: asciiZ(exifFields.description) });
+  if (exifFields.software)    entries.push({ tag: TAG.Software,         type: 2, data: asciiZ(exifFields.software) });
+  if (exifFields.copyright)   entries.push({ tag: TAG.Copyright,        type: 2, data: asciiZ(exifFields.copyright) });
+  if (exifFields.xpTitle)     entries.push({ tag: TAG.XPTitle,          type: 1, data: utf16leZ(exifFields.xpTitle) });
+  if (exifFields.xpComment)   entries.push({ tag: TAG.XPComment,        type: 1, data: utf16leZ(exifFields.xpComment) });
+  if (exifFields.xpKeywords)  entries.push({ tag: TAG.XPKeywords,       type: 1, data: utf16leZ(exifFields.xpKeywords) });
+
+  const exifApp1 = entries.length > 0 ? buildExifApp1Segment(buildTiffIfd0(entries)) : Buffer.alloc(0);
+  const xmpApp1 = xmpPacket ? buildXmpApp1Segment(xmpPacket) : Buffer.alloc(0);
+
+  const stripped = stripExistingApp1(jpegBuffer);
+  // Insert EXIF first (convention: EXIF before XMP), then XMP, right after SOI
+  return Buffer.concat([
+    stripped.subarray(0, 2), // SOI
+    exifApp1,
+    xmpApp1,
+    stripped.subarray(2),    // everything after SOI (APP0 JFIF, DQT, DHT, scan data...)
+  ]);
 }
 
 function buildXmpPacket(data: {
@@ -75,10 +240,7 @@ function buildXmpPacket(data: {
     .map((k) => `          <rdf:li>${escapeXml(k)}</rdf:li>`)
     .join("\n");
 
-  // Namespace custom pictaura: pour embarquer payload complet (metaTitle,
-  // hashtags, JSON-LD) lu nativement par exiftool et utilisable côté CMS
-  // (extracteur XMP générique). Lightroom/Photoshop continuent à lire dc: standard.
-  return `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
+  return `<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Pictaura 1.0">
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
     <rdf:Description rdf:about=""
@@ -120,27 +282,23 @@ ${subjects}
 <?xpacket end="w"?>`;
 }
 
-/**
- * Injecte les métadonnées SEO dans les champs EXIF du fichier image.
- *
- * Champs écrits :
- * - ImageDescription → lu par Google Images, Shopify, WordPress à l'import
- * - XPTitle          → titre de l'image (Windows / logiciels photo)
- * - XPKeywords       → mots-clés (Lightroom, Capture One, WooCommerce)
- * - Copyright        → branding Pictaura
- * - Software         → traçabilité
- *
- * Non-destructif : si l'injection échoue, le buffer original est retourné.
- */
-/** Retire les balises HTML et les caractères de contrôle d'une chaîne */
 function sanitizeExif(value: string, maxLen = 255): string {
   return value
-    .replace(/<[^>]*>/g, "")          // strip HTML tags
-    .replace(/[\x00-\x1F\x7F]/g, " ") // strip control chars
+    .replace(/<[^>]*>/g, "")
+    .replace(/[\x00-\x1F\x7F]/g, " ")
     .trim()
     .slice(0, maxLen);
 }
 
+/**
+ * Injecte les métadonnées SEO dans le fichier JPEG :
+ * - EXIF IFD0 (ImageDescription, XPTitle, XPKeywords, XPComment, Copyright, Software)
+ * - XMP Dublin Core + IPTC + namespace custom pictaura: (avec JSON-LD complet)
+ *
+ * Implémentation byte-level — AUCUN ré-encodage JPEG, qualité des pixels préservée
+ * à 100% par rapport au buffer d'entrée. Si l'injection échoue pour une raison
+ * quelconque, le buffer d'entrée est retourné intact.
+ */
 export async function injectExifMetadata(
   imageBuffer: Buffer,
   data: ExifData
@@ -164,16 +322,6 @@ export async function injectExifMetadata(
       keywordsStr = data.keywords ?? "";
     }
 
-    // Sharp IFD0 EXIF fields
-    const exifFields: Record<string, string> = {};
-    if (description) exifFields.ImageDescription = description;
-    if (title) exifFields.XPTitle = title;
-    if (keywordsStr) exifFields.XPKeywords = keywordsStr;
-    exifFields.Copyright = "pictaura.app";
-    exifFields.Software = "Pictaura IA";
-    if (data.preset) exifFields.XPComment = `Optimisé pour ${data.preset} par Pictaura`;
-
-    // Keywords array pour XMP dc:subject
     let keywordArray: string[] = [];
     try {
       const kw = data.keywords ? JSON.parse(data.keywords) : [];
@@ -182,7 +330,6 @@ export async function injectExifMetadata(
       keywordArray = keywordsStr ? keywordsStr.split(/[;,]/).map((s) => s.trim()).filter(Boolean) : [];
     }
 
-    // JSON-LD : compacter (retirer sauts de ligne) pour tenir dans XMP <65KB
     let schemaCompact = "";
     if (data.schemaJsonLd) {
       try {
@@ -203,17 +350,19 @@ export async function injectExifMetadata(
       preset: data.preset || "",
     });
 
-    // Sharp 0.33 n'expose pas withMetadata({ xmp }), on injecte l'APP1 XMP
-    // à la main après coup — c'est du JPEG standard lu par Lightroom, Shopify,
-    // WordPress et Google Images.
-    const jpegWithExif = await sharp(imageBuffer)
-      .withMetadata({ exif: { IFD0: exifFields } })
-      .jpeg({ quality: 94, progressive: true, mozjpeg: true })
-      .toBuffer();
-
-    return injectXmpApp1(jpegWithExif, xmpPacket);
+    return injectMetadataApp1(
+      imageBuffer,
+      {
+        description,
+        software: "Pictaura IA",
+        copyright: "pictaura.app",
+        xpTitle: title,
+        xpComment: data.preset ? `Optimise pour ${data.preset} par Pictaura` : undefined,
+        xpKeywords: keywordsStr,
+      },
+      xmpPacket
+    );
   } catch (err) {
-    // Non-bloquant : si l'injection EXIF échoue, on retourne l'image originale
     console.error("EXIF injection warning (non-blocking):", err);
     return imageBuffer;
   }
