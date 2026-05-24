@@ -17,6 +17,8 @@ export default auth((req) => {
     "/reset-password",
     "/api/auth",
     "/api/webhooks/stripe",
+    "/api/stripe/webhook",
+    "/api/health",
     "/cgu",
     "/politique-confidentialite",
     "/contact",
