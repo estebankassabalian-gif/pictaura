@@ -130,7 +130,7 @@ export async function processJob(jobId: string): Promise<void> {
 /**
  * Resize down to a max long edge if needed. Returns same buffer if already small enough.
  */
-async function resizeIfLarger(buffer: Buffer, maxEdge: number, jpegQuality = 94): Promise<Buffer> {
+async function resizeIfLarger(buffer: Buffer, maxEdge: number, jpegQuality = 92): Promise<Buffer> {
   try {
     const meta = await sharp(buffer).metadata();
     const longEdge = Math.max(meta.width ?? 0, meta.height ?? 0);
