@@ -273,29 +273,14 @@ function extractInlineImage(response: unknown): Buffer | null {
 }
 
 /**
- * Génère les métadonnées SEO + scoring en UN SEUL appel Gemini.
+ * Génère les métadonnées SEO enrichies (JSON-LD complet) via Gemini 2.5 Flash.
  */
-export async function generateSeoAndScore(
+export async function generatePhotoSEO(
   imageBase64: string,
   preset: Preset,
   userLocation?: string
-): Promise<{ seo: PhotoSeoResult; score: number; report: string }> {
-  const criteriaMap: Record<string, string> = {
-    AIRBNB: "luminosité, cadrage (règle des tiers), rangement, attractivité de la pièce, qualité professionnelle",
-    IMMOBILIER: "luminosité, verticalité, cadrage, rangement, attractivité du bien, qualité pro",
-    INSTAGRAM: "composition, couleurs, impact visuel, originalité, netteté",
-    SHOPIFY: "fond blanc/neutre, netteté produit, éclairage pro, cadrage centré, qualité e-commerce, lisibilité des détails",
-  };
-  const criteria = criteriaMap[preset] ?? criteriaMap.SHOPIFY;
-  const seoPrompt = buildSeoPrompt(preset, userLocation);
-
-  const combinedPrompt = `${seoPrompt}
-
-PUIS, dans le même JSON racine, ajoute deux champs supplémentaires :
-"_score": <0-10 avec 1 décimale, évalue cette photo pour ${preset} selon : ${criteria}>,
-"_report": "<2-3 phrases FR : points forts, faibles, gain IA>"
-
-Réponds UNIQUEMENT en JSON valide, sans markdown.`;
+): Promise<PhotoSeoResult> {
+  const prompt = buildSeoPrompt(preset, userLocation);
 
   try {
     return await withRetry(async () => {
@@ -306,13 +291,13 @@ Réponds UNIQUEMENT en JSON valide, sans markdown.`;
             role: "user",
             parts: [
               { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-              { text: combinedPrompt },
+              { text: prompt + "\n\nRéponds UNIQUEMENT en JSON valide, sans markdown." },
             ],
           },
         ],
         config: {
           responseMimeType: "application/json",
-          maxOutputTokens: 1700,
+          maxOutputTokens: 1500,
           temperature: 0.4,
           abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
         },
@@ -320,36 +305,89 @@ Réponds UNIQUEMENT en JSON valide, sans markdown.`;
 
       const text = extractText(response).replace(/```json\n?|\n?```/g, "").trim();
       const parsed = JSON.parse(text);
-      const seo = coerceSeoResponse(parsed);
-      const score = Math.min(10, Math.max(0, Number(parsed._score) || 0));
-      const report = String(parsed._report ?? "");
-      return { seo, score, report };
-    }, "Gemini SEO+Score");
+      return coerceSeoResponse(parsed);
+    }, "Gemini SEO");
   } catch (err) {
-    console.error("generateSeoAndScore: all retries failed, falling back", err);
+    console.error("generatePhotoSEO: all retries failed, falling back", err);
     Sentry.captureException(err, {
-      tags: { module: "gemini", stage: "seo_score_fallback", preset },
+      tags: { module: "gemini", stage: "seo_fallback", preset },
       level: "error",
     });
-    return { seo: SEO_FALLBACK, score: 0, report: "" };
+    return SEO_FALLBACK;
   }
 }
 
-export async function generatePhotoSEO(
-  imageBase64: string,
-  preset: Preset,
-  userLocation?: string
-): Promise<PhotoSeoResult> {
-  const { seo } = await generateSeoAndScore(imageBase64, preset, userLocation);
-  return seo;
-}
-
+/**
+ * Évalue la photo sur 10 via Gemini 2.5 Flash. Court prompt, court output.
+ */
 export async function scorePhoto(
   imageBase64: string,
   preset: Preset
 ): Promise<{ score: number; report: string }> {
-  const { score, report } = await generateSeoAndScore(imageBase64, preset);
-  return { score, report };
+  const criteriaMap: Record<string, string> = {
+    AIRBNB: "luminosité, cadrage (règle des tiers), rangement, attractivité de la pièce, qualité professionnelle",
+    IMMOBILIER: "luminosité, verticalité, cadrage, rangement, attractivité du bien, qualité pro",
+    INSTAGRAM: "composition, couleurs, impact visuel, originalité, netteté",
+    SHOPIFY: "fond blanc/neutre, netteté produit, éclairage pro, cadrage centré, qualité e-commerce, lisibilité des détails",
+  };
+  const criteria = criteriaMap[preset] ?? criteriaMap.SHOPIFY;
+
+  try {
+    return await withRetry(async () => {
+      const response = await getGenAI().models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+              {
+                text: `Tu es un expert photographe pro. Évalue cette photo pour ${preset} selon : ${criteria}.
+Réponds UNIQUEMENT en JSON : {"score": <0-10 avec 1 décimale>, "report": "<2-3 phrases FR : points forts, faibles, gain IA>"}`,
+              },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+          maxOutputTokens: 300,
+          temperature: 0.3,
+          abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
+        },
+      });
+
+      const text = extractText(response).replace(/```json\n?|\n?```/g, "").trim();
+      const parsed = JSON.parse(text);
+      return {
+        score: Math.min(10, Math.max(0, Number(parsed.score) || 0)),
+        report: String(parsed.report ?? "Photo traitée avec succès."),
+      };
+    }, "Gemini score");
+  } catch (err) {
+    console.error("scorePhoto: all retries failed, falling back", err);
+    Sentry.captureException(err, {
+      tags: { module: "gemini", stage: "score_fallback", preset },
+      level: "warning",
+    });
+    return { score: 0, report: "" };
+  }
+}
+
+/**
+ * Génère SEO + Score en parallèle (2 calls Gemini concurrents).
+ * Plus fiable que de combiner en 1 call : le JSON-LD complet + score dépassait souvent
+ * maxOutputTokens=1700 et donnait du JSON tronqué non-parsable → fallback vide → "SEO en cours" infini.
+ */
+export async function generateSeoAndScore(
+  imageBase64: string,
+  preset: Preset,
+  userLocation?: string
+): Promise<{ seo: PhotoSeoResult; score: number; report: string }> {
+  const [seo, scoreResult] = await Promise.all([
+    generatePhotoSEO(imageBase64, preset, userLocation),
+    scorePhoto(imageBase64, preset),
+  ]);
+  return { seo, score: scoreResult.score, report: scoreResult.report };
 }
 
 export async function analyzePhotoForRetouching(
