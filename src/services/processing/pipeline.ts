@@ -12,9 +12,10 @@ import { AGENTS } from "@/config/agents";
 import { FREE_SIGNUP_CREDITS } from "@/config/plans";
 
 // Pre-resize inputs sent to Gemini: smaller payload = MUCH faster model processing.
-// 2048px on the long edge keeps enough detail for retouching while cutting
-// upload + inference time roughly 2-3x on 4K phone photos.
-const GEMINI_INPUT_MAX_EDGE = 2048;
+// Gemini 3.1 Flash Image's output is ~1024-1536px regardless of input, so feeding
+// it >1536 wastes time on encode/upload/inference without quality gain. 1536px
+// cap typically halves retouch latency vs raw 4K uploads (~30-60s → ~10-25s).
+const GEMINI_INPUT_MAX_EDGE = 1536;
 
 // SEO/Score model only needs to *understand* the photo, not regenerate it.
 // 768px is plenty for accurate classification and shaves another ~30% off

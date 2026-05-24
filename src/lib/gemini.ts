@@ -18,8 +18,11 @@ function getGenAI(): GoogleGenAI {
 }
 
 // Hard timeouts to prevent hung requests blocking the pipeline forever.
-const RETOUCH_TIMEOUT_MS = 90_000; // image gen can be slow on big inputs
-const TEXT_TIMEOUT_MS = 30_000;    // SEO / score / analyze
+// Retouch: Gemini 3.1 Flash Image (Nano Banana 2) can take 60-150s on complex edits
+// or under load. 180s = generous ceiling that lets normal slow-but-successful runs
+// complete rather than triggering aborts + retries that compound latency.
+const RETOUCH_TIMEOUT_MS = 180_000;
+const TEXT_TIMEOUT_MS = 45_000;    // SEO / score / analyze
 
 export interface PhotoSeoResult {
   altText: string;
@@ -249,6 +252,47 @@ function coerceSeoResponse(raw: unknown): PhotoSeoResult {
   };
 }
 
+/**
+ * Resilient JSON parser. Tries standard parse first; on truncation/syntax error,
+ * attempts to recover the largest valid prefix by progressively trimming and
+ * auto-closing braces/brackets. Returns {} as a last resort so the caller can
+ * still produce a partial PhotoSeoResult instead of falling back to empty.
+ */
+function safeJsonParse(text: string): Record<string, unknown> {
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Try greedy recovery: trim to last balanced point
+    for (let i = text.length; i > 16; i--) {
+      const slice = text.slice(0, i);
+      // Auto-close: count unmatched opening { [
+      let depthCurly = 0, depthSquare = 0, inStr = false, esc = false;
+      for (const ch of slice) {
+        if (esc) { esc = false; continue; }
+        if (ch === "\\") { esc = true; continue; }
+        if (ch === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (ch === "{") depthCurly++;
+        else if (ch === "}") depthCurly--;
+        else if (ch === "[") depthSquare++;
+        else if (ch === "]") depthSquare--;
+      }
+      if (inStr) continue; // mid-string, keep trimming
+      const closed = slice + "]".repeat(Math.max(0, depthSquare)) + "}".repeat(Math.max(0, depthCurly));
+      try {
+        const parsed = JSON.parse(closed);
+        if (parsed && typeof parsed === "object") {
+          console.warn(`safeJsonParse: recovered partial JSON (${i}/${text.length} chars used)`);
+          return parsed as Record<string, unknown>;
+        }
+      } catch {
+        // keep trimming
+      }
+    }
+    return {};
+  }
+}
+
 function extractText(response: unknown): string {
   const r = response as { text?: string | (() => string); response?: { text?: () => string } };
   if (typeof r.text === "string") return r.text;
@@ -297,14 +341,14 @@ export async function generatePhotoSEO(
         ],
         config: {
           responseMimeType: "application/json",
-          maxOutputTokens: 1500,
+          maxOutputTokens: 2800,
           temperature: 0.4,
           abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
         },
       });
 
       const text = extractText(response).replace(/```json\n?|\n?```/g, "").trim();
-      const parsed = JSON.parse(text);
+      const parsed = safeJsonParse(text);
       return coerceSeoResponse(parsed);
     }, "Gemini SEO");
   } catch (err) {
@@ -350,14 +394,14 @@ Réponds UNIQUEMENT en JSON : {"score": <0-10 avec 1 décimale>, "report": "<2-3
         ],
         config: {
           responseMimeType: "application/json",
-          maxOutputTokens: 300,
+          maxOutputTokens: 500,
           temperature: 0.3,
           abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
         },
       });
 
       const text = extractText(response).replace(/```json\n?|\n?```/g, "").trim();
-      const parsed = JSON.parse(text);
+      const parsed = safeJsonParse(text);
       return {
         score: Math.min(10, Math.max(0, Number(parsed.score) || 0)),
         report: String(parsed.report ?? "Photo traitée avec succès."),
