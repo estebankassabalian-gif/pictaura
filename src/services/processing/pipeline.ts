@@ -11,11 +11,11 @@ import { cropToPlatform } from "@/services/processing/platform-crop";
 import { AGENTS } from "@/config/agents";
 import { FREE_SIGNUP_CREDITS } from "@/config/plans";
 
-// Pre-resize inputs sent to Gemini: smaller payload = MUCH faster model processing.
-// Gemini 3.1 Flash Image's output is ~1024-1536px regardless of input, so feeding
-// it >1536 wastes time on encode/upload/inference without quality gain. 1536px
-// cap typically halves retouch latency vs raw 4K uploads (~30-60s → ~10-25s).
-const GEMINI_INPUT_MAX_EDGE = 1536;
+// Pre-resize inputs sent to Gemini: smaller payload = faster model processing.
+// 2048px keeps enough source detail for Gemini's understanding step (critical
+// for fidelity on complex scenes — pushing lower visibly degraded output sharpness
+// per user feedback). Still ~3-4x smaller than raw 4K phone photos.
+const GEMINI_INPUT_MAX_EDGE = 2048;
 
 // SEO/Score model only needs to *understand* the photo, not regenerate it.
 // 768px is plenty for accurate classification and shaves another ~30% off
@@ -130,7 +130,7 @@ export async function processJob(jobId: string): Promise<void> {
 /**
  * Resize down to a max long edge if needed. Returns same buffer if already small enough.
  */
-async function resizeIfLarger(buffer: Buffer, maxEdge: number, jpegQuality = 88): Promise<Buffer> {
+async function resizeIfLarger(buffer: Buffer, maxEdge: number, jpegQuality = 94): Promise<Buffer> {
   try {
     const meta = await sharp(buffer).metadata();
     const longEdge = Math.max(meta.width ?? 0, meta.height ?? 0);
