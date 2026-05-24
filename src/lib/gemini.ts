@@ -1,22 +1,25 @@
 /**
  * Module IA — Analyse & Retouche photo
  *
- * Analyse  : Gemini 2.5 Flash vision            (GOOGLE_AI_KEY)
- * Retouche : Gemini 3.1 Flash Image "Nano Banana 2"  (GOOGLE_AI_KEY)
- *
- * Les deux utilisent la même clé GOOGLE_AI_KEY.
+ * SDK : @google/genai (unifié, remplace @google/generative-ai EOL nov-2025)
+ * Analyse  : gemini-2.5-flash           (GOOGLE_AI_KEY)
+ * Retouche : gemini-3.1-flash-image-preview "Nano Banana 2"  (GOOGLE_AI_KEY)
  */
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import * as Sentry from "@sentry/nextjs";
 import { env } from "@/config/env";
 import type { Preset } from "@prisma/client";
 
-let _genAI: GoogleGenerativeAI | null = null;
-function getGenAI(): GoogleGenerativeAI {
-  if (!_genAI) _genAI = new GoogleGenerativeAI(env.GOOGLE_AI_KEY ?? "");
+let _genAI: GoogleGenAI | null = null;
+function getGenAI(): GoogleGenAI {
+  if (!_genAI) _genAI = new GoogleGenAI({ apiKey: env.GOOGLE_AI_KEY ?? "" });
   return _genAI;
 }
+
+// Hard timeouts to prevent hung requests blocking the pipeline forever.
+const RETOUCH_TIMEOUT_MS = 90_000; // image gen can be slow on big inputs
+const TEXT_TIMEOUT_MS = 30_000;    // SEO / score / analyze
 
 export interface PhotoSeoResult {
   altText: string;
@@ -28,10 +31,6 @@ export interface PhotoSeoResult {
   seoSchemaJson: string;
 }
 
-// Fallback volontairement VIDE : si Gemini plante, on ne persiste RIEN
-// plutôt que d'injecter un nom générique "photo-optimisee.jpg" qui casse
-// tout le SEO (nom fichier, alt text, JSON-LD, EXIF). Le pipeline écrit
-// `|| null` donc null → download/zip utilisent leur fallback preset-based.
 const SEO_FALLBACK: PhotoSeoResult = {
   altText: "",
   seoFileName: "",
@@ -42,10 +41,6 @@ const SEO_FALLBACK: PhotoSeoResult = {
   seoSchemaJson: "",
 };
 
-/**
- * Retry-able = transient API errors (503 overload, 429 rate limit, 500/504, network).
- * Non-retry-able = content safety blocks, invalid input, auth errors.
- */
 function isRetryableError(err: Error): boolean {
   const msg = err.message.toLowerCase();
   if (msg.includes("safety") || msg.includes("blocked") || msg.includes("refusée")) return false;
@@ -60,16 +55,13 @@ function isRetryableError(err: Error): boolean {
     msg.includes("unavailable") ||
     msg.includes("high demand") ||
     msg.includes("timeout") ||
+    msg.includes("aborted") ||
     msg.includes("econnreset") ||
     msg.includes("enotfound") ||
     msg.includes("fetch failed")
   );
 }
 
-/**
- * Backoff progressif adapté aux pics Gemini : 2s, 5s, 10s, 20s, 30s (~67s total).
- * Suffit à encaisser la majorité des spikes 503 "high demand" (typiquement 15-60s).
- */
 const BACKOFF_MS = [2000, 5000, 10000, 20000, 30000];
 
 async function withRetry<T>(
@@ -97,12 +89,6 @@ async function withRetry<T>(
   throw lastError ?? new Error(`${label}: all retries failed`);
 }
 
-/**
- * Prompts SEO enrichis par preset. Chaque preset produit un JSON-LD ciblé
- * pour sa plateforme de destination : RealEstateListing + geo + numberOfRooms
- * pour l'immobilier, Product + brand + offers pour Shopify, ImageObject
- * universel pour Google Images.
- */
 function buildSeoPrompt(preset: Preset, userLocation?: string): string {
   const loc = userLocation?.trim();
   const locHint = loc ? ` Contexte géographique : ${loc}.` : "";
@@ -236,8 +222,6 @@ function coerceSeoResponse(raw: unknown): PhotoSeoResult {
   const schemaMain = serialiseMaybeJson(parsed.seoSchemaJson);
   const imageObject = serialiseMaybeJson((parsed as Record<string, unknown>).imageObject);
 
-  // Combine les deux schémas en un @graph unique si les deux existent,
-  // sinon renvoie celui qui existe.
   let combined = "";
   if (schemaMain && imageObject) {
     try {
@@ -265,66 +249,37 @@ function coerceSeoResponse(raw: unknown): PhotoSeoResult {
   };
 }
 
-/**
- * Génère les métadonnées SEO enrichies via Gemini 2.5 Flash vision.
- *
- * - ~5x moins cher que GPT-4o-mini pour le même résultat structuré
- * - JSON-LD enrichi par preset (RealEstateListing, Product, ImageObject)
- * - Retry automatique 3 tentatives avec backoff exponentiel
- * - Fallback sûr si tous les retries échouent (non-bloquant pour le pipeline)
- */
-export async function generatePhotoSEO(
-  imageBase64: string,
-  preset: Preset,
-  userLocation?: string
-): Promise<PhotoSeoResult> {
-  const prompt = buildSeoPrompt(preset, userLocation);
+function extractText(response: unknown): string {
+  const r = response as { text?: string | (() => string); response?: { text?: () => string } };
+  if (typeof r.text === "string") return r.text;
+  if (typeof r.text === "function") return r.text();
+  if (r.response?.text) return r.response.text();
+  return "";
+}
 
-  try {
-    return await withRetry(async () => {
-      const model = getGenAI().getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: {
-          responseMimeType: "application/json",
-          maxOutputTokens: 1400,
-          temperature: 0.4,
-        } as unknown as Record<string, unknown>,
-      });
-
-      const result = await model.generateContent({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-              { text: prompt + "\n\nRéponds UNIQUEMENT en JSON valide, sans markdown." },
-            ],
-          },
-        ],
-      });
-
-      const text = result.response.text().replace(/```json\n?|\n?```/g, "").trim();
-      const parsed = JSON.parse(text);
-      return coerceSeoResponse(parsed);
-    }, "Gemini SEO");
-  } catch (err) {
-    console.error("generatePhotoSEO: all retries failed, falling back", err);
-    Sentry.captureException(err, {
-      tags: { module: "gemini", stage: "seo_fallback", preset },
-      level: "error",
-    });
-    return SEO_FALLBACK;
+function extractInlineImage(response: unknown): Buffer | null {
+  const r = response as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ inlineData?: { data?: string } }> };
+    }>;
+  };
+  const parts = r.candidates?.[0]?.content?.parts ?? [];
+  for (const part of parts) {
+    if (part.inlineData?.data) {
+      return Buffer.from(part.inlineData.data, "base64");
+    }
   }
+  return null;
 }
 
 /**
- * Évalue la photo sur 10 selon les critères de la plateforme cible.
- * Utilise Gemini 2.5 Flash vision.
+ * Génère les métadonnées SEO + scoring en UN SEUL appel Gemini.
  */
-export async function scorePhoto(
+export async function generateSeoAndScore(
   imageBase64: string,
-  preset: Preset
-): Promise<{ score: number; report: string }> {
+  preset: Preset,
+  userLocation?: string
+): Promise<{ seo: PhotoSeoResult; score: number; report: string }> {
   const criteriaMap: Record<string, string> = {
     AIRBNB: "luminosité, cadrage (règle des tiers), rangement, attractivité de la pièce, qualité professionnelle",
     IMMOBILIER: "luminosité, verticalité, cadrage, rangement, attractivité du bien, qualité pro",
@@ -332,68 +287,78 @@ export async function scorePhoto(
     SHOPIFY: "fond blanc/neutre, netteté produit, éclairage pro, cadrage centré, qualité e-commerce, lisibilité des détails",
   };
   const criteria = criteriaMap[preset] ?? criteriaMap.SHOPIFY;
+  const seoPrompt = buildSeoPrompt(preset, userLocation);
+
+  const combinedPrompt = `${seoPrompt}
+
+PUIS, dans le même JSON racine, ajoute deux champs supplémentaires :
+"_score": <0-10 avec 1 décimale, évalue cette photo pour ${preset} selon : ${criteria}>,
+"_report": "<2-3 phrases FR : points forts, faibles, gain IA>"
+
+Réponds UNIQUEMENT en JSON valide, sans markdown.`;
 
   try {
     return await withRetry(async () => {
-      const model = getGenAI().getGenerativeModel({
+      const response = await getGenAI().models.generateContent({
         model: "gemini-2.5-flash",
-        generationConfig: {
-          responseMimeType: "application/json",
-          maxOutputTokens: 300,
-          temperature: 0.3,
-        } as unknown as Record<string, unknown>,
-      });
-
-      const result = await model.generateContent({
         contents: [
           {
             role: "user",
             parts: [
               { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-              {
-                text: `Tu es un expert photographe pro. Évalue cette photo pour ${preset} selon : ${criteria}.
-Réponds UNIQUEMENT en JSON : {"score": <0-10 avec 1 décimale>, "report": "<2-3 phrases FR : points forts, faibles, gain IA>"}`,
-              },
+              { text: combinedPrompt },
             ],
           },
         ],
+        config: {
+          responseMimeType: "application/json",
+          maxOutputTokens: 1700,
+          temperature: 0.4,
+          abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
+        },
       });
 
-      const text = result.response.text().replace(/```json\n?|\n?```/g, "").trim();
+      const text = extractText(response).replace(/```json\n?|\n?```/g, "").trim();
       const parsed = JSON.parse(text);
-      return {
-        score: Math.min(10, Math.max(0, Number(parsed.score) || 0)),
-        report: String(parsed.report ?? "Photo traitée avec succès."),
-      };
-    }, "Gemini score");
+      const seo = coerceSeoResponse(parsed);
+      const score = Math.min(10, Math.max(0, Number(parsed._score) || 0));
+      const report = String(parsed._report ?? "");
+      return { seo, score, report };
+    }, "Gemini SEO+Score");
   } catch (err) {
-    console.error("scorePhoto: all retries failed, falling back", err);
+    console.error("generateSeoAndScore: all retries failed, falling back", err);
     Sentry.captureException(err, {
-      tags: { module: "gemini", stage: "score_fallback", preset },
-      level: "warning",
+      tags: { module: "gemini", stage: "seo_score_fallback", preset },
+      level: "error",
     });
-    return { score: 0, report: "" };
+    return { seo: SEO_FALLBACK, score: 0, report: "" };
   }
 }
 
-/**
- * Analyse une photo avec Gemini 2.5 Flash vision.
- * Retourne une analyse textuelle + 3-5 suggestions de retouche.
- */
+export async function generatePhotoSEO(
+  imageBase64: string,
+  preset: Preset,
+  userLocation?: string
+): Promise<PhotoSeoResult> {
+  const { seo } = await generateSeoAndScore(imageBase64, preset, userLocation);
+  return seo;
+}
+
+export async function scorePhoto(
+  imageBase64: string,
+  preset: Preset
+): Promise<{ score: number; report: string }> {
+  const { score, report } = await generateSeoAndScore(imageBase64, preset);
+  return { score, report };
+}
+
 export async function analyzePhotoForRetouching(
   imageBase64: string,
   analyzePrompt: string
 ): Promise<{ analysis: string; suggestions: string[] }> {
   return await withRetry(async () => {
-    const model = getGenAI().getGenerativeModel({
+    const response = await getGenAI().models.generateContent({
       model: "gemini-2.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json",
-        maxOutputTokens: 500,
-      } as unknown as Record<string, unknown>,
-    });
-
-    const result = await model.generateContent({
       contents: [
         {
           role: "user",
@@ -408,11 +373,15 @@ IMPORTANT: Réponds UNIQUEMENT avec du JSON valide, sans markdown :
           ],
         },
       ],
+      config: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 500,
+        abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
+      },
     });
 
-    const text = result.response.text();
-    const clean = text.replace(/```json\n?|\n?```/g, "").trim();
-    const parsed = JSON.parse(clean);
+    const text = extractText(response).replace(/```json\n?|\n?```/g, "").trim();
+    const parsed = JSON.parse(text);
     return {
       analysis: String(parsed.analysis ?? "Photo prête à être retouchée"),
       suggestions: Array.isArray(parsed.suggestions)
@@ -422,9 +391,6 @@ IMPORTANT: Réponds UNIQUEMENT avec du JSON valide, sans markdown :
   }, "Gemini analyze");
 }
 
-/**
- * Détecte les tentatives d'injection de prompt.
- */
 function hasPromptInjection(instruction: string): boolean {
   const lower = instruction.toLowerCase();
   const patterns = [
@@ -440,18 +406,12 @@ function hasPromptInjection(instruction: string): boolean {
 
 /**
  * Retouche une image via Gemini 3.1 Flash Image ("Nano Banana 2").
- *
- * @param imageBase64 - Image source en base64 (JPEG)
- * @param instruction - Instructions de retouche utilisateur (max 300 chars)
- * @param systemPrompt - Prompt système de l'agent métier (immobilier, instagram, etc.)
  */
 export async function retouchPhoto(
   imageBase64: string,
   instruction: string,
   systemPrompt: string
 ): Promise<Buffer> {
-  // 1200 chars = user instruction (capped at 300 in UI) + optional platform hint (~400) + margin.
-  // Prompt injection is still checked on the full string.
   const cleanInstruction = instruction.slice(0, 1200);
 
   if (hasPromptInjection(cleanInstruction)) {
@@ -461,14 +421,8 @@ export async function retouchPhoto(
   const editPrompt = buildEditPrompt(systemPrompt, cleanInstruction);
 
   return await withRetry(async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const model = getGenAI().getGenerativeModel({
+    const response = await getGenAI().models.generateContent({
       model: "gemini-3.1-flash-image-preview",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      generationConfig: { responseModalities: ["image"] } as any,
-    });
-
-    const result = await model.generateContent({
       contents: [
         {
           role: "user",
@@ -478,25 +432,17 @@ export async function retouchPhoto(
           ],
         },
       ],
+      config: {
+        abortSignal: AbortSignal.timeout(RETOUCH_TIMEOUT_MS),
+      },
     });
 
-    const parts = result.response.candidates?.[0]?.content?.parts ?? [];
-    for (const part of parts) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const inlineData = (part as any).inlineData;
-      if (inlineData?.data) {
-        return Buffer.from(inlineData.data, "base64");
-      }
-    }
-
+    const img = extractInlineImage(response);
+    if (img) return img;
     throw new Error("Gemini : aucune image retournée par l'API");
   }, "Gemini retouch");
 }
 
-/**
- * Construit le prompt d'édition à partir du contexte métier de l'agent
- * et de l'instruction spécifique de l'utilisateur.
- */
 function buildEditPrompt(systemPrompt: string, instruction: string): string {
   const expertiseLines = systemPrompt
     .split("\n")
@@ -510,4 +456,22 @@ function buildEditPrompt(systemPrompt: string, instruction: string): string {
     : "";
 
   return `${context}Apply this edit to the photo: ${instruction}. IMPORTANT: Keep the result strictly photorealistic. Do NOT generate, invent, or hallucinate any element that is not already in the original photo (no fake views through windows, no fake scenery, no fake objects). Only enhance what exists. Professional quality, no text, no watermarks, preserve the original scene and composition.`;
+}
+
+/**
+ * Lightweight Gemini reachability check for /api/health.
+ * 1-token text generation — confirms API key, network, and Gemini availability.
+ * Throws on any failure (caller decides how to surface it).
+ */
+export async function pingGemini(): Promise<{ ok: true; latency_ms: number }> {
+  const start = Date.now();
+  await getGenAI().models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: "ping" }] }],
+    config: {
+      maxOutputTokens: 1,
+      abortSignal: AbortSignal.timeout(8_000),
+    },
+  });
+  return { ok: true, latency_ms: Date.now() - start };
 }

@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { HeadBucketCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import { getR2 } from "@/lib/r2";
+import { pingGemini } from "@/lib/gemini";
 import { env } from "@/config/env";
 
 /**
@@ -9,26 +10,36 @@ import { env } from "@/config/env";
  * Check de santé pour Coolify, uptime monitoring, ou diagnostic rapide.
  * 200 = tout vert · 503 = au moins un check en erreur (Coolify peut ainsi mark unhealthy).
  *
- * Vérifie : DB Postgres + bucket R2 + retourne le SHA du commit déployé.
- * Public : aucune authentification requise (mais ne fuit aucune info sensible).
+ * Vérifie : DB Postgres + bucket R2 + (optionnel) Gemini.
+ * - `/api/health`         : DB + R2 (cheap, can be polled every 30s)
+ * - `/api/health?deep=1`  : + ping Gemini (1 token, ~1s) pour détecter outage Google
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const start = Date.now();
+  const deep = req.nextUrl.searchParams.get("deep") === "1";
 
-  const [dbResult, storageResult] = await Promise.allSettled([
+  const checks: Promise<unknown>[] = [
     prisma.$queryRaw`SELECT 1`,
     getR2().send(new HeadBucketCommand({ Bucket: env.R2_BUCKET_NAME })),
-  ]);
+  ];
+  if (deep) checks.push(pingGemini());
+
+  const [dbResult, storageResult, geminiResult] = await Promise.allSettled(checks);
 
   const db = dbResult.status === "fulfilled" ? "ok" : "error";
   const storage = storageResult.status === "fulfilled" ? "ok" : "error";
-  const allOk = db === "ok" && storage === "ok";
+  const gemini = deep
+    ? geminiResult?.status === "fulfilled" ? "ok" : "error"
+    : "skipped";
+
+  const allOk = db === "ok" && storage === "ok" && (gemini === "ok" || gemini === "skipped");
 
   return NextResponse.json(
     {
       status: allOk ? "ok" : "degraded",
       db,
       storage,
+      gemini,
       version: process.env.NEXT_PUBLIC_BUILD_SHA ?? process.env.SOURCE_COMMIT ?? "unknown",
       uptime_ms: Math.round(process.uptime() * 1000),
       latency_ms: Date.now() - start,

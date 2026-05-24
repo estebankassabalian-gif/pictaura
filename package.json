@@ -18,7 +18,7 @@
     "@auth/prisma-adapter": "^2.11.1",
     "@aws-sdk/client-s3": "^3.726.1",
     "@aws-sdk/s3-request-presigner": "^3.726.1",
-    "@google/generative-ai": "^0.24.1",
+    "@google/genai": "^1.52.0",
     "@prisma/client": "^6.4.1",
     "@sentry/nextjs": "^10.49.0",
     "@types/fluent-ffmpeg": "^2.1.28",
