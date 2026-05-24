@@ -208,7 +208,7 @@ export async function injectExifMetadata(
     // WordPress et Google Images.
     const jpegWithExif = await sharp(imageBuffer)
       .withMetadata({ exif: { IFD0: exifFields } })
-      .jpeg({ quality: 92 })
+      .jpeg({ quality: 88, progressive: true, mozjpeg: true })
       .toBuffer();
 
     return injectXmpApp1(jpegWithExif, xmpPacket);

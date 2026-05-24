@@ -70,7 +70,7 @@ const BACKOFF_MS = [2000, 5000, 10000, 20000, 30000];
 async function withRetry<T>(
   fn: () => Promise<T>,
   label: string,
-  maxRetries = 5
+  maxRetries = 3
 ): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -394,6 +394,16 @@ Réponds UNIQUEMENT en JSON : {"score": <0-10 avec 1 décimale>, "report": "<2-3
         ],
         config: {
           responseMimeType: "application/json",
+          // Schema constraint → Gemini cannot return malformed JSON, eliminating
+          // the truncation/parse-error class of failures entirely for this call.
+          responseSchema: {
+            type: "object",
+            properties: {
+              score: { type: "number" },
+              report: { type: "string" },
+            },
+            required: ["score", "report"],
+          },
           maxOutputTokens: 500,
           temperature: 0.3,
           abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
@@ -522,7 +532,7 @@ export async function retouchPhoto(
     const img = extractInlineImage(response);
     if (img) return img;
     throw new Error("Gemini : aucune image retournée par l'API");
-  }, "Gemini retouch");
+  }, "Gemini retouch", 5); // user-facing → retry more aggressively than background calls
 }
 
 function buildEditPrompt(systemPrompt: string, instruction: string): string {

@@ -47,7 +47,7 @@ export async function cropToPlatform(
         fit: "cover",
         position: "attention",
       })
-      .jpeg({ quality: 92, progressive: true, mozjpeg: true })
+      .jpeg({ quality: 88, progressive: true, mozjpeg: true })
       .toBuffer();
   } catch (err) {
     console.error(`platform-crop failed for ${platformId}:`, err);
