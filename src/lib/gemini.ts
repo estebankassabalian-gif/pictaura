@@ -10,6 +10,10 @@ import { GoogleGenAI } from "@google/genai";
 import * as Sentry from "@sentry/nextjs";
 import { env } from "@/config/env";
 import type { Preset } from "@prisma/client";
+import { recordImageCall, classifyImageError } from "@/services/monitoring/image-metrics";
+
+// Modèle image (retouche) — centralisé pour l'instrumentation et le canary.
+const RETOUCH_MODEL = "gemini-3.1-flash-image-preview";
 
 let _genAI: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI {
@@ -527,25 +531,42 @@ export async function retouchPhoto(
     const timeoutMs =
       RETOUCH_ATTEMPT_TIMEOUTS_MS[attempt] ??
       RETOUCH_ATTEMPT_TIMEOUTS_MS[RETOUCH_ATTEMPT_TIMEOUTS_MS.length - 1];
-    const response = await getGenAI().models.generateContent({
-      model: "gemini-3.1-flash-image-preview",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-            { text: editPrompt },
-          ],
+    // Instrumentation monitoring : chaque tentative réelle est mesurée et
+    // enregistrée (fire-and-forget) — comportement métier inchangé.
+    const t0 = Date.now();
+    try {
+      const response = await getGenAI().models.generateContent({
+        model: RETOUCH_MODEL,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+              { text: editPrompt },
+            ],
+          },
+        ],
+        config: {
+          abortSignal: AbortSignal.timeout(timeoutMs),
         },
-      ],
-      config: {
-        abortSignal: AbortSignal.timeout(timeoutMs),
-      },
-    });
+      });
 
-    const img = extractInlineImage(response);
-    if (img) return img;
-    throw new Error("Gemini : aucune image retournée par l'API");
+      const img = extractInlineImage(response);
+      if (img) {
+        recordImageCall({ kind: "real", success: true, latencyMs: Date.now() - t0, model: RETOUCH_MODEL });
+        return img;
+      }
+      throw new Error("Gemini : aucune image retournée par l'API");
+    } catch (err) {
+      recordImageCall({
+        kind: "real",
+        success: false,
+        latencyMs: Date.now() - t0,
+        model: RETOUCH_MODEL,
+        errorCode: classifyImageError(err),
+      });
+      throw err;
+    }
   }, "Gemini retouch", 4, RETOUCH_DEADLINE_MS); // user-facing → retries, but hard 5 min wall-clock cap
 }
 
@@ -562,6 +583,45 @@ function buildEditPrompt(systemPrompt: string, instruction: string): string {
     : "";
 
   return `${context}Apply this edit to the photo: ${instruction}. IMPORTANT: Keep the result strictly photorealistic. Do NOT generate, invent, or hallucinate any element that is not already in the original photo (no fake views through windows, no fake scenery, no fake objects). Only enhance what exists. Professional quality, no text, no watermarks, preserve the original scene and composition.`;
+}
+
+/**
+ * Canary du modèle IMAGE : un seul appel minimal, SANS retries (le canary doit
+ * refléter l'état brut du modèle, pas le masquer derrière des backoffs).
+ * Passe par l'instrumentation monitoring (kind: 'canary').
+ * Retourne la latence en ms ; throw si le modèle ne répond pas d'image.
+ */
+export async function canaryImageCall(imageBase64: string, timeoutMs: number): Promise<number> {
+  const t0 = Date.now();
+  try {
+    const response = await getGenAI().models.generateContent({
+      model: RETOUCH_MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+            { text: "Slightly increase brightness. Keep everything else identical. Photorealistic." },
+          ],
+        },
+      ],
+      config: { abortSignal: AbortSignal.timeout(timeoutMs) },
+    });
+    const img = extractInlineImage(response);
+    const latencyMs = Date.now() - t0;
+    if (!img) throw new Error("canary: aucune image retournée");
+    recordImageCall({ kind: "canary", success: true, latencyMs, model: RETOUCH_MODEL });
+    return latencyMs;
+  } catch (err) {
+    recordImageCall({
+      kind: "canary",
+      success: false,
+      latencyMs: Date.now() - t0,
+      model: RETOUCH_MODEL,
+      errorCode: classifyImageError(err),
+    });
+    throw err;
+  }
 }
 
 /**

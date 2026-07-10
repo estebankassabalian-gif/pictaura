@@ -160,6 +160,7 @@ model ProcessedPhoto {
   photoScore         Float?        // Score /10 attribué par GPT Vision
   photoScoreReport   String?       @db.Text // Rapport textuel du score
   processingMs       Int?          // Durée totale du traitement (download → Gemini → crop → upload), alimente l'ETA
+  failReason         String?       @db.Text // Motif d'échec (support client : "pourquoi ma photo a échoué ?")
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
@@ -220,6 +221,32 @@ model CreditPack {
   displayOrder  Int     @default(0)
 
   @@map("credit_packs")
+}
+
+// ─── Monitoring du chemin image (cf. MONITORING_SPEC) ────────
+// Un événement par appel réel au modèle image (+ canary). Alimente les
+// alertes Telegram (quota/429, taux d'échec, budget) et /api/health/image.
+model ImageCallEvent {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  kind         String   // 'real' | 'canary'
+  success      Boolean
+  latencyMs    Int
+  errorCode    String?  // '429' | 'quota' | 'timeout' | 'other'
+  model        String
+  estCostCents Int?     // coût estimé (appels réussis) → budget journalier
+
+  @@index([createdAt])
+  @@index([kind, createdAt])
+  @@map("image_call_events")
+}
+
+// Cooldown anti-spam des alertes (une ligne par type d'alerte)
+model AlertState {
+  key        String   @id // 'quota' | 'error_rate' | 'budget' | 'canary'
+  lastSentAt DateTime
+
+  @@map("alert_states")
 }
 
 model Referral {

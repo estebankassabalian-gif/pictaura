@@ -19,6 +19,7 @@ export default auth((req) => {
     "/api/webhooks/stripe",
     "/api/stripe/webhook",
     "/api/health",
+    "/api/cron", // protégé par x-cron-secret, pas par session
     "/cgu",
     "/cgv",
     "/mentions-legales",

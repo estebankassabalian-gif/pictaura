@@ -301,7 +301,11 @@ async function processOnePhoto(
 
     await prisma.processedPhoto.update({
       where: { id: photo.id },
-      data: { status: JobStatus.FAILED },
+      data: {
+        status: JobStatus.FAILED,
+        // Support client : trace du motif d'échec ("pourquoi ma photo a échoué ?")
+        failReason: error instanceof Error ? error.message.slice(0, 300) : "Erreur inconnue",
+      },
     }).catch(console.error);
 
     await refundCredits(job.userId, 1, job.id).catch(console.error);
