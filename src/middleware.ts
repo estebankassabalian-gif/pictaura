@@ -20,6 +20,8 @@ export default auth((req) => {
     "/api/stripe/webhook",
     "/api/health",
     "/cgu",
+    "/cgv",
+    "/mentions-legales",
     "/politique-confidentialite",
     "/contact",
     "/robots.txt",

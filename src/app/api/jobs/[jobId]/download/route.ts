@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Readable } from "stream";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { JobStatus } from "@prisma/client";
 import { getSignedDownloadUrl } from "@/lib/r2";
+import { generateJobZip } from "@/services/processing/zip";
 
 export async function GET(
   req: NextRequest,
@@ -16,6 +18,24 @@ export async function GET(
   const { jobId } = await params;
   const { searchParams } = new URL(req.url);
   const photoId = searchParams.get("photoId");
+
+  // ?format=zip → toutes les photos + seo_metadata.csv + hashtags + JSON-LD
+  // en un seul téléchargement (1 clic au lieu de N téléchargements séquentiels).
+  if (searchParams.get("format") === "zip") {
+    try {
+      const { stream, filename } = await generateJobZip(jobId, session.user.id);
+      return new NextResponse(Readable.toWeb(stream) as unknown as ReadableStream, {
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    } catch (error) {
+      console.error("ZIP download error:", error);
+      return NextResponse.json({ error: "Impossible de générer le ZIP" }, { status: 500 });
+    }
+  }
 
   try {
     const job = await prisma.processingJob.findFirst({

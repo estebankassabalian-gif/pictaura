@@ -4,106 +4,172 @@ import { JobStatus, type Preset } from "@prisma/client";
 import { uploadProcessedPhoto } from "@/services/storage";
 import { refundCredits } from "@/services/credits";
 import { getSignedDownloadUrl } from "@/lib/r2";
-import { retouchPhoto, generateSeoAndScore, type PhotoSeoResult } from "@/lib/gemini";
+import { retouchPhoto, generateSeoAndScore, generatePhotoSEO, type PhotoSeoResult } from "@/lib/gemini";
 import { applyWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
 import { cropToPlatform } from "@/services/processing/platform-crop";
 import { AGENTS } from "@/config/agents";
-import { FREE_SIGNUP_CREDITS } from "@/config/plans";
 
 // Pre-resize inputs sent to Gemini: smaller payload = faster model processing.
 // 2048px keeps enough source detail for Gemini's understanding step (critical
 // for fidelity on complex scenes — pushing lower visibly degraded output sharpness
 // per user feedback). Still ~3-4x smaller than raw 4K phone photos.
-const GEMINI_INPUT_MAX_EDGE = 2048;
+// Exported: the upload route pre-generates this rendition at upload time.
+export const GEMINI_INPUT_MAX_EDGE = 2048;
 
 // SEO/Score model only needs to *understand* the photo, not regenerate it.
 // 768px is plenty for accurate classification and shaves another ~30% off
 // the background enrichment latency vs sending the full-size processed image.
 const SEO_INPUT_MAX_EDGE = 768;
 
-// Adaptive concurrency: small batches stay at 3, larger batches push more.
-// Capped at 8 to avoid hitting Gemini per-minute rate limits.
-function computeConcurrency(photoCount: number): number {
-  if (photoCount <= 1) return 1;
-  return Math.min(8, Math.max(3, Math.ceil(photoCount / 2)));
+// Adaptive concurrency, capped at 8 to stay under Gemini per-minute rate limits.
+// Full parallelism below the cap: a 4-photo job runs its 4 photos at once
+// (the previous max(3, ceil(n/2)) made a 4-photo job run 3+1 → ~40% slower).
+// Exported: the job status API uses it to compute a realistic ETA.
+export function computeConcurrency(photoCount: number): number {
+  return Math.max(1, Math.min(8, photoCount));
 }
+
+// Streaming pipeline: processing starts as soon as the FIRST photo is uploaded,
+// while the rest of the batch is still uploading. If no new photo shows up for
+// this long while some are still expected, we assume the client abandoned the
+// upload and stop waiting (stale-job recovery + end-of-job refund cover the rest).
+// Note: each upload request is capped at 60s server-side (maxDuration), so a
+// healthy client can never be silent longer than ~60s between two photos.
+const UPLOAD_STALL_MS = 180_000;
+
+/** Clé R2 de la version 2048px pré-générée à l'upload (voir photos/route.ts). */
+export function renditionKeyFor(originalKey: string): string {
+  return `${originalKey}.g2048.jpg`;
+}
+
+type PhotoRow = {
+  id: string;
+  originalKey: string;
+  instruction: string | null;
+  platformId: string | null;
+  fileName: string;
+};
 
 /**
  * Traite toutes les photos d'un job via Gemini IA.
+ * Démarre dès la première photo uploadée (streaming) : les workers réclament
+ * les photos au fil de leur arrivée en DB au lieu d'attendre le batch complet.
  */
 export async function processJob(jobId: string): Promise<void> {
+  // Claim atomique PENDING→PROCESSING : un seul runner par job, même si le
+  // pipeline est déclenché à la fois par l'upload de la 1ère photo (eager)
+  // et par /api/process en fin d'upload (filet de sécurité).
+  const claimedJob = await prisma.processingJob.updateMany({
+    where: { id: jobId, status: JobStatus.PENDING },
+    data: { status: JobStatus.PROCESSING },
+  });
+  if (claimedJob.count === 0) return; // déjà en cours ou terminé
+
   const job = await prisma.processingJob.findUnique({
     where: { id: jobId },
-    include: { photos: true, user: true },
+    include: { user: true },
   });
-
   if (!job) throw new Error(`Job ${jobId} non trouve`);
-  if (job.status !== JobStatus.PENDING) return;
 
   let alreadyRefundedCount = 0;
+  let completedForCatch = 0;
   try {
-    await prisma.processingJob.update({
-      where: { id: jobId },
-      data: { status: JobStatus.PROCESSING },
-    });
-
     const agent = AGENTS[job.preset];
     const systemPrompt = agent?.systemPrompt ?? "You are a professional photo editor. Perform the requested edits with photorealistic, professional quality.";
-    const isSubscribed = job.user?.isSubscribed === true || job.user?.role === "ADMIN";
+    const isAdmin = job.user?.role === "ADMIN";
+    const isSubscribed = job.user?.isSubscribed === true || isAdmin;
+    // Watermark logo Pictaura sur TOUTES les photos des comptes non-premium
+    // (alignement avec la promesse pricing : seuls les abonnés livrent sans badge).
+    const applyWm = !isSubscribed;
+    // Score qualité (/10) et JSON-LD schema.org : réservés aux plans Pro et
+    // Business conformément à la grille tarifaire.
+    const isPro = isAdmin || job.user?.planId === "pro" || job.user?.planId === "business";
 
-    let completedBefore = 0;
-    if (!isSubscribed) {
-      completedBefore = await prisma.processedPhoto.count({
-        where: {
-          job: { userId: job.userId },
-          status: JobStatus.COMPLETED,
-        },
-      });
-    }
-
-    const CONCURRENCY = computeConcurrency(job.photos.length);
+    const CONCURRENCY = computeConcurrency(job.photoCount);
     let failedCount = 0;
     let successCount = 0;
+    const claimedIds = new Set<string>();
+    let lastPhotoSeenAt = Date.now();
+    // Les claims sont sérialisés via une chaîne de promesses : deux workers ne
+    // peuvent jamais récupérer la même photo (JS mono-thread entre awaits,
+    // mais deux findFirst concurrents retourneraient la même ligne).
+    let claimChain: Promise<unknown> = Promise.resolve();
 
-    for (let i = 0; i < job.photos.length; i += CONCURRENCY) {
-      const batch = job.photos.slice(i, i + CONCURRENCY);
+    const claimNext = (): Promise<PhotoRow | "wait" | null> => {
+      const p = claimChain.then(async () => {
+        const photo = await prisma.processedPhoto.findFirst({
+          where: {
+            jobId,
+            status: JobStatus.PENDING,
+            ...(claimedIds.size > 0 ? { id: { notIn: [...claimedIds] } } : {}),
+          },
+          orderBy: { createdAt: "asc" },
+          select: { id: true, originalKey: true, instruction: true, platformId: true, fileName: true },
+        });
+        if (photo) {
+          claimedIds.add(photo.id);
+          lastPhotoSeenAt = Date.now();
+          return photo;
+        }
+        if (claimedIds.size >= job.photoCount) return null; // tout est dispatché
+        if (Date.now() - lastPhotoSeenAt > UPLOAD_STALL_MS) return null; // upload abandonné
+        return "wait" as const; // photos encore en cours d'upload → patienter
+      });
+      claimChain = p.catch(() => {});
+      return p;
+    };
 
-      const results = await Promise.allSettled(
-        batch.map((photo, idxInBatch) => {
-          const globalIndex = completedBefore + i + idxInBatch;
-          const applyWm = !isSubscribed && globalIndex < FREE_SIGNUP_CREDITS;
-          return processOnePhoto(photo, job, systemPrompt, applyWm, job.user?.businessCity);
-        })
-      );
-
-      for (let j = 0; j < results.length; j++) {
-        const result = results[j];
-        if (result.status === "fulfilled" && result.value.success) {
-          successCount++;
-        } else {
-          failedCount++;
-          if (result.status === "rejected") {
-            await refundCredits(job.userId, 1, job.id).catch(console.error);
+    const worker = async (): Promise<void> => {
+      while (true) {
+        const next = await claimNext();
+        if (next === null) return;
+        if (next === "wait") {
+          await new Promise((r) => setTimeout(r, 1500));
+          continue;
+        }
+        try {
+          const result = await processOnePhoto(next, job, systemPrompt, applyWm, isPro, job.user?.businessCity);
+          if (result.success) {
+            successCount++;
+            completedForCatch++;
+          } else {
+            failedCount++;
+            alreadyRefundedCount++;
           }
+        } catch (err) {
+          // processOnePhoto catches internally; this is a belt-and-braces path.
+          console.error(`Worker crash on photo ${next.id}:`, err);
+          failedCount++;
+          await refundCredits(job.userId, 1, job.id).catch(console.error);
           alreadyRefundedCount++;
         }
       }
+    };
+
+    await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+
+    // Photos jamais uploadées (client parti en plein upload) : crédits déduits
+    // à la création du job mais jamais consommés → remboursement.
+    const createdCount = await prisma.processedPhoto.count({ where: { jobId } });
+    const missingCount = Math.max(0, job.photoCount - createdCount);
+    if (missingCount > 0) {
+      await refundCredits(job.userId, missingCount, jobId).catch(console.error);
+      alreadyRefundedCount += missingCount;
     }
 
+    const anyFailure = failedCount > 0 || missingCount > 0;
     const finalStatus =
-      failedCount === 0
-        ? JobStatus.COMPLETED
-        : successCount === 0
-        ? JobStatus.FAILED
-        : JobStatus.COMPLETED;
+      successCount === 0 && anyFailure ? JobStatus.FAILED : JobStatus.COMPLETED;
 
     await prisma.processingJob.update({
       where: { id: jobId },
       data: {
         status: finalStatus,
         completedAt: new Date(),
-        errorMsg: failedCount > 0 ? `${failedCount} photo(s) en echec` : null,
+        errorMsg: anyFailure
+          ? `${failedCount + missingCount} photo(s) en echec — credits rembourses`
+          : null,
       },
     });
   } catch (error) {
@@ -117,10 +183,7 @@ export async function processJob(jobId: string): Promise<void> {
       },
     }).catch(console.error);
 
-    const unprocessed = await prisma.processedPhoto.count({
-      where: { jobId, status: { not: JobStatus.COMPLETED } },
-    });
-    const toRefund = Math.max(0, unprocessed - alreadyRefundedCount);
+    const toRefund = Math.max(0, job.photoCount - completedForCatch - alreadyRefundedCount);
     if (toRefund > 0) {
       await refundCredits(job.userId, toRefund, jobId).catch(console.error);
     }
@@ -129,8 +192,10 @@ export async function processJob(jobId: string): Promise<void> {
 
 /**
  * Resize down to a max long edge if needed. Returns same buffer if already small enough.
+ * Exported: the upload route uses the exact same transform to pre-stage the
+ * Gemini rendition — guaranteed identical quality to the on-the-fly path.
  */
-async function resizeIfLarger(buffer: Buffer, maxEdge: number, jpegQuality = 92): Promise<Buffer> {
+export async function resizeIfLarger(buffer: Buffer, maxEdge: number, jpegQuality = 92): Promise<Buffer> {
   try {
     const meta = await sharp(buffer).metadata();
     const longEdge = Math.max(meta.width ?? 0, meta.height ?? 0);
@@ -156,20 +221,35 @@ async function processOnePhoto(
   job: { id: string; userId: string; preset: string; subOption: string | null },
   systemPrompt: string,
   shouldWatermark: boolean,
+  isPro: boolean,
   userLocation?: string | null
 ): Promise<{ success: boolean }> {
+  const startedAt = Date.now();
   try {
     await prisma.processedPhoto.update({
       where: { id: photo.id },
       data: { status: JobStatus.PROCESSING },
     });
 
-    const originalUrl = await getSignedDownloadUrl(photo.originalKey);
-    const response = await fetch(originalUrl);
-    if (!response.ok) throw new Error("Impossible de telecharger l'original");
-    const rawBuffer = Buffer.from(await response.arrayBuffer());
+    // Version 2048px pré-générée à l'upload : ~500 Ko à télécharger au lieu de
+    // l'original (jusqu'à 50 Mo) + zéro resize sur le chemin chaud. Fallback
+    // transparent sur l'original pour les photos d'avant cette optimisation.
+    let inputBuffer: Buffer | null = null;
+    try {
+      const renditionUrl = await getSignedDownloadUrl(renditionKeyFor(photo.originalKey));
+      const renditionRes = await fetch(renditionUrl);
+      if (renditionRes.ok) {
+        inputBuffer = Buffer.from(await renditionRes.arrayBuffer());
+      }
+    } catch { /* fallback original */ }
 
-    const inputBuffer = await resizeIfLarger(rawBuffer, GEMINI_INPUT_MAX_EDGE);
+    if (!inputBuffer) {
+      const originalUrl = await getSignedDownloadUrl(photo.originalKey);
+      const response = await fetch(originalUrl);
+      if (!response.ok) throw new Error("Impossible de telecharger l'original");
+      const rawBuffer = Buffer.from(await response.arrayBuffer());
+      inputBuffer = await resizeIfLarger(rawBuffer, GEMINI_INPUT_MAX_EDGE);
+    }
 
     const instruction = photo.instruction || job.subOption || "Improve the overall quality of the photo: brightness, contrast, sharpness, colors.";
 
@@ -187,7 +267,7 @@ async function processOnePhoto(
     // FIRE SEO + UPLOAD IN PARALLEL: the Gemini SEO call (~5-15s) is much longer than
     // the R2 upload (~300-500ms), so launching them together saves the upload time
     // off the background enrichment path.
-    const seoCallPromise = callSeoForBackground(outputBuffer, job.preset, userLocation);
+    const seoCallPromise = callSeoForBackground(outputBuffer, job.preset, isPro, userLocation);
 
     const processedKey = await uploadProcessedPhoto(
       outputBuffer,
@@ -196,19 +276,22 @@ async function processOnePhoto(
       photoUuid
     );
 
+    const processingMs = Date.now() - startedAt;
     await prisma.processedPhoto.update({
       where: { id: photo.id },
       data: {
         processedKey,
         fileSizeProcessed: outputBuffer.length,
         status: JobStatus.COMPLETED,
+        processingMs,
       },
     });
+    console.log(`Photo ${photo.id} processed in ${(processingMs / 1000).toFixed(1)}s`);
 
     // Once SEO returns, persist + re-upload EXIF-enriched buffer (background, non-blocking).
     seoCallPromise
       .then((seoResult) =>
-        persistSeoResult(photo.id, outputBuffer, seoResult, photoUuid, job.userId, job.id, job.preset)
+        persistSeoResult(photo.id, outputBuffer, seoResult, photoUuid, job.userId, job.id, job.preset, isPro)
       )
       .catch((e) => console.error(`SEO persist error for photo ${photo.id}:`, e));
 
@@ -227,17 +310,23 @@ async function processOnePhoto(
 }
 
 /**
- * Call Gemini SEO + Score on a downscaled copy (faster, cheaper, same accuracy
- * since the model only needs to understand the scene).
+ * Call Gemini SEO (+ Score si plan Pro/Business) on a downscaled copy.
+ * Le score qualité /10 est une feature Pro : on économise l'appel Gemini
+ * correspondant pour les comptes Free/Starter.
  */
 async function callSeoForBackground(
   outputBuffer: Buffer,
   preset: string,
+  isPro: boolean,
   userLocation?: string | null
 ): Promise<{ seo: PhotoSeoResult; score: number; report: string }> {
   const small = await resizeIfLarger(outputBuffer, SEO_INPUT_MAX_EDGE, 80);
   const base64 = small.toString("base64");
-  return generateSeoAndScore(base64, preset as Preset, userLocation ?? undefined);
+  if (isPro) {
+    return generateSeoAndScore(base64, preset as Preset, userLocation ?? undefined);
+  }
+  const seo = await generatePhotoSEO(base64, preset as Preset, userLocation ?? undefined);
+  return { seo, score: 0, report: "" };
 }
 
 /**
@@ -251,7 +340,8 @@ async function persistSeoResult(
   photoUuid: string,
   userId: string,
   jobId: string,
-  preset: string
+  preset: string,
+  isPro: boolean
 ): Promise<void> {
   const { seo, score, report } = result;
 
@@ -264,7 +354,8 @@ async function persistSeoResult(
         keywords: seo.keywords,
         metaTitle: seo.metaTitle,
         hashtags: seo.hashtags,
-        schemaJsonLd: seo.seoSchemaJson,
+        // JSON-LD schema.org : feature Pro/Business uniquement (grille tarifaire)
+        schemaJsonLd: isPro ? seo.seoSchemaJson : "",
         preset,
       });
 
@@ -280,9 +371,11 @@ async function persistSeoResult(
           seoKeywords: seo.keywords || null,
           seoMetaTitle: seo.metaTitle || null,
           seoHashtags: seo.hashtags || null,
-          seoSchemaJson: seo.seoSchemaJson || null,
-          photoScore: score || null,
-          photoScoreReport: report || null,
+          // Features Pro non persistées pour les autres plans : le ZIP, les
+          // headers HTTP et l'API lisent la DB → gating automatique partout.
+          seoSchemaJson: isPro ? seo.seoSchemaJson || null : null,
+          photoScore: isPro ? score || null : null,
+          photoScoreReport: isPro ? report || null : null,
         },
       });
       return;
@@ -301,9 +394,9 @@ async function persistSeoResult(
       seoKeywords: seo.keywords || null,
       seoMetaTitle: seo.metaTitle || null,
       seoHashtags: seo.hashtags || null,
-      seoSchemaJson: seo.seoSchemaJson || null,
-      photoScore: score || null,
-      photoScoreReport: report || null,
+      seoSchemaJson: isPro ? seo.seoSchemaJson || null : null,
+      photoScore: isPro ? score || null : null,
+      photoScoreReport: isPro ? report || null : null,
     },
   });
 }

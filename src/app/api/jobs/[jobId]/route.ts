@@ -1,8 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import { JobStatus, Role } from "@prisma/client";
 import { getFreshSignedUrl } from "@/services/storage";
+import { computeConcurrency } from "@/services/processing/pipeline";
+
+// Fallback when no measured duration is available yet (fresh DB) :
+// ordre de grandeur réel d'une génération Gemini 3.1 Flash Image.
+const DEFAULT_PHOTO_MS = 90_000;
+
+/**
+ * ETA honnête, calculée à partir des durées réellement mesurées (processingMs) :
+ * d'abord celles du job lui-même (reflète la charge Gemini du moment), sinon la
+ * moyenne des 50 dernières photos traitées toutes plateformes confondues.
+ */
+async function computeEtaSeconds(job: {
+  photoCount: number;
+  photos: Array<{ status: JobStatus; processingMs: number | null }>;
+}): Promise<number> {
+  // Photos en attente/en cours + celles pas encore uploadées (le pipeline
+  // streaming démarre pendant l'upload : des photos comptées dans photoCount
+  // n'ont pas encore de ligne en DB).
+  const remaining =
+    job.photos.filter(
+      (p) => p.status === JobStatus.PENDING || p.status === JobStatus.PROCESSING
+    ).length + Math.max(0, job.photoCount - job.photos.length);
+  if (remaining === 0) return 0;
+
+  const ownDurations = job.photos
+    .map((p) => p.processingMs)
+    .filter((ms): ms is number => ms != null && ms > 0);
+
+  let avgMs: number;
+  if (ownDurations.length > 0) {
+    avgMs = ownDurations.reduce((a, b) => a + b, 0) / ownDurations.length;
+  } else {
+    // Moyenne glissante des 50 dernières photos : suit la charge Gemini du moment.
+    const recent = await prisma.processedPhoto.findMany({
+      where: { status: JobStatus.COMPLETED, processingMs: { gt: 0 } },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+      select: { processingMs: true },
+    });
+    avgMs =
+      recent.length > 0
+        ? recent.reduce((a, p) => a + (p.processingMs ?? 0), 0) / recent.length
+        : DEFAULT_PHOTO_MS;
+  }
+
+  const concurrency = computeConcurrency(job.photoCount);
+  return Math.ceil((remaining * avgMs) / concurrency / 1000);
+}
 
 // In-memory signed URL cache (TTL 10 minutes) — avoids regenerating for every poll
 const urlCache = new Map<string, { url: string; expiresAt: number }>();
@@ -104,6 +152,9 @@ export async function GET(
 
   const isWatermarked = job.user?.isSubscribed !== true && job.user?.role !== Role.ADMIN;
 
+  const isRunning = job.status === JobStatus.PENDING || job.status === JobStatus.PROCESSING;
+  const etaSeconds = isRunning ? await computeEtaSeconds(job) : 0;
+
   return NextResponse.json({
     id: job.id,
     preset: job.preset,
@@ -113,6 +164,7 @@ export async function GET(
     createdAt: job.createdAt,
     completedAt: job.completedAt,
     isWatermarked,
+    etaSeconds,
     photos: photosWithUrls,
   });
 }

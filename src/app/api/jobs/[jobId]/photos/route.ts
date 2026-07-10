@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { uploadOriginalPhoto, detectMimeFromMagicBytes } from "@/services/storage";
-import { MAX_FILE_SIZE_BYTES, ALLOWED_IMAGE_TYPES } from "@/config/plans";
+import { uploadToR2 } from "@/lib/r2";
+import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, ALLOWED_IMAGE_TYPES } from "@/config/plans";
 import { detectBlur } from "@/services/blur-detection";
+import {
+  processJob,
+  resizeIfLarger,
+  renditionKeyFor,
+  GEMINI_INPUT_MAX_EDGE,
+} from "@/services/processing/pipeline";
 
 export const maxDuration = 60;
 
@@ -23,9 +30,11 @@ export async function POST(
 
   const { jobId } = await params;
 
-  // Vérifier que le job existe et appartient à l'utilisateur
+  // Vérifier que le job existe et appartient à l'utilisateur.
+  // PROCESSING accepté : le pipeline démarre dès la 1ère photo (streaming),
+  // les suivantes continuent d'arriver pendant que le traitement tourne.
   const job = await prisma.processingJob.findFirst({
-    where: { id: jobId, userId: session.user.id, status: "PENDING" },
+    where: { id: jobId, userId: session.user.id, status: { in: ["PENDING", "PROCESSING"] } },
     include: { _count: { select: { photos: true } } },
   });
 
@@ -56,10 +65,10 @@ export async function POST(
       return NextResponse.json({ error: `Type non supporté : ${file.name}` }, { status: 400 });
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      return NextResponse.json({ error: `Fichier trop volumineux : ${file.name} (max 20 Mo)` }, { status: 400 });
+      return NextResponse.json({ error: `Fichier trop volumineux : ${file.name} (max ${MAX_FILE_SIZE_MB} Mo)` }, { status: 400 });
     }
 
-    // Lire le buffer (1 seule photo = max 20MB)
+    // Lire le buffer (1 seule photo, taille déjà validée ci-dessus)
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // Valider magic bytes
@@ -79,6 +88,20 @@ export async function POST(
 
     // Upload vers R2
     const { key } = await uploadOriginalPhoto(buffer, file.type, file.name, session.user.id, jobId);
+
+    // Pré-générer la version 2048px envoyée à Gemini (mêmes réglages exacts que
+    // le pipeline : qualité identique garantie). Le serveur a déjà le buffer en
+    // main → le pipeline n'aura plus à retélécharger l'original (jusqu'à 50 Mo)
+    // ni à le redimensionner sur le chemin chaud. Non-bloquant : en cas d'échec
+    // (ex: HEIC non décodable par sharp), le pipeline retombe sur l'original.
+    try {
+      const rendition = await resizeIfLarger(buffer, GEMINI_INPUT_MAX_EDGE);
+      if (rendition !== buffer) {
+        await uploadToR2(renditionKeyFor(key), rendition, "image/jpeg");
+      }
+    } catch (e) {
+      console.warn(`Rendition 2048px non générée pour ${key} (fallback original):`, e);
+    }
 
     // Récupérer l'instruction depuis le job si pas fournie dans la requête
     let photoInstruction = instruction;
@@ -109,6 +132,16 @@ export async function POST(
     // Compter combien de photos sont maintenant uploadées
     const uploadedCount = job._count.photos + 1;
     const allUploaded = uploadedCount >= job.photoCount;
+
+    // Démarrage eager : dès la 1ère photo en place, le pipeline démarre et
+    // traite au fil des arrivées — la 1ère photo revient ~30-60s plus tôt.
+    // Le claim atomique PENDING→PROCESSING dans processJob garantit un seul
+    // runner même si /api/process est aussi appelé en fin d'upload.
+    if (job.status === "PENDING") {
+      processJob(jobId).catch((err) =>
+        console.error(`Eager processing start failed for job ${jobId}:`, err)
+      );
+    }
 
     return NextResponse.json({
       photoId: photo.id,

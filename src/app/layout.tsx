@@ -19,7 +19,7 @@ const sans = Atkinson_Hyperlegible({
   display: "swap",
 });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://pictaura.fr";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://pictaura.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),

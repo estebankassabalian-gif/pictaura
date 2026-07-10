@@ -18,10 +18,15 @@ function getGenAI(): GoogleGenAI {
 }
 
 // Hard timeouts to prevent hung requests blocking the pipeline forever.
-// Retouch: Gemini 3.1 Flash Image (Nano Banana 2) can take 60-150s on complex edits
-// or under load. 180s = generous ceiling that lets normal slow-but-successful runs
-// complete rather than triggering aborts + retries that compound latency.
-const RETOUCH_TIMEOUT_MS = 180_000;
+// Retouch: Gemini 3.1 Flash Image (Nano Banana 2) usually completes in 60-150s.
+// Escalating per-attempt timeouts: most successful generations finish well under
+// 90s, so a hung first request gets cut early and retried instead of blocking
+// its pool slot for 180s. Later attempts get more headroom for genuinely slow
+// (but successful) runs.
+const RETOUCH_ATTEMPT_TIMEOUTS_MS = [90_000, 150_000, 180_000];
+// Global wall-clock budget per photo (attempts + backoffs). Caps the worst case
+// at ~5 min instead of the previous theoretical ~15 min (5 × 180s + backoffs).
+const RETOUCH_DEADLINE_MS = 300_000;
 const TEXT_TIMEOUT_MS = 45_000;    // SEO / score / analyze
 
 export interface PhotoSeoResult {
@@ -68,19 +73,25 @@ function isRetryableError(err: Error): boolean {
 const BACKOFF_MS = [2000, 5000, 10000, 20000, 30000];
 
 async function withRetry<T>(
-  fn: () => Promise<T>,
+  fn: (attempt: number) => Promise<T>,
   label: string,
-  maxRetries = 3
+  maxRetries = 3,
+  deadlineMs?: number
 ): Promise<T> {
+  const startedAt = Date.now();
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       if (attempt > 0) {
         const delay = BACKOFF_MS[attempt - 1] ?? 30000;
+        if (deadlineMs && Date.now() - startedAt + delay > deadlineMs) {
+          console.error(`${label}: deadline ${deadlineMs}ms exceeded, giving up after ${attempt} attempt(s)`);
+          break;
+        }
         console.log(`${label} retry ${attempt}/${maxRetries} in ${delay}ms`);
         await new Promise((r) => setTimeout(r, delay));
       }
-      return await fn();
+      return await fn(attempt);
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       console.error(`${label} attempt ${attempt + 1} failed:`, lastError.message);
@@ -512,7 +523,10 @@ export async function retouchPhoto(
 
   const editPrompt = buildEditPrompt(systemPrompt, cleanInstruction);
 
-  return await withRetry(async () => {
+  return await withRetry(async (attempt) => {
+    const timeoutMs =
+      RETOUCH_ATTEMPT_TIMEOUTS_MS[attempt] ??
+      RETOUCH_ATTEMPT_TIMEOUTS_MS[RETOUCH_ATTEMPT_TIMEOUTS_MS.length - 1];
     const response = await getGenAI().models.generateContent({
       model: "gemini-3.1-flash-image-preview",
       contents: [
@@ -525,14 +539,14 @@ export async function retouchPhoto(
         },
       ],
       config: {
-        abortSignal: AbortSignal.timeout(RETOUCH_TIMEOUT_MS),
+        abortSignal: AbortSignal.timeout(timeoutMs),
       },
     });
 
     const img = extractInlineImage(response);
     if (img) return img;
     throw new Error("Gemini : aucune image retournée par l'API");
-  }, "Gemini retouch", 5); // user-facing → retry more aggressively than background calls
+  }, "Gemini retouch", 4, RETOUCH_DEADLINE_MS); // user-facing → retries, but hard 5 min wall-clock cap
 }
 
 function buildEditPrompt(systemPrompt: string, instruction: string): string {

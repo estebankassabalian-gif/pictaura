@@ -145,7 +145,7 @@ Généré le : ${new Date().toLocaleDateString("fr-FR")}
 ${hasSeo ? "Le fichier seo_metadata.csv contient les alt text et noms de fichiers SEO à utiliser sur votre plateforme." : ""}
 
 Merci d'utiliser Pictaura !
-https://pictaura.fr
+https://pictaura.app
 `;
   archive.append(readmeContent, { name: "README.txt" });
 

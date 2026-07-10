@@ -85,9 +85,9 @@ function buildWatermarkSvg(w: number, h: number): string {
 }
 
 /**
- * Applique le badge Pictaura en bas à droite de la photo.
- * Réservé aux 5 retouches offertes à l'inscription (freemium).
- * Badge blanc semi-transparent avec logo couleur + texte "Pictaura" — bien visible.
+ * Applique le badge Pictaura (logo œil + wordmark) en bas à droite de la photo.
+ * Appliqué à TOUTES les photos des comptes non-premium (pas d'abonnement actif),
+ * pipeline ET inpainting — seuls les abonnés livrent des photos sans badge.
  */
 export async function applyWatermark(imageBuffer: Buffer): Promise<Buffer> {
   const metadata = await sharp(imageBuffer).metadata();

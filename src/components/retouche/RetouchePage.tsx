@@ -61,6 +61,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
       "image/png": [".png"],
       "image/webp": [".webp"],
       "image/heic": [".heic"],
+      "image/heif": [".heif"],
     },
     maxFiles: MAX_PHOTOS_PER_BATCH,
     maxSize: MAX_FILE_SIZE_MB * 1024 * 1024,
@@ -165,10 +166,15 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
 
       const { jobId } = jobData;
 
-      // Étape 2 : Upload chaque photo une par une (1 requête = 1 photo)
-      for (let i = 0; i < files.length; i++) {
-        setUploadProgress(`Upload photo ${i + 1}/${files.length}...`);
+      // Étape 2 : Upload des photos en parallèle (3 connexions) avec 1 retry
+      // réseau par photo. Le séquentiel faisait payer ~1-2s × N photos avant
+      // même que le traitement IA ne démarre.
+      const UPLOAD_CONCURRENCY = 3;
+      let uploadedCount = 0;
+      let nextUploadIndex = 0;
+      let uploadAborted = false;
 
+      const uploadOne = async (i: number): Promise<void> => {
         // En mode "appliquer à toutes", toutes les photos reprennent la plateforme
         // choisie sur la photo 0 (même logique que customInstruction).
         const sourceConfig = applyToAll ? photoConfigs[0] : photoConfigs[i];
@@ -179,16 +185,43 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
         formData.append("instruction", allInstructions[i] || "");
         if (platformId) formData.append("platformId", platformId);
 
-        const photoRes = await fetch(`/api/jobs/${jobId}/photos`, {
-          method: "POST",
-          body: formData,
-        });
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const photoRes = await fetch(`/api/jobs/${jobId}/photos`, {
+            method: "POST",
+            body: formData,
+          }).catch(() => null);
 
-        if (!photoRes.ok) {
-          const photoData = await photoRes.json().catch(() => ({}));
-          setError(photoData.error ?? `Erreur lors de l'upload de la photo ${i + 1}.`);
-          return;
+          if (photoRes?.ok) return;
+          // Erreur métier (4xx) : inutile de retenter, le serveur refusera pareil
+          if (photoRes && photoRes.status < 500) {
+            const photoData = await photoRes.json().catch(() => ({}));
+            throw new Error(photoData.error ?? `Erreur lors de l'upload de la photo ${i + 1}.`);
+          }
+          // Erreur réseau / 5xx : un retry (connexions mobiles instables)
+          if (attempt === 1) {
+            throw new Error(`Erreur lors de l'upload de la photo ${i + 1}. Vérifiez votre connexion.`);
+          }
         }
+      };
+
+      const uploadWorker = async (): Promise<void> => {
+        while (!uploadAborted) {
+          const i = nextUploadIndex++;
+          if (i >= files.length) return;
+          await uploadOne(i);
+          uploadedCount++;
+          setUploadProgress(`Upload des photos : ${uploadedCount}/${files.length}...`);
+        }
+      };
+
+      try {
+        await Promise.all(
+          Array.from({ length: Math.min(UPLOAD_CONCURRENCY, files.length) }, () => uploadWorker())
+        );
+      } catch (e) {
+        uploadAborted = true;
+        setError(e instanceof Error ? e.message : "Erreur lors de l'upload des photos.");
+        return;
       }
 
       // Étape 3 : Lancer le traitement

@@ -30,6 +30,7 @@ Thumbs.db
 
 # Build output
 /build
+tsconfig.tsbuildinfo
 
 # Uploads temp
 /tmp/uploads/

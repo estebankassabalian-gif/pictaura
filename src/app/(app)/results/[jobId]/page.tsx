@@ -45,7 +45,16 @@ type Job = {
   photoCount: number;
   photos: Photo[];
   isWatermarked?: boolean;
+  etaSeconds?: number;
 };
+
+/** "2 min 30" / "45 s" — formatage humain de l'ETA serveur */
+function formatEta(seconds: number): string {
+  if (seconds < 60) return `${seconds} s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s > 0 ? `${m} min ${s.toString().padStart(2, "0")}` : `${m} min`;
+}
 
 type RetoucheState =
   | { step: "idle" }
@@ -431,7 +440,9 @@ export default function ResultsPage() {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     let cancelled = false;
-    const maxPollTime = 10 * 60 * 1000; // 10 minutes max
+    // 25 min : un lot de 30 photos à ~60-150s/photo (concurrence 8) peut
+    // légitimement tourner ~15-20 min — ne pas afficher "problème" avant.
+    const maxPollTime = 25 * 60 * 1000;
     const startTime = Date.now();
     let jobCompletedAt: number | null = null;
     const SEO_POLL_CAP_MS = 90_000; // attendre max 90s après COMPLETED pour que le SEO background finisse
@@ -512,18 +523,27 @@ export default function ResultsPage() {
     setActionError("");
     setDownloadToast("");
     try {
-      const completed = job.photos.filter((p) => p.status === "COMPLETED");
-      for (let i = 0; i < completed.length; i++) {
-        await downloadSinglePhoto(completed[i].id);
-        // Longer delay between downloads so the browser doesn't block them
-        if (i < completed.length - 1) {
-          await new Promise((r) => setTimeout(r, 800));
-        }
-      }
-      setDownloadToast(`${completed.length} photo(s) téléchargée(s)`);
+      // Un seul ZIP : photos + seo_metadata.csv + hashtags + JSON-LD.
+      // Remplace les N téléchargements séquentiels (bloqués par certains
+      // navigateurs, pénibles sur mobile).
+      const res = await fetch(`/api/jobs/${jobId}/download?format=zip`);
+      if (!res.ok) throw new Error("Erreur lors de la génération du ZIP");
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const match = disposition.match(/filename="(.+?)"/);
+      const fileName = match?.[1] || `pictaura_${job.preset.toLowerCase()}.zip`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setDownloadToast("ZIP téléchargé — photos + métadonnées SEO");
       setTimeout(() => setDownloadToast(""), 3000);
     } catch {
-      setActionError("Erreur lors du téléchargement de certaines photos");
+      setActionError("Erreur lors du téléchargement du ZIP");
     } finally {
       setDownloading(false);
     }
@@ -597,7 +617,7 @@ export default function ResultsPage() {
               className="flex items-center gap-2 bg-accent text-white px-4 md:px-5 py-2.5 rounded-xl font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shadow-md text-sm"
             >
               <Download className="w-4 h-4" />
-              {downloading ? "Téléchargement..." : completedPhotos.length === 1 ? "Télécharger la photo" : `Télécharger les ${completedPhotos.length} photos`}
+              {downloading ? "Téléchargement..." : completedPhotos.length === 1 ? "Télécharger la photo" : `Tout télécharger (ZIP — ${completedPhotos.length} photos + SEO)`}
             </button>
             {photosAwaitingSeo > 0 && (
               <span className="text-xs text-ink-muted flex items-center gap-1" title="Le SEO est encore en cours d'injection sur certaines photos. Attendez quelques secondes pour avoir toutes les métadonnées dans les fichiers.">
@@ -628,10 +648,9 @@ export default function ResultsPage() {
       {/* Processing indicator */}
       {isProcessing && (() => {
         const processingPhotos = job.photos.filter((p) => p.status === "PROCESSING");
-        const pendingPhotos = job.photos.filter((p) => p.status === "PENDING");
-        const remaining = processingPhotos.length + pendingPhotos.length;
-        // ~30-45s per photo, 3 concurrent = roughly 12s per photo effective
-        const estimatedSeconds = Math.round(remaining * 12);
+        // ETA calculée côté serveur à partir des durées réellement mesurées
+        // (processingMs) — pas d'estimation optimiste qui décrédibilise l'attente.
+        const etaSeconds = job.etaSeconds ?? 0;
 
         return (
           <div className="bg-white border border-ink/10 rounded-xl p-5 mb-6 shadow-sm">
@@ -642,11 +661,15 @@ export default function ResultsPage() {
                   Traitement IA en cours — {completedPhotos.length}/{job.photos.length} terminées
                 </p>
                 <p className="text-xs text-ink-muted mt-0.5">
-                  {estimatedSeconds > 0 ? `~${estimatedSeconds}s restantes` : "Finalisation..."}
+                  {etaSeconds > 0 ? `Temps restant estimé : ~${formatEta(etaSeconds)}` : "Finalisation..."}
                   {processingPhotos.length > 0 && ` · ${processingPhotos.length} en cours`}
                 </p>
               </div>
             </div>
+            <p className="text-xs text-ink-muted bg-cream-2 border border-ink/10 rounded-lg px-3 py-2 mb-3">
+              💡 Vous pouvez quitter cette page : le traitement continue en arrière-plan.
+              Vos photos vous attendront dans votre dashboard.
+            </p>
             <div className="w-full bg-cream-2 rounded-full h-2.5 mb-3 overflow-hidden">
               <div
                 className="bg-accent h-full rounded-full transition-all duration-500 ease-out"

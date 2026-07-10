@@ -23,9 +23,15 @@ export async function POST(
     return NextResponse.json({ error: "Job non trouvé" }, { status: 404 });
   }
 
+  // Le pipeline démarre normalement dès la 1ère photo uploadée (eager start
+  // dans photos/route.ts) — cet appel de fin d'upload est un filet de sécurité.
+  // PROCESSING = déjà lancé → succès idempotent, pas une erreur.
+  if (job.status === "PROCESSING") {
+    return NextResponse.json({ message: "Traitement déjà en cours", jobId }, { status: 202 });
+  }
   if (job.status !== "PENDING") {
     return NextResponse.json(
-      { error: "Ce job est déjà en cours ou terminé" },
+      { error: "Ce job est déjà terminé" },
       { status: 409 }
     );
   }

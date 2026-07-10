@@ -112,7 +112,19 @@ export async function POST(req: NextRequest) {
     // ── Retouche via Gemini ───────────────────────────────────────────────
     const agent = AGENTS[photo.job.preset];
     const systemPrompt = agent?.systemPrompt ?? "You are a professional photo editor. Perform the requested edits with photorealistic, professional quality.";
-    const resultBuffer = await retouchPhoto(imageBase64, instruction, systemPrompt);
+    let resultBuffer = await retouchPhoto(imageBase64, instruction, systemPrompt);
+
+    // ── Watermark non-premium ─────────────────────────────────────────────
+    // Le résultat d'inpainting remplace processedKey à la validation : sans
+    // ce badge, un compte gratuit contournerait le watermark du pipeline.
+    const inpaintUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isSubscribed: true, role: true },
+    });
+    if (inpaintUser?.isSubscribed !== true && inpaintUser?.role !== "ADMIN") {
+      const { applyWatermark } = await import("@/services/watermark");
+      resultBuffer = await applyWatermark(resultBuffer);
+    }
 
     // ── Upload vers R2 ────────────────────────────────────────────────────
     const resultKey = await uploadInpaintingResult(resultBuffer, userId, inpaintingJobId);

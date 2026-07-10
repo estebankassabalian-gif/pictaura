@@ -94,14 +94,16 @@ const DASHBOARDS: Dashboard[] = [
     presetLabel: "Preset Immobilier",
     bullets: [
       "HDR adaptatif intérieur / extérieur",
-      "Verticalité et lumière corrigées",
+      "Lumière et couleurs corrigées",
       "Ciel bleu et jardin verdoyants",
       "SEO gravé dans chaque photo",
     ],
+    // Photo extérieure : la démo avant/après montre réellement le ciel qui
+    // bleuit et le jardin qui verdit (cohérent avec la puce dédiée).
     imageUrl:
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=85",
-    beforeFilter: "grayscale(25%) brightness(0.72) contrast(0.82) saturate(0.5)",
-    afterFilter: "brightness(1.18) saturate(1.3) contrast(1.1)",
+      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&q=85",
+    beforeFilter: "grayscale(35%) brightness(0.74) contrast(0.82) saturate(0.42)",
+    afterFilter: "brightness(1.16) saturate(1.45) contrast(1.12)",
   },
   {
     segmentId: "social",
@@ -129,8 +131,8 @@ const DASHBOARDS: Dashboard[] = [
     accent: "#09B884",
     presetLabel: "Presets Shopify & Vinted",
     bullets: [
-      "Fond blanc pur #FFFFFF",
-      "Ombre portée douce réaliste",
+      "Couleurs et matières fidèles",
+      "Produit éclairci, rendu net",
       "JSON-LD Product schema.org",
       "Alt text et nom SEO auto-générés",
     ],

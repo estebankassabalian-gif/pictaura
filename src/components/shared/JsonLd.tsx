@@ -1,4 +1,4 @@
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://pictaura.fr";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://pictaura.app";
 
 /**
  * JSON-LD SoftwareApplication — aide Google à comprendre que c'est un logiciel SaaS.

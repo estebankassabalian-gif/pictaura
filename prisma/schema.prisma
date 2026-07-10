@@ -159,6 +159,7 @@ model ProcessedPhoto {
   seoSchemaJson      String?       @db.Text // JSON-LD schema.org — abonnés uniquement
   photoScore         Float?        // Score /10 attribué par GPT Vision
   photoScoreReport   String?       @db.Text // Rapport textuel du score
+  processingMs       Int?          // Durée totale du traitement (download → Gemini → crop → upload), alimente l'ETA
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Preset } from "@prisma/client";
 import { deductCreditsAtomic, refundCredits } from "@/services/credits";
+import { failStaleJobs } from "@/services/processing/job-recovery";
 import { MAX_PHOTOS_PER_BATCH } from "@/config/plans";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { v4 as uuidv4 } from "uuid";
@@ -54,16 +55,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Instructions invalides" }, { status: 400 });
     }
 
-    // Auto-nettoyage des jobs bloqués (>10 min)
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-    await prisma.processingJob.updateMany({
-      where: {
-        userId,
-        status: { in: ["PENDING", "PROCESSING"] },
-        createdAt: { lt: tenMinutesAgo },
-      },
-      data: { status: "FAILED", errorMsg: "Timeout automatique (>10 min)" },
-    });
+    // Auto-nettoyage des jobs morts : basé sur l'inactivité réelle (8 min sans
+    // aucune écriture), pas sur l'âge — un gros lot peut légitimement tourner
+    // >10 min. Rembourse les crédits des photos jamais livrées.
+    await failStaleJobs(userId);
 
     // Vérifier jobs concurrents
     if (session.user.role !== "ADMIN") {
