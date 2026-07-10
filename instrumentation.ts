@@ -17,6 +17,12 @@ export async function register() {
     import("./src/services/processing/job-recovery")
       .then(({ recoverOrphanedJobsOnBoot }) => recoverOrphanedJobsOnBoot())
       .catch((err) => console.warn("Boot job recovery skipped:", err instanceof Error ? err.message : err));
+
+    // Canary scheduler interne : sonde le provider image toutes les
+    // CANARY_INTERVAL_MIN (défaut 45) si CANARY_ENABLED=true. Zéro cron externe.
+    import("./src/services/monitoring/canary")
+      .then(({ startCanaryScheduler }) => startCanaryScheduler())
+      .catch((err) => console.warn("Canary scheduler skipped:", err instanceof Error ? err.message : err));
   }
   if (process.env.NEXT_RUNTIME === "edge") {
     await import("./sentry.edge.config");

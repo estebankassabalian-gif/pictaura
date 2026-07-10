@@ -6,6 +6,27 @@ import { refundCredits } from "@/services/credits";
 import { getSignedDownloadUrl } from "@/lib/r2";
 import { generateSeoAndScore, generatePhotoSEO, type PhotoSeoResult } from "@/lib/gemini";
 import { editImage } from "@/services/providers";
+import { upscaleIfNeeded } from "@/services/providers/upscale";
+
+// Instructions par défaut CIBLÉES par preset (leçon du test Kontext : un
+// éditeur d'instruction est littéral — "improve quality" donne un bel
+// étalonnage global mais ne nettoie pas une piscine verte ; il faut nommer
+// explicitement ciel/pelouse/piscine/produit). Utilisées quand l'utilisateur
+// ne donne aucune instruction. Valables pour tous les providers.
+const DEFAULT_INSTRUCTIONS: Record<string, string> = {
+  AIRBNB:
+    "Enhance this real estate photo: bright balanced HDR-like exposure, corrected white balance, vivid natural colors. Make the sky blue, the lawn green and healthy, and any pool water crystal clear turquoise. Keep the property, furniture and layout strictly identical.",
+  IMMOBILIER:
+    "Enhance this real estate photo: bright balanced HDR-like exposure, corrected white balance, vivid natural colors. Make the sky blue, the lawn green and healthy, and any pool water crystal clear turquoise. Keep the property, furniture and layout strictly identical.",
+  INSTAGRAM:
+    "Enhance this photo with a cinematic orange-and-teal color grade, crisp details and eye-catching contrast. Keep the subject and scene strictly identical.",
+  VINTED:
+    "Enhance this product photo: clean studio-like lighting, sharp product details, accurate colors and materials. Keep the product strictly identical.",
+  SHOPIFY:
+    "Enhance this product photo: clean studio-like lighting, sharp product details, accurate colors and materials. Keep the product strictly identical.",
+};
+const GENERIC_INSTRUCTION =
+  "Improve the overall quality of the photo: brightness, contrast, sharpness, colors.";
 import { applyWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
 import { cropToPlatform } from "@/services/processing/platform-crop";
@@ -252,13 +273,18 @@ async function processOnePhoto(
       inputBuffer = await resizeIfLarger(rawBuffer, GEMINI_INPUT_MAX_EDGE);
     }
 
-    const instruction = photo.instruction || job.subOption || "Improve the overall quality of the photo: brightness, contrast, sharpness, colors.";
+    const instruction =
+      photo.instruction || DEFAULT_INSTRUCTIONS[job.preset] || GENERIC_INSTRUCTION;
 
     // Couche provider : primaire + circuit breaker + secours (cf. providers/).
     // Le provider rend l'image brute ; crop → watermark → EXIF restent ici,
     // identiques quel que soit le modèle (pipeline provider-agnostique).
     const imageBase64 = inputBuffer.toString("base64");
     let outputBuffer = await editImage({ imageBase64, instruction, systemPrompt });
+
+    // Upscale ×2 si la sortie provider est sous le standard immo (1920px) —
+    // Kontext sort ~1 Mpx. Non-bloquant : échec = image originale conservée.
+    outputBuffer = await upscaleIfNeeded(outputBuffer);
 
     outputBuffer = await cropToPlatform(outputBuffer, job.preset, photo.platformId);
 

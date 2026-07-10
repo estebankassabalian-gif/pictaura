@@ -54,6 +54,8 @@ export function recordImageCall(e: {
   latencyMs: number;
   model: string;
   errorCode?: ImageErrorCode;
+  /** Coût spécifique (ex: upscale ~1 ct) — défaut IMAGE_COST_CENTS */
+  costCents?: number;
 }): void {
   void (async () => {
     try {
@@ -65,7 +67,7 @@ export function recordImageCall(e: {
           latencyMs: e.latencyMs,
           model: e.model,
           errorCode: e.errorCode ?? null,
-          estCostCents: e.success ? cfg.imageCostCents : null,
+          estCostCents: e.success ? e.costCents ?? cfg.imageCostCents : null,
         },
       });
       if (e.success) {

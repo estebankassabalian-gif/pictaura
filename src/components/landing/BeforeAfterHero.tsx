@@ -4,6 +4,9 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 interface BeforeAfterHeroProps {
   imageUrl: string;
+  /** Vraie photo "après" distincte (vraie retouche Pictaura). Quand fournie,
+   *  les filtres CSS de simulation sont désactivés : les deux images parlent. */
+  afterImageUrl?: string;
   beforeLabel?: string;
   afterLabel?: string;
   beforeFilter?: string;
@@ -12,11 +15,14 @@ interface BeforeAfterHeroProps {
 
 export default function BeforeAfterHero({
   imageUrl,
+  afterImageUrl,
   beforeLabel = "AVANT",
   afterLabel = "APRÈS",
   beforeFilter = "grayscale(25%) brightness(0.82) contrast(0.88) saturate(0.7)",
   afterFilter = "brightness(1.12) saturate(1.35) contrast(1.06)",
 }: BeforeAfterHeroProps) {
+  // Deux vraies images → aucun filtre de simulation
+  const isRealPair = Boolean(afterImageUrl);
   const [position, setPosition] = useState(42);
   const [isDragging, setIsDragging] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -79,10 +85,10 @@ export default function BeforeAfterHero({
       {/* ── Après (fond complet) ──────────────────────────────── */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={imageUrl}
+        src={afterImageUrl ?? imageUrl}
         alt="Photo après optimisation Pictaura"
         className="w-full h-full object-cover pointer-events-none"
-        style={{ filter: afterFilter }}
+        style={isRealPair ? undefined : { filter: afterFilter }}
         draggable={false}
       />
 
@@ -96,7 +102,7 @@ export default function BeforeAfterHero({
           src={imageUrl}
           alt="Photo avant optimisation"
           className="w-full h-full object-cover"
-          style={{ filter: beforeFilter }}
+          style={isRealPair ? undefined : { filter: beforeFilter }}
           draggable={false}
         />
         <div className="absolute top-4 left-4 bg-black/60 text-white text-xs font-bold px-3 py-1.5 rounded-full tracking-widest backdrop-blur-sm">

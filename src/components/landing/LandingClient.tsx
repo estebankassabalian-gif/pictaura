@@ -566,10 +566,11 @@ export default function LandingClient() {
           >
             <div className="absolute inset-0 bg-accent/20 rounded-3xl blur-3xl scale-95 pointer-events-none" />
             <div className="relative h-full rounded-2xl overflow-hidden border border-white/20 shadow-[0_0_80px_rgba(248,112,5,0.35)]">
+              {/* VRAIE retouche Pictaura (villa Var) : piscine verte assainie +
+                  terrasse dégagée — pas une simulation par filtre CSS. */}
               <BeforeAfterHero
-                imageUrl="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1400&q=85"
-                beforeFilter="grayscale(25%) brightness(0.72) contrast(0.82) saturate(0.5)"
-                afterFilter="brightness(1.18) saturate(1.3) contrast(1.1)"
+                imageUrl="/demo/villa-avant.jpg"
+                afterImageUrl="/demo/villa-apres.jpg"
               />
             </div>
             <motion.div

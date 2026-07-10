@@ -114,6 +114,11 @@ export async function POST(req: NextRequest) {
     const systemPrompt = agent?.systemPrompt ?? "You are a professional photo editor. Perform the requested edits with photorealistic, professional quality.";
     let resultBuffer = await editImage({ imageBase64, instruction, systemPrompt });
 
+    // Upscale ×2 si sortie < 1920px (cohérence avec le pipeline principal —
+    // ce résultat remplace la photo livrée). Non-bloquant.
+    const { upscaleIfNeeded } = await import("@/services/providers/upscale");
+    resultBuffer = await upscaleIfNeeded(resultBuffer);
+
     // ── Watermark non-premium ─────────────────────────────────────────────
     // Le résultat d'inpainting remplace processedKey à la validation : sans
     // ce badge, un compte gratuit contournerait le watermark du pipeline.
