@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { retouchPhoto } from "@/lib/gemini";
+import { editImage } from "@/services/providers";
 import { uploadInpaintingResult, getFreshSignedUrl } from "@/services/storage";
 import { INPAINTING_CREDITS_COST } from "@/config/plans";
 import { AGENTS } from "@/config/agents";
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     // ── Retouche via Gemini ───────────────────────────────────────────────
     const agent = AGENTS[photo.job.preset];
     const systemPrompt = agent?.systemPrompt ?? "You are a professional photo editor. Perform the requested edits with photorealistic, professional quality.";
-    let resultBuffer = await retouchPhoto(imageBase64, instruction, systemPrompt);
+    let resultBuffer = await editImage({ imageBase64, instruction, systemPrompt });
 
     // ── Watermark non-premium ─────────────────────────────────────────────
     // Le résultat d'inpainting remplace processedKey à la validation : sans

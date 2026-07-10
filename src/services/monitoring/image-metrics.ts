@@ -86,7 +86,7 @@ export function recordImageCall(e: {
  * concurrents ne peuvent pas envoyer la même alerte en double.
  */
 export async function alertWithCooldown(
-  key: "quota" | "error_rate" | "budget" | "canary",
+  key: "quota" | "error_rate" | "budget" | "canary" | "breaker",
   cooldownMin: number,
   text: string
 ): Promise<void> {

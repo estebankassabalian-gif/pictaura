@@ -49,6 +49,13 @@ const envSchema = z.object({
   // Google AI (Gemini) — requis pour l'analyse et la retouche photo
   GOOGLE_AI_KEY: z.string().min(1),
 
+  // fal.ai — provider image alternatif (FLUX Kontext). Optionnel : sans clé,
+  // le provider fal est simplement inéligible et gemini reste utilisé.
+  FAL_KEY: optionalStr,
+  IMAGE_PROVIDER_PRIMARY: optionalStr, // 'gemini' (défaut) | 'fal'
+  IMAGE_PROVIDER_FALLBACK: optionalStr, // secours explicite
+  IMAGE_PROVIDER_OVERRIDE: optionalStr, // kill-switch : épingle un provider
+
   // Resend
   RESEND_API_KEY: z.string().startsWith("re_"),
   RESEND_FROM_EMAIL: z.string().email(),

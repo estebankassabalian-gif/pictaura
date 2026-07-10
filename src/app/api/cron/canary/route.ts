@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
-import { canaryImageCall } from "@/lib/gemini";
+import { runProviderCanary } from "@/services/providers";
 import { alertWithCooldown } from "@/services/monitoring/image-metrics";
 
 export const maxDuration = 60;
@@ -40,25 +40,29 @@ export async function POST(req: NextRequest) {
     .toBuffer();
 
   try {
+    // Sonde le provider PRIMAIRE ACTIF (sans failover : on veut la vérité).
     // Timeout d'appel = seuil de latence + marge, pour pouvoir distinguer
     // "lent" (répond au-delà du seuil) de "mort" (ne répond pas du tout).
-    const latencyMs = await canaryImageCall(testImage.toString("base64"), maxLatencyMs + 15_000);
+    const { provider, latencyMs } = await runProviderCanary(
+      testImage.toString("base64"),
+      maxLatencyMs + 15_000
+    );
 
     if (latencyMs > maxLatencyMs) {
       await alertWithCooldown(
         "canary",
         cooldownMin,
-        `🐤 PICTAURA canary — modèle image LENT : ${(latencyMs / 1000).toFixed(1)}s (seuil ${(maxLatencyMs / 1000).toFixed(0)}s). Les clients attendent probablement.`
+        `🐤 PICTAURA canary — provider image "${provider}" LENT : ${(latencyMs / 1000).toFixed(1)}s (seuil ${(maxLatencyMs / 1000).toFixed(0)}s). Les clients attendent probablement.`
       );
-      return NextResponse.json({ ok: true, slow: true, latencyMs });
+      return NextResponse.json({ ok: true, slow: true, provider, latencyMs });
     }
-    return NextResponse.json({ ok: true, latencyMs });
+    return NextResponse.json({ ok: true, provider, latencyMs });
   } catch (err) {
     const msg = err instanceof Error ? err.message.slice(0, 180) : "erreur inconnue";
     await alertWithCooldown(
       "canary",
       cooldownMin,
-      `🚨 PICTAURA canary — le modèle image NE RÉPOND PLUS.\n${msg}\n→ Les retouches clients sont probablement en panne.`
+      `🚨 PICTAURA canary — le provider image primaire NE RÉPOND PLUS.\n${msg}\n→ Les retouches clients sont probablement en panne (ou basculées sur le secours).`
     );
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }

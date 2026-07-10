@@ -4,7 +4,8 @@ import { JobStatus, type Preset } from "@prisma/client";
 import { uploadProcessedPhoto } from "@/services/storage";
 import { refundCredits } from "@/services/credits";
 import { getSignedDownloadUrl } from "@/lib/r2";
-import { retouchPhoto, generateSeoAndScore, generatePhotoSEO, type PhotoSeoResult } from "@/lib/gemini";
+import { generateSeoAndScore, generatePhotoSEO, type PhotoSeoResult } from "@/lib/gemini";
+import { editImage } from "@/services/providers";
 import { applyWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
 import { cropToPlatform } from "@/services/processing/platform-crop";
@@ -253,8 +254,11 @@ async function processOnePhoto(
 
     const instruction = photo.instruction || job.subOption || "Improve the overall quality of the photo: brightness, contrast, sharpness, colors.";
 
+    // Couche provider : primaire + circuit breaker + secours (cf. providers/).
+    // Le provider rend l'image brute ; crop → watermark → EXIF restent ici,
+    // identiques quel que soit le modèle (pipeline provider-agnostique).
     const imageBase64 = inputBuffer.toString("base64");
-    let outputBuffer = await retouchPhoto(imageBase64, instruction, systemPrompt);
+    let outputBuffer = await editImage({ imageBase64, instruction, systemPrompt });
 
     outputBuffer = await cropToPlatform(outputBuffer, job.preset, photo.platformId);
 

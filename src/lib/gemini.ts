@@ -498,7 +498,8 @@ IMPORTANT: Réponds UNIQUEMENT avec du JSON valide, sans markdown :
   }, "Gemini analyze");
 }
 
-function hasPromptInjection(instruction: string): boolean {
+// Exporté : la couche provider applique la même garde quel que soit le modèle.
+export function hasPromptInjection(instruction: string): boolean {
   const lower = instruction.toLowerCase();
   const patterns = [
     "ignore previous", "ignore above", "ignore all",
@@ -570,7 +571,9 @@ export async function retouchPhoto(
   }, "Gemini retouch", 4, RETOUCH_DEADLINE_MS); // user-facing → retries, but hard 5 min wall-clock cap
 }
 
-function buildEditPrompt(systemPrompt: string, instruction: string): string {
+// Exporté : les providers alternatifs (fal…) construisent le MÊME prompt
+// d'édition — la cohérence du rendu ne doit pas dépendre du provider.
+export function buildEditPrompt(systemPrompt: string, instruction: string): string {
   const expertiseLines = systemPrompt
     .split("\n")
     .filter((l) => l.trim().startsWith("-"))
