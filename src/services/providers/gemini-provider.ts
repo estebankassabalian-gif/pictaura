@@ -14,6 +14,10 @@ export class GeminiProvider implements ImageEditProvider {
     return Boolean(env.GOOGLE_AI_KEY);
   }
 
+  modelLabel(): string {
+    return "gemini-3.1-flash-image-preview";
+  }
+
   async editImage(args: ImageEditArgs): Promise<Buffer> {
     if (args.kind === "canary") {
       // Sonde : un seul appel sans retries (instrumenté kind 'canary').

@@ -2,35 +2,49 @@ import { recordImageCall, classifyImageError } from "@/services/monitoring/image
 import type { ImageEditArgs, ImageEditProvider } from "./types";
 
 /**
- * Prompt Kontext : l'instruction SEULE + garde-fous anti-invention.
- * SURTOUT PAS le "contexte d'expertise" extrait du systemPrompt Gemini
- * ("sky replacement, facade cleaning, lawn enhancement…") : Kontext est
- * littéral — sur une photo sans bâtiment, ce contexte l'a poussé à INVENTER
- * une façade (constaté en prod : maison générée dans une forêt).
- */
-function buildKontextPrompt(instruction: string): string {
-  return `${instruction.trim()} — Strictly photorealistic. Do NOT add, remove, move or invent any object, building, structure, person or scenery that is not in the original photo. No text, no watermark. Preserve the original scene, framing and composition exactly.`;
-}
-
-/**
- * Provider fal.ai — FLUX.1 Kontext [pro] (édition par instruction, préserve le
- * sujet — critique pour l'immobilier : on ne livre jamais "une autre maison").
+ * Provider fal.ai — modèle CONFIGURABLE sans redéploiement (IMAGE_FAL_MODEL).
+ *
+ * Défaut : **Nano Banana 2** (`fal-ai/nano-banana-2/edit`) = Gemini 3.1 Flash
+ * Image — LA qualité validée par Esteban (relight global natif, rendu annonce
+ * premium), servie par l'infra fal en ~15 s mesurées (vs 60-150 s via l'API
+ * Google directe), SANS dépendance à la facturation Google.
+ *
+ * Alternatif via env : `fal-ai/flux-pro/kontext` (éditeur d'objets — fort sur
+ * "retire la voiture / piscine propre", faible en rehaussement global).
  *
  * Endpoint synchrone `fal.run` : POST → JSON avec l'URL de l'image générée.
  * Entrée image en data-URI base64 (pas d'upload préalable nécessaire).
- * Coût ~0,04 $/image, latence attendue de l'ordre de quelques secondes —
- * mesurée précisément par le script scripts/test-fal-kontext.ts (tâche E).
- *
- * IMPORTANT licence : [pro]/[max] via API = usage commercial OK. Ne jamais
- * basculer sur [dev] auto-hébergé (licence non commerciale).
+ * Licence : modèles via API fal = usage commercial OK (ne jamais auto-héberger
+ * un poids [dev] non-commercial).
  */
-const FAL_MODEL = "fal-ai/flux-pro/kontext";
-const FAL_LABEL = `fal:${FAL_MODEL}`;
-const REAL_TIMEOUT_MS = 90_000; // généreux : Kontext répond normalement en < 15 s
+function falModel(): string {
+  return process.env.IMAGE_FAL_MODEL?.trim() || "fal-ai/nano-banana-2/edit";
+}
+
+const REAL_TIMEOUT_MS = 120_000;
 const RETRY_BACKOFF_MS = [2_000, 6_000];
 
 function isRetryable(status: number): boolean {
   return status === 429 || status >= 500;
+}
+
+/**
+ * Prompt fal : l'instruction SEULE + garde-fous anti-invention.
+ * SURTOUT PAS le "contexte d'expertise" extrait du systemPrompt Gemini
+ * ("sky replacement, facade cleaning, lawn enhancement…") : un éditeur
+ * littéral peut INVENTER une façade sur une photo sans bâtiment (constaté
+ * en prod avec Kontext : maison générée dans une forêt).
+ */
+function buildFalPrompt(instruction: string): string {
+  return `${instruction.trim()} — Strictly photorealistic. Do NOT add, remove, move or invent any object, building, structure, person or scenery that is not in the original photo. No text, no watermark. Preserve the original scene, framing and composition exactly.`;
+}
+
+/** Adaptateur de schéma d'entrée : nano-banana attend image_urls (pluriel). */
+function buildRequestBody(model: string, prompt: string, dataUri: string): Record<string, unknown> {
+  if (model.includes("nano-banana")) {
+    return { prompt, image_urls: [dataUri], num_images: 1, output_format: "jpeg" };
+  }
+  return { prompt, image_url: dataUri, num_images: 1, output_format: "jpeg" };
 }
 
 export class FalProvider implements ImageEditProvider {
@@ -40,11 +54,17 @@ export class FalProvider implements ImageEditProvider {
     return Boolean(process.env.FAL_KEY);
   }
 
+  modelLabel(): string {
+    return `fal:${falModel()}`;
+  }
+
   async editImage(args: ImageEditArgs): Promise<Buffer> {
     const kind = args.kind ?? "real";
     const maxAttempts = kind === "canary" ? 1 : 3;
     const timeoutMs = args.timeoutMs ?? REAL_TIMEOUT_MS;
-    const prompt = buildKontextPrompt(args.instruction.slice(0, 1200));
+    const model = falModel();
+    const label = `fal:${model}`;
+    const prompt = buildFalPrompt(args.instruction.slice(0, 1200));
 
     let lastErr: Error | null = null;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -53,8 +73,8 @@ export class FalProvider implements ImageEditProvider {
       }
       const t0 = Date.now();
       try {
-        const buffer = await this.callOnce(args.imageBase64, prompt, timeoutMs);
-        recordImageCall({ kind, success: true, latencyMs: Date.now() - t0, model: FAL_LABEL });
+        const buffer = await this.callOnce(model, args.imageBase64, prompt, timeoutMs);
+        recordImageCall({ kind, success: true, latencyMs: Date.now() - t0, model: label });
         return buffer;
       } catch (err) {
         lastErr = err instanceof Error ? err : new Error(String(err));
@@ -62,7 +82,7 @@ export class FalProvider implements ImageEditProvider {
           kind,
           success: false,
           latencyMs: Date.now() - t0,
-          model: FAL_LABEL,
+          model: label,
           errorCode: classifyImageError(lastErr),
         });
         // 4xx non-429 (clé invalide, payload rejeté, solde épuisé=403) : inutile de retenter
@@ -73,20 +93,15 @@ export class FalProvider implements ImageEditProvider {
     throw lastErr ?? new Error("fal: échec sans détail");
   }
 
-  private async callOnce(imageBase64: string, prompt: string, timeoutMs: number): Promise<Buffer> {
-    const res = await fetch(`https://fal.run/${FAL_MODEL}`, {
+  private async callOnce(model: string, imageBase64: string, prompt: string, timeoutMs: number): Promise<Buffer> {
+    const dataUri = `data:image/jpeg;base64,${imageBase64}`;
+    const res = await fetch(`https://fal.run/${model}`, {
       method: "POST",
       headers: {
         Authorization: `Key ${process.env.FAL_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        prompt,
-        image_url: `data:image/jpeg;base64,${imageBase64}`,
-        output_format: "jpeg",
-        // Tolérance de sécurité par défaut (2) : photos immo/produit = contenu sain.
-        num_images: 1,
-      }),
+      body: JSON.stringify(buildRequestBody(model, prompt, dataUri)),
       signal: AbortSignal.timeout(timeoutMs),
     });
 
@@ -96,8 +111,8 @@ export class FalProvider implements ImageEditProvider {
       throw new Error(`fal HTTP ${res.status}${res.status === 429 ? " (429 rate limit)" : ""}: ${body.slice(0, 200)}`);
     }
 
-    const json = (await res.json()) as { images?: Array<{ url?: string }> };
-    const url = json.images?.[0]?.url;
+    const json = (await res.json()) as { images?: Array<{ url?: string }>; image?: { url?: string } };
+    const url = json.images?.[0]?.url ?? json.image?.url;
     if (!url) throw new Error("fal: aucune image retournée");
 
     // L'image peut arriver en data-URI ou en URL hébergée fal

@@ -286,11 +286,11 @@ async function processOnePhoto(
     const edited = await editImage({ imageBase64, instruction, systemPrompt });
     let outputBuffer = edited.buffer;
 
-    // Rehaussement photométrique derrière Kontext/fal UNIQUEMENT : Kontext
-    // (éditeur d'objets, biais de préservation) rend "sombre/terne" sur le
-    // rehaussement global — Sharp apporte le lift lumineux calibré par métier.
-    // Gemini rehausse déjà nativement → pas de double traitement.
-    if (edited.provider === "fal") {
+    // Rehaussement photométrique derrière KONTEXT uniquement (éditeur d'objets
+    // à biais de préservation → rend "sombre/terne" en global). Les modèles de
+    // la famille Gemini/Nano Banana rehaussent NATIVEMENT — un lift en plus
+    // les surcuirait. Décision par MODÈLE, pas par provider (NB2 tourne via fal).
+    if (edited.model.includes("kontext")) {
       outputBuffer = await postEnhance(outputBuffer, job.preset);
     }
 

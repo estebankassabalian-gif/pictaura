@@ -69,7 +69,7 @@ function getFallbackProvider(primaryName: string): ImageEditProvider | null {
  */
 export async function editImage(
   args: ImageEditArgs
-): Promise<{ buffer: Buffer; provider: string }> {
+): Promise<{ buffer: Buffer; provider: string; model: string }> {
   if (hasPromptInjection(args.instruction.slice(0, 1200))) {
     throw new Error("Instruction refusée : contenu non autorisé détecté");
   }
@@ -84,13 +84,13 @@ export async function editImage(
 
   // Breaker ouvert ET un secours existe → secours direct (sinon on tente quand même)
   if (fallback && Date.now() < st.openUntil) {
-    return { buffer: await fallback.editImage(args), provider: fallback.name };
+    return { buffer: await fallback.editImage(args), provider: fallback.name, model: fallback.modelLabel() };
   }
 
   try {
     const out = await primary.editImage(args);
     st.fails = 0; // succès → reset
-    return { buffer: out, provider: primary.name };
+    return { buffer: out, provider: primary.name, model: primary.modelLabel() };
   } catch (primaryErr) {
     st.fails++;
     if (st.fails >= threshold && Date.now() >= st.openUntil) {
@@ -106,7 +106,7 @@ export async function editImage(
     }
     if (!fallback) throw primaryErr;
     // Bascule immédiate sur le secours pour CETTE requête
-    return { buffer: await fallback.editImage(args), provider: fallback.name };
+    return { buffer: await fallback.editImage(args), provider: fallback.name, model: fallback.modelLabel() };
   }
 }
 

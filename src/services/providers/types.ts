@@ -22,6 +22,9 @@ export interface ImageEditProvider {
   readonly name: string;
   /** false si la clé API du provider est absente (provider inéligible) */
   isConfigured(): boolean;
+  /** Modèle effectif (ex: 'fal:fal-ai/nano-banana-2/edit') — le pipeline
+   *  adapte son post-traitement selon le modèle, pas selon le provider. */
+  modelLabel(): string;
   /** Retourne le buffer de l'image éditée. Throw en cas d'échec. */
   editImage(args: ImageEditArgs): Promise<Buffer>;
 }
