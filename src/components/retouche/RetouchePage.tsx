@@ -120,7 +120,11 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
   }
 
   function buildInstructionForPhoto(config: PhotoConfig): string {
-    const userPart = config.customInstruction.trim() || "Improve the overall quality of the photo.";
+    // Vide si l'utilisateur n'a rien écrit : le backend applique alors
+    // l'instruction par défaut du preset (source de vérité unique — un défaut
+    // codé en dur ici court-circuitait les défauts métier du pipeline).
+    const userPart = config.customInstruction.trim();
+    if (!userPart) return "";
     const platform = config.platformId ? getPlatformById(agent.id, config.platformId) : undefined;
     if (!platform) return userPart;
     return `${userPart}\n\n${platform.promptHint}`;

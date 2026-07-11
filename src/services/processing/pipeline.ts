@@ -9,25 +9,27 @@ import { editImage } from "@/services/providers";
 import { upscaleIfNeeded } from "@/services/providers/upscale";
 import { postEnhance } from "@/services/processing/post-enhance";
 
-// Instructions par défaut CIBLÉES par preset (leçon du test Kontext : un
-// éditeur d'instruction est littéral — "improve quality" donne un bel
-// étalonnage global mais ne nettoie pas une piscine verte ; il faut nommer
-// explicitement ciel/pelouse/piscine/produit). Utilisées quand l'utilisateur
-// ne donne aucune instruction. Valables pour tous les providers.
+// Instructions par défaut par preset — RÈGLE DE SÉCURITÉ apprise en prod :
+// ne JAMAIS affirmer l'existence d'objets ("make the sky blue", "pool
+// crystal clear", "the property") — sur une photo qui ne les contient pas
+// (forêt, terrain nu), Kontext littéral peut les INVENTER (constaté : maison
+// générée dans une forêt). Le défaut = rehaussement lumière/couleur/netteté
+// UNIQUEMENT. Les éditions d'objets (piscine, ciel, voiture…) viennent des
+// instructions EXPLICITES de l'utilisateur (suggestions cliquables).
 const DEFAULT_INSTRUCTIONS: Record<string, string> = {
   AIRBNB:
-    "Enhance this real estate photo: bright balanced HDR-like exposure, corrected white balance, vivid natural colors. Make the sky blue, the lawn green and healthy, and any pool water crystal clear turquoise. Keep the property, furniture and layout strictly identical.",
+    "Professionally enhance this photo: significantly brighter, balanced, luminous exposure; corrected white balance; natural vivid colors; crisp details. Adjust ONLY light, color and sharpness.",
   IMMOBILIER:
-    "Enhance this real estate photo: bright balanced HDR-like exposure, corrected white balance, vivid natural colors. Make the sky blue, the lawn green and healthy, and any pool water crystal clear turquoise. Keep the property, furniture and layout strictly identical.",
+    "Professionally enhance this photo: significantly brighter, balanced, luminous exposure; corrected white balance; natural vivid colors; crisp details. Adjust ONLY light, color and sharpness.",
   INSTAGRAM:
-    "Enhance this photo with a cinematic orange-and-teal color grade, crisp details and eye-catching contrast. Keep the subject and scene strictly identical.",
+    "Professionally enhance this photo: vibrant cinematic color grade, punchy contrast, crisp details, brighter balanced exposure. Adjust ONLY light, color and sharpness.",
   VINTED:
-    "Enhance this product photo: clean studio-like lighting, sharp product details, accurate colors and materials. Keep the product strictly identical.",
+    "Professionally enhance this photo: clean bright lighting, sharp details, accurate faithful colors and materials. Adjust ONLY light, color and sharpness.",
   SHOPIFY:
-    "Enhance this product photo: clean studio-like lighting, sharp product details, accurate colors and materials. Keep the product strictly identical.",
+    "Professionally enhance this photo: clean bright lighting, sharp details, accurate faithful colors and materials. Adjust ONLY light, color and sharpness.",
 };
 const GENERIC_INSTRUCTION =
-  "Improve the overall quality of the photo: brightness, contrast, sharpness, colors.";
+  "Professionally enhance this photo: brighter balanced exposure, natural vivid colors, crisp details. Adjust ONLY light, color and sharpness.";
 import { applyWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
 import { cropToPlatform } from "@/services/processing/platform-crop";

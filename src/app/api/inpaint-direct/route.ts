@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { retouchPhoto } from "@/lib/gemini";
+import { editImage } from "@/services/providers";
 import { uploadInpaintingResult, getFreshSignedUrl } from "@/services/storage";
 import { INPAINTING_CREDITS_COST, MAX_FILE_SIZE_BYTES } from "@/config/plans";
 import { AGENTS } from "@/config/agents";
@@ -112,7 +112,9 @@ export async function POST(req: NextRequest) {
 
     const agent = AGENTS[preset];
     const systemPrompt = agent?.systemPrompt ?? "You are a professional photo editor. Perform the requested edits with photorealistic, professional quality.";
-    const resultBuffer = await retouchPhoto(imageBase64, instruction, systemPrompt);
+    // Couche provider (fal primaire + secours + breaker) — l'appel Gemini
+    // direct laissait l'éditeur libre en panne pendant l'outage 429.
+    const { buffer: resultBuffer } = await editImage({ imageBase64, instruction, systemPrompt });
 
     const resultKey = await uploadInpaintingResult(resultBuffer, userId, inpaintingJobId);
     const resultSignedUrl = await getFreshSignedUrl(resultKey);

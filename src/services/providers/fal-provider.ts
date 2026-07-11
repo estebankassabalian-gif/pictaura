@@ -1,6 +1,16 @@
-import { buildEditPrompt } from "@/lib/gemini";
 import { recordImageCall, classifyImageError } from "@/services/monitoring/image-metrics";
 import type { ImageEditArgs, ImageEditProvider } from "./types";
+
+/**
+ * Prompt Kontext : l'instruction SEULE + garde-fous anti-invention.
+ * SURTOUT PAS le "contexte d'expertise" extrait du systemPrompt Gemini
+ * ("sky replacement, facade cleaning, lawn enhancement…") : Kontext est
+ * littéral — sur une photo sans bâtiment, ce contexte l'a poussé à INVENTER
+ * une façade (constaté en prod : maison générée dans une forêt).
+ */
+function buildKontextPrompt(instruction: string): string {
+  return `${instruction.trim()} — Strictly photorealistic. Do NOT add, remove, move or invent any object, building, structure, person or scenery that is not in the original photo. No text, no watermark. Preserve the original scene, framing and composition exactly.`;
+}
 
 /**
  * Provider fal.ai — FLUX.1 Kontext [pro] (édition par instruction, préserve le
@@ -34,7 +44,7 @@ export class FalProvider implements ImageEditProvider {
     const kind = args.kind ?? "real";
     const maxAttempts = kind === "canary" ? 1 : 3;
     const timeoutMs = args.timeoutMs ?? REAL_TIMEOUT_MS;
-    const prompt = buildEditPrompt(args.systemPrompt, args.instruction.slice(0, 1200));
+    const prompt = buildKontextPrompt(args.instruction.slice(0, 1200));
 
     let lastErr: Error | null = null;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
