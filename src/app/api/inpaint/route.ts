@@ -112,7 +112,10 @@ export async function POST(req: NextRequest) {
     // ── Retouche via Gemini ───────────────────────────────────────────────
     const agent = AGENTS[photo.job.preset];
     const systemPrompt = agent?.systemPrompt ?? "You are a professional photo editor. Perform the requested edits with photorealistic, professional quality.";
-    let resultBuffer = await editImage({ imageBase64, instruction, systemPrompt });
+    // Pas de postEnhance ici : la photo source est DÉJÀ rehaussée (pipeline) ;
+    // Kontext préserve ce rendu — un 2e lift la sur-traiterait.
+    const editedResult = await editImage({ imageBase64, instruction, systemPrompt });
+    let resultBuffer = editedResult.buffer;
 
     // Upscale ×2 si sortie < 1920px (cohérence avec le pipeline principal —
     // ce résultat remplace la photo livrée). Non-bloquant.

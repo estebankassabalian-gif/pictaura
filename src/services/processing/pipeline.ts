@@ -7,6 +7,7 @@ import { getSignedDownloadUrl } from "@/lib/r2";
 import { generateSeoAndScore, generatePhotoSEO, type PhotoSeoResult } from "@/lib/gemini";
 import { editImage } from "@/services/providers";
 import { upscaleIfNeeded } from "@/services/providers/upscale";
+import { postEnhance } from "@/services/processing/post-enhance";
 
 // Instructions par défaut CIBLÉES par preset (leçon du test Kontext : un
 // éditeur d'instruction est littéral — "improve quality" donne un bel
@@ -280,7 +281,16 @@ async function processOnePhoto(
     // Le provider rend l'image brute ; crop → watermark → EXIF restent ici,
     // identiques quel que soit le modèle (pipeline provider-agnostique).
     const imageBase64 = inputBuffer.toString("base64");
-    let outputBuffer = await editImage({ imageBase64, instruction, systemPrompt });
+    const edited = await editImage({ imageBase64, instruction, systemPrompt });
+    let outputBuffer = edited.buffer;
+
+    // Rehaussement photométrique derrière Kontext/fal UNIQUEMENT : Kontext
+    // (éditeur d'objets, biais de préservation) rend "sombre/terne" sur le
+    // rehaussement global — Sharp apporte le lift lumineux calibré par métier.
+    // Gemini rehausse déjà nativement → pas de double traitement.
+    if (edited.provider === "fal") {
+      outputBuffer = await postEnhance(outputBuffer, job.preset);
+    }
 
     // Upscale ×2 si la sortie provider est sous le standard immo (1920px) —
     // Kontext sort ~1 Mpx. Non-bloquant : échec = image originale conservée.

@@ -64,8 +64,12 @@ function getFallbackProvider(primaryName: string): ImageEditProvider | null {
 /**
  * Point d'entrée UNIQUE du pipeline et de l'inpainting pour éditer une image.
  * Le provider retourne une image brute ; crop/watermark/EXIF restent au pipeline.
+ * Retourne aussi le nom du provider qui a réellement servi (le pipeline adapte
+ * son post-traitement : rehaussement photométrique derrière Kontext/fal).
  */
-export async function editImage(args: ImageEditArgs): Promise<Buffer> {
+export async function editImage(
+  args: ImageEditArgs
+): Promise<{ buffer: Buffer; provider: string }> {
   if (hasPromptInjection(args.instruction.slice(0, 1200))) {
     throw new Error("Instruction refusée : contenu non autorisé détecté");
   }
@@ -80,13 +84,13 @@ export async function editImage(args: ImageEditArgs): Promise<Buffer> {
 
   // Breaker ouvert ET un secours existe → secours direct (sinon on tente quand même)
   if (fallback && Date.now() < st.openUntil) {
-    return fallback.editImage(args);
+    return { buffer: await fallback.editImage(args), provider: fallback.name };
   }
 
   try {
     const out = await primary.editImage(args);
     st.fails = 0; // succès → reset
-    return out;
+    return { buffer: out, provider: primary.name };
   } catch (primaryErr) {
     st.fails++;
     if (st.fails >= threshold && Date.now() >= st.openUntil) {
@@ -102,7 +106,7 @@ export async function editImage(args: ImageEditArgs): Promise<Buffer> {
     }
     if (!fallback) throw primaryErr;
     // Bascule immédiate sur le secours pour CETTE requête
-    return fallback.editImage(args);
+    return { buffer: await fallback.editImage(args), provider: fallback.name };
   }
 }
 
