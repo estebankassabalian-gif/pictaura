@@ -918,7 +918,7 @@ export default function LandingClient() {
               },
               {
                 q: "Comment fonctionnent les 3 plans ?",
-                a: "Starter (14,90€/mois, 100 retouches), Pro (39,90€/mois, 400 retouches) ou Business (89,90€/mois, 1200 retouches). Tous les plans donnent accès à tous les presets (Immobilier, Réseaux sociaux, E-commerce) et à toutes les fonctionnalités. L'abonnement annuel offre -20%. Pas prêt à vous abonner ? Le pack 30 crédits à 9,90€ est sans engagement.",
+                a: `${PLANS[0].name} (${formatEur(PLANS[0].monthlyPriceEurCents)}/mois, ${PLANS[0].creditsPerMonth} retouches), ${PLANS[1].name} (${formatEur(PLANS[1].monthlyPriceEurCents)}/mois, ${PLANS[1].creditsPerMonth} retouches) ou ${PLANS[2].name} (${formatEur(PLANS[2].monthlyPriceEurCents)}/mois, ${PLANS[2].creditsPerMonth} retouches). Tous les plans donnent accès à tous les presets (Immobilier, Réseaux sociaux, E-commerce) et à toutes les fonctionnalités. L'abonnement annuel offre -20%. Pas prêt à vous abonner ? Le pack ${ONESHOT_PACK.credits} crédits à ${formatEur(ONESHOT_PACK.priceEurCents)} est sans engagement.`,
               },
               {
                 q: "Puis-je tester avant de payer ?",

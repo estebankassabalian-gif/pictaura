@@ -1,4 +1,8 @@
+import { PLANS, ONESHOT_PACK, FREE_SIGNUP_CREDITS, formatEur } from "@/config/plans";
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://pictaura.app";
+// PLANS[0]=Starter, [1]=Pro, [2]=Business — mêmes indices que la grille tarifaire.
+const [STARTER, PRO, BUSINESS] = PLANS;
 
 /**
  * JSON-LD SoftwareApplication — aide Google à comprendre que c'est un logiciel SaaS.
@@ -18,7 +22,7 @@ export function SoftwareApplicationJsonLd() {
       "@type": "AggregateOffer",
       priceCurrency: "EUR",
       lowPrice: "0",
-      highPrice: "89.90",
+      highPrice: (BUSINESS.monthlyPriceEurCents / 100).toFixed(2),
       offerCount: "5",
       offers: [
         {
@@ -26,35 +30,35 @@ export function SoftwareApplicationJsonLd() {
           name: "Gratuit",
           price: "0",
           priceCurrency: "EUR",
-          description: "5 crédits offerts à l'inscription",
+          description: `${FREE_SIGNUP_CREDITS} crédits offerts à l'inscription`,
         },
         {
           "@type": "Offer",
-          name: "Pack 30 crédits",
-          price: "9.90",
+          name: ONESHOT_PACK.name,
+          price: (ONESHOT_PACK.priceEurCents / 100).toFixed(2),
           priceCurrency: "EUR",
-          description: "30 retouches sans engagement — crédits sans expiration",
+          description: `${ONESHOT_PACK.credits} retouches sans engagement — crédits sans expiration`,
         },
         {
           "@type": "Offer",
-          name: "Starter",
-          price: "14.90",
+          name: STARTER.name,
+          price: (STARTER.monthlyPriceEurCents / 100).toFixed(2),
           priceCurrency: "EUR",
-          description: "100 retouches/mois — idéal pour démarrer",
+          description: `${STARTER.creditsPerMonth} retouches/mois — idéal pour démarrer`,
         },
         {
           "@type": "Offer",
-          name: "Pro",
-          price: "39.90",
+          name: PRO.name,
+          price: (PRO.monthlyPriceEurCents / 100).toFixed(2),
           priceCurrency: "EUR",
-          description: "400 retouches/mois — pour professionnels actifs",
+          description: `${PRO.creditsPerMonth} retouches/mois — pour professionnels actifs`,
         },
         {
           "@type": "Offer",
-          name: "Business",
-          price: "89.90",
+          name: BUSINESS.name,
+          price: (BUSINESS.monthlyPriceEurCents / 100).toFixed(2),
           priceCurrency: "EUR",
-          description: "1200 retouches/mois — pour agences et gros volumes",
+          description: `${BUSINESS.creditsPerMonth} retouches/mois — pour agences et gros volumes`,
         },
       ],
     },
@@ -116,7 +120,7 @@ export function FaqJsonLd() {
         name: "Pictaura est-il gratuit ?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Oui, Pictaura offre 5 crédits gratuits à l'inscription, sans carte bancaire requise. 1 crédit = 1 photo traitée. Ensuite, trois abonnements sont disponibles : Starter (14,90€/mois, 100 retouches), Pro (39,90€/mois, 400 retouches) et Business (89,90€/mois, 1200 retouches). Un pack one-shot de 30 crédits à 9,90€ est aussi disponible sans engagement.",
+          text: `Oui, Pictaura offre ${FREE_SIGNUP_CREDITS} crédits gratuits à l'inscription, sans carte bancaire requise. 1 crédit = 1 photo traitée. Ensuite, trois abonnements sont disponibles : ${STARTER.name} (${formatEur(STARTER.monthlyPriceEurCents)}/mois, ${STARTER.creditsPerMonth} retouches), ${PRO.name} (${formatEur(PRO.monthlyPriceEurCents)}/mois, ${PRO.creditsPerMonth} retouches) et ${BUSINESS.name} (${formatEur(BUSINESS.monthlyPriceEurCents)}/mois, ${BUSINESS.creditsPerMonth} retouches). Un pack one-shot de ${ONESHOT_PACK.credits} crédits à ${formatEur(ONESHOT_PACK.priceEurCents)} est aussi disponible sans engagement.`,
         },
       },
       {
