@@ -15,6 +15,8 @@ import {
 // Segments marketing sur la landing (découplés des plans de pricing).
 type SegmentId = "immobilier" | "social" | "ecommerce";
 import BeforeAfterHero from "@/components/landing/BeforeAfterHero";
+import SiteFooter from "@/components/landing/SiteFooter";
+import SeoProofCard from "@/components/landing/SeoProofCard";
 import Logo from "@/components/brand/Logo";
 import {
   Home,
@@ -430,6 +432,7 @@ export default function LandingClient() {
           <div className="hidden md:flex items-center gap-8">
             {[
               ["#solutions", "Solutions"],
+              ["/agences", "Agences"],
               ["#seo", "SEO"],
               ["#pricing", "Tarifs"],
               ["#faq", "FAQ"],
@@ -749,68 +752,43 @@ export default function LandingClient() {
               </ul>
             </FadeUp>
 
-            {/* Right : mockup EXIF */}
+            {/* Mockup EXIF — DONNÉES RÉELLES générées par Pictaura sur la
+                photo villa du hero (Draguignan, Var), pas un exemple fictif. */}
             <FadeUp delay={0.15}>
-              <div className="rounded-3xl overflow-hidden border border-white/20 shadow-2xl">
-                <div className="bg-ink/90 border-b border-white/10 px-5 py-3 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-red-400" />
-                  <span className="w-3 h-3 rounded-full bg-yellow-400" />
-                  <span className="w-3 h-3 rounded-full bg-green-400" />
-                  <span className="text-[11px] text-cream/60 font-mono ml-3">
-                    salon-lumineux-appartement-paris.jpg — EXIF
-                  </span>
-                </div>
-                <div className="bg-ink/95 p-6 font-mono text-[12px] leading-relaxed text-cream/90">
-                  <div>
-                    <span className="text-sun">alt</span>:{" "}
-                    <span className="text-cream/85">
-                      &quot;Salon lumineux avec parquet en chêne, appartement 3
-                      pièces rénové à Paris 11&quot;
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-sun">title</span>:{" "}
-                    <span className="text-cream/85">
-                      &quot;Appartement 3P Paris 11 — Salon rénové&quot;
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-sun">description</span>:{" "}
-                    <span className="text-cream/85">
-                      &quot;Salon de 25m² avec grandes fenêtres, parquet
-                      chêne massif, cheminée d&apos;origine...&quot;
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-sun">keywords</span>:{" "}
-                    <span className="text-cream/85">
-                      appartement-paris-11, salon-lumineux, parquet-chene,
-                      renove
-                    </span>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-white/10">
-                    <span className="text-sun">@context</span>:{" "}
-                    <span className="text-cream/60">
-                      https://schema.org
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-sun">@type</span>:{" "}
-                    <span className="text-cream/85">
-                      &quot;RealEstateListing&quot;
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-sun">image</span>:{" "}
-                    <span className="text-cream/85">ImageObject...</span>
-                  </div>
-                </div>
-              </div>
+              <SeoProofCard />
               <p className="text-center text-cream/60 text-xs mt-4">
-                Aperçu réel des métadonnées générées par Pictaura sur une
-                photo Immobilier.
+                Donnée réelle générée par Pictaura sur la photo villa
+                ci-dessus — rien n&apos;est simulé.
               </p>
             </FadeUp>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS / PREUVE ───────────────────────────────────── */}
+      <section className="relative py-20 px-6">
+        <div className="relative max-w-6xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              { Icon: Zap, value: "< 30 sec", label: "par photo, là où un shooting se compte en jours" },
+              { Icon: ShoppingBag, value: "÷ 20", label: "vs le coût d'un photographe professionnel" },
+              { Icon: Home, value: "30", label: "photos traitées en un seul lot, en parallèle" },
+              { Icon: Sparkles, value: "100%", label: "des photos livrées avec le SEO gravé (EXIF + XMP)" },
+            ].map((s, i) => (
+              <FadeUp key={s.label} delay={i * 0.08}>
+                <div className="h-full bg-white/95 backdrop-blur-sm border border-ink-soft rounded-3xl p-7 text-center shadow-[0_10px_30px_rgba(3,29,104,0.06)] hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(3,29,104,0.12)] transition-all duration-300">
+                  <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                    <s.Icon className="w-5 h-5 text-accent" />
+                  </div>
+                  <div className="font-display text-3xl md:text-4xl text-brand tracking-tight mb-2">
+                    {s.value}
+                  </div>
+                  <p className="text-ink-muted text-xs leading-relaxed">
+                    {s.label}
+                  </p>
+                </div>
+              </FadeUp>
+            ))}
           </div>
         </div>
       </section>
@@ -999,106 +977,7 @@ export default function LandingClient() {
         </FadeUp>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────── */}
-      <footer className="relative bg-brand text-cream border-t border-brand-light py-16 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between gap-12 mb-12">
-            <div>
-              <Link href="/" className="inline-flex items-center gap-2.5 mb-4">
-                <Logo variant="mark" size={32} tone="cream" />
-                <span className="text-cream font-display tracking-tight text-lg">
-                  Pictaura
-                </span>
-              </Link>
-              <p className="text-cream/80 text-sm max-w-xs leading-relaxed">
-                Retouche IA et SEO, gravés dans vos photos. Immobilier,
-                réseaux sociaux, e-commerce — en moins de 30 secondes par photo.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-12 text-sm">
-              <div>
-                <h3 className="font-display text-cream text-[10px] uppercase tracking-[0.15em] mb-4">
-                  Produit
-                </h3>
-                <ul className="space-y-3 text-cream/75">
-                  {[
-                    ["#solutions", "Solutions"],
-                    ["#seo", "SEO"],
-                    ["#pricing", "Tarifs"],
-                    ["#faq", "FAQ"],
-                  ].map(([h, l]) => (
-                    <li key={h}>
-                      <a
-                        href={h}
-                        className="hover:text-sun transition-colors"
-                      >
-                        {l}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-display text-cream text-[10px] uppercase tracking-[0.15em] mb-4">
-                  Légal
-                </h3>
-                <ul className="space-y-3 text-cream/75">
-                  <li>
-                    <Link href="/cgu" className="hover:text-sun transition-colors">
-                      CGU
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/cgv" className="hover:text-sun transition-colors">
-                      CGV
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/mentions-legales" className="hover:text-sun transition-colors">
-                      Mentions légales
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/politique-confidentialite"
-                      className="hover:text-sun transition-colors"
-                    >
-                      Confidentialité
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/contact" className="hover:text-sun transition-colors">
-                      Contact
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-px w-full bg-cream/15 mb-8" />
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-xs text-cream/60">
-              © {new Date().getFullYear()} Pictaura — Tous droits réservés
-            </p>
-            <div className="flex items-center gap-2 text-xs text-cream/60">
-              <svg
-                className="w-3.5 h-3.5 text-sun"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Paiement sécurisé SSL · Stripe
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter isHome />
     </div>
   );
 }

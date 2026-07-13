@@ -22,6 +22,7 @@ export default auth((req) => {
     "/api/cron", // protégé par x-cron-secret, pas par session
     "/cgu",
     "/cgv",
+    "/agences",
     "/mentions-legales",
     "/politique-confidentialite",
     "/contact",
