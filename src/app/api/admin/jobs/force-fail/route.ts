@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { refundCredits } from "@/services/credits";
+import { refundJobCredits } from "@/services/credits";
 
 /**
  * POST /api/admin/jobs/force-fail
@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
 
   const job = await prisma.processingJob.findUnique({
     where: { id: jobId },
-    include: { photos: true },
   });
 
   if (!job) return NextResponse.json({ error: "Job non trouvé" }, { status: 404 });
@@ -28,11 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Job déjà terminé" }, { status: 400 });
   }
 
-  // Compter les photos non traitées = crédits à rembourser
-  const failedPhotos = job.photos.filter((p) => p.status !== "COMPLETED");
-  const creditsToRefund = failedPhotos.length;
-
-  // Passer toutes les photos en FAILED
+  // Passer toutes les photos non livrées en FAILED
   await prisma.processedPhoto.updateMany({
     where: { jobId, status: { in: ["PENDING", "PROCESSING"] } },
     data: { status: "FAILED" },
@@ -44,10 +39,18 @@ export async function POST(req: NextRequest) {
     data: { status: "FAILED", errorMsg: "Force-fail par admin", completedAt: new Date() },
   });
 
-  // Rembourser si nécessaire
-  if (creditsToRefund > 0) {
-    await refundCredits(job.userId, creditsToRefund, jobId).catch(console.error);
-  }
+  // Rembourse ce qui reste réellement dû (le ledger recalcule à partir de la
+  // DB — pas de risque de double-remboursement si le pipeline ou la
+  // récupération de jobs bloqués remboursait ce même job au même moment).
+  // On sur-demande volontairement photoCount : refundJobCredits plafonne seul.
+  const creditsRefunded = await refundJobCredits(
+    jobId,
+    job.photoCount,
+    "Remboursement (force-fail admin)"
+  ).catch((err) => {
+    console.error(err);
+    return 0;
+  });
 
-  return NextResponse.json({ success: true, creditsRefunded: creditsToRefund });
+  return NextResponse.json({ success: true, creditsRefunded });
 }

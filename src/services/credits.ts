@@ -114,8 +114,14 @@ export async function deductCreditsAtomic(
 }
 
 /**
- * Rembourse des crédits (ex: si le traitement échoue).
- * Crée une transaction REFUND dans l'historique.
+ * Rembourse des crédits sans garde d'idempotence — réservé au rollback d'une
+ * création de job qui a ÉCHOUÉ AVANT que la ligne n'existe en DB (aucune
+ * ligne à verrouiller, donc aucun concurrent — pipeline/recovery/admin — ne
+ * peut jamais rembourser ce même jobId puisqu'il n'a jamais existé). Pour
+ * tout remboursement sur un job DÉJÀ créé (échec pendant le traitement, job
+ * bloqué, action admin), utiliser `refundJobCredits` : plusieurs chemins
+ * peuvent viser le même job en même temps, et seul un ledger verrouillé évite
+ * un double remboursement.
  */
 export async function refundCredits(
   userId: string,
@@ -147,6 +153,84 @@ export async function refundCredits(
       },
     }),
   ]);
+}
+
+/**
+ * Rembourse un job de façon idempotente, quel que soit le chemin appelant
+ * (échec pendant le traitement, récupération de job bloqué, action admin).
+ *
+ * Problème résolu : `refundCredits` n'a aucune garde — si deux chemins
+ * calculent chacun de leur côté "combien manque-t-il ?" et remboursent en
+ * parallèle (ex: le pipeline qui échoue au même moment où la récupération de
+ * jobs bloqués considère ce job comme mort), le même crédit peut être rendu
+ * deux fois. Ici, un seul verrou de ligne (`FOR UPDATE` sur le job) sérialise
+ * tous les appelants concurrents, et le montant réellement remboursé est
+ * toujours recalculé à partir de la vérité DB : `photoCount - déjà remboursé
+ * - déjà livré (COMPLETED)`. Le montant demandé n'est qu'un plafond ; il est
+ * automatiquement réduit à ce qui reste réellement dû (0 si déjà tout
+ * remboursé). Les appelants peuvent donc sur-demander sans risque (ex:
+ * demander tout `photoCount` dans un `catch` générique) plutôt que de tenir
+ * un compteur local fragile.
+ *
+ * @returns le montant RÉELLEMENT remboursé (peut être < requestedAmount, ou 0)
+ */
+export async function refundJobCredits(
+  jobId: string,
+  requestedAmount: number,
+  description?: string
+): Promise<number> {
+  if (requestedAmount <= 0) return 0;
+
+  return prisma.$transaction(async (tx) => {
+    // Verrouille la ligne du job : un seul appelant à la fois peut lire puis
+    // écrire refundedCredits pour ce job, quel que soit le process qui l'appelle.
+    const jobRows = await tx.$queryRaw<
+      Array<{ id: string; userId: string; photoCount: number; refundedCredits: number }>
+    >`
+      SELECT id, "userId", "photoCount", "refundedCredits"
+      FROM processing_jobs WHERE id = ${jobId} FOR UPDATE
+    `;
+    const job = jobRows[0];
+    if (!job) return 0;
+
+    const user = await tx.user.findUnique({
+      where: { id: job.userId },
+      select: { role: true, credits: true },
+    });
+    // Admin : jamais débité à la création du job → jamais remboursé non plus.
+    if (!user || user.role === Role.ADMIN) return 0;
+
+    const completedCount = await tx.processedPhoto.count({
+      where: { jobId, status: "COMPLETED" },
+    });
+
+    const outstanding = Math.max(0, job.photoCount - job.refundedCredits - completedCount);
+    const actual = Math.min(requestedAmount, outstanding);
+    if (actual <= 0) return 0;
+
+    const newBalance = user.credits + actual;
+
+    await tx.processingJob.update({
+      where: { id: jobId },
+      data: { refundedCredits: { increment: actual } },
+    });
+    await tx.user.update({
+      where: { id: job.userId },
+      data: { credits: { increment: actual } },
+    });
+    await tx.creditTransaction.create({
+      data: {
+        userId: job.userId,
+        type: TransactionType.REFUND,
+        amount: actual,
+        balanceAfter: newBalance,
+        jobId,
+        description: description ?? `Remboursement de ${actual} crédit(s) - traitement échoué`,
+      },
+    });
+
+    return actual;
+  });
 }
 
 /**

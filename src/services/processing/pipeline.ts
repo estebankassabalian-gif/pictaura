@@ -2,7 +2,7 @@ import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
 import { JobStatus, type Preset } from "@prisma/client";
 import { uploadProcessedPhoto } from "@/services/storage";
-import { refundCredits } from "@/services/credits";
+import { refundJobCredits } from "@/services/credits";
 import { getSignedDownloadUrl } from "@/lib/r2";
 import { generateSeoAndScore, generatePhotoSEO, type PhotoSeoResult } from "@/lib/gemini";
 import { editImage } from "@/services/providers";
@@ -97,8 +97,6 @@ export async function processJob(jobId: string): Promise<void> {
   });
   if (!job) throw new Error(`Job ${jobId} non trouve`);
 
-  let alreadyRefundedCount = 0;
-  let completedForCatch = 0;
   try {
     const agent = AGENTS[job.preset];
     const systemPrompt = agent?.systemPrompt ?? "You are a professional photo editor. Perform the requested edits with photorealistic, professional quality.";
@@ -157,17 +155,14 @@ export async function processJob(jobId: string): Promise<void> {
           const result = await processOnePhoto(next, job, systemPrompt, applyWm, isPro, job.user?.businessCity);
           if (result.success) {
             successCount++;
-            completedForCatch++;
           } else {
             failedCount++;
-            alreadyRefundedCount++;
           }
         } catch (err) {
           // processOnePhoto catches internally; this is a belt-and-braces path.
           console.error(`Worker crash on photo ${next.id}:`, err);
           failedCount++;
-          await refundCredits(job.userId, 1, job.id).catch(console.error);
-          alreadyRefundedCount++;
+          await refundJobCredits(job.id, 1, "Photo en échec (crash worker)").catch(console.error);
         }
       }
     };
@@ -179,8 +174,7 @@ export async function processJob(jobId: string): Promise<void> {
     const createdCount = await prisma.processedPhoto.count({ where: { jobId } });
     const missingCount = Math.max(0, job.photoCount - createdCount);
     if (missingCount > 0) {
-      await refundCredits(job.userId, missingCount, jobId).catch(console.error);
-      alreadyRefundedCount += missingCount;
+      await refundJobCredits(jobId, missingCount, "Photos jamais uploadées").catch(console.error);
     }
 
     const anyFailure = failedCount > 0 || missingCount > 0;
@@ -208,10 +202,10 @@ export async function processJob(jobId: string): Promise<void> {
       },
     }).catch(console.error);
 
-    const toRefund = Math.max(0, job.photoCount - completedForCatch - alreadyRefundedCount);
-    if (toRefund > 0) {
-      await refundCredits(job.userId, toRefund, jobId).catch(console.error);
-    }
+    // Le ledger recalcule ce qui reste réellement dû (photoCount - déjà
+    // remboursé - COMPLETED) — sur-demander photoCount entier est sans risque,
+    // qu'il reste 0 ou N crédits à rendre après un crash à n'importe quel stade.
+    await refundJobCredits(jobId, job.photoCount, "Job en erreur — traitement interrompu").catch(console.error);
   }
 }
 
@@ -350,7 +344,7 @@ async function processOnePhoto(
       },
     }).catch(console.error);
 
-    await refundCredits(job.userId, 1, job.id).catch(console.error);
+    await refundJobCredits(job.id, 1, "Photo en échec").catch(console.error);
     return { success: false };
   }
 }

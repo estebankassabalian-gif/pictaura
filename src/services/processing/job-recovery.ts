@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { JobStatus } from "@prisma/client";
-import { refundCredits } from "@/services/credits";
+import { refundJobCredits } from "@/services/credits";
 
 /**
  * Détection de jobs morts basée sur l'ACTIVITÉ réelle, pas sur l'âge.
@@ -52,10 +52,6 @@ export async function failStaleJobs(userId?: string): Promise<number> {
     if (lastPhotoActivity >= cutoff) continue; // une photo bouge encore → job vivant
 
     const completedCount = job.photos.filter((p) => p.status === JobStatus.COMPLETED).length;
-    const failedCount = job.photos.filter((p) => p.status === JobStatus.FAILED).length;
-    // Crédits déduits = photoCount. Non livrés = tout sauf COMPLETED (livré)
-    // et FAILED (déjà remboursé photo par photo dans le pipeline).
-    const toRefund = Math.max(0, job.photoCount - completedCount - failedCount);
 
     await prisma.processedPhoto.updateMany({
       where: { jobId: job.id, status: { in: [JobStatus.PENDING, JobStatus.PROCESSING] } },
@@ -72,9 +68,20 @@ export async function failStaleJobs(userId?: string): Promise<number> {
             : "Traitement interrompu — crédits remboursés.",
       },
     });
-    if (toRefund > 0) {
-      await refundCredits(job.userId, toRefund, job.id).catch(console.error);
-    }
+    // Ledger idempotent : recalcule ce qui reste réellement dû à partir de la
+    // DB (photoCount - déjà remboursé - COMPLETED). On sur-demande
+    // volontairement photoCount entier — si le pipeline avait déjà remboursé
+    // certaines photos en échec au fil de l'eau (ou tout autre chemin), le
+    // verrou de ligne empêche tout double-remboursement ; le résultat est
+    // toujours le montant réellement rendu, jamais plus.
+    const toRefund = await refundJobCredits(
+      job.id,
+      job.photoCount,
+      "Traitement interrompu — job récupéré (inactivité >8 min)"
+    ).catch((err) => {
+      console.error(err);
+      return 0;
+    });
     console.warn(
       `Job ${job.id} récupéré (inactif >8 min) : ${completedCount} livrée(s), ${toRefund} crédit(s) remboursé(s)`
     );

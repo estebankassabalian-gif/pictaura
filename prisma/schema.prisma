@@ -124,6 +124,7 @@ model ProcessingJob {
   status      JobStatus @default(PENDING)
   photoCount  Int
   creditsCost Int       // Crédits déduits au moment de la soumission
+  refundedCredits Int   @default(0) // Ledger : total déjà remboursé pour ce job — cf. refundJobCredits() (garde d'idempotence anti double-remboursement)
   errorMsg    String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
