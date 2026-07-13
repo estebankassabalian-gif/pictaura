@@ -1,6 +1,6 @@
 import { retouchPhoto, canaryImageCall } from "@/lib/gemini";
 import { env } from "@/config/env";
-import type { ImageEditArgs, ImageEditProvider } from "./types";
+import type { ImageEditArgs, ImageEditProvider, ImageEditResult } from "./types";
 
 /**
  * Provider Gemini — enveloppe le chemin existant (retouchPhoto), qui porte déjà
@@ -18,13 +18,14 @@ export class GeminiProvider implements ImageEditProvider {
     return "gemini-3.1-flash-image-preview";
   }
 
-  async editImage(args: ImageEditArgs): Promise<Buffer> {
+  async editImage(args: ImageEditArgs): Promise<ImageEditResult> {
     if (args.kind === "canary") {
       // Sonde : un seul appel sans retries (instrumenté kind 'canary').
       // Le buffer n'est pas exploité par le canary — latence/succès suffisent.
       await canaryImageCall(args.imageBase64, args.timeoutMs ?? 45_000);
-      return Buffer.alloc(0);
+      return { buffer: Buffer.alloc(0), model: this.modelLabel() };
     }
-    return retouchPhoto(args.imageBase64, args.instruction, args.systemPrompt);
+    const buffer = await retouchPhoto(args.imageBase64, args.instruction, args.systemPrompt);
+    return { buffer, model: this.modelLabel() };
   }
 }

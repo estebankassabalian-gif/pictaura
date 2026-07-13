@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getImageHealthSnapshot } from "@/services/monitoring/image-metrics";
+import { getPrimaryProvider, hasResilienceFallback } from "@/services/providers";
 
 /**
  * GET /api/health/image — santé du chemin IMAGE (celui qui compte).
@@ -20,6 +21,8 @@ export async function GET() {
       {
         status: degraded ? "degraded" : "ok",
         ...snap,
+        primaryModel: getPrimaryProvider().modelLabel(),
+        hasFallback: hasResilienceFallback(),
         timestamp: new Date().toISOString(),
       },
       { status: degraded ? 503 : 200, headers: { "Cache-Control": "no-store" } }

@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             Des photos à la hauteur de votre vision.
           </h2>
           <p className="text-base xl:text-lg text-cream/85 max-w-md leading-relaxed">
-            La retouche photo simple mais experte, centrée sur le regard humain — en 1 à 2 minutes par photo, par l'IA.
+            La retouche photo simple mais experte, centrée sur le regard humain — en moins de 30 secondes par photo, par l'IA.
           </p>
           <div className="flex items-center gap-3 pt-2">
             <span className="h-1.5 w-12 rounded-full bg-sun" />

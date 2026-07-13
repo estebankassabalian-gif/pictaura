@@ -84,13 +84,14 @@ export async function editImage(
 
   // Breaker ouvert ET un secours existe → secours direct (sinon on tente quand même)
   if (fallback && Date.now() < st.openUntil) {
-    return { buffer: await fallback.editImage(args), provider: fallback.name, model: fallback.modelLabel() };
+    const res = await fallback.editImage(args);
+    return { buffer: res.buffer, provider: fallback.name, model: res.model };
   }
 
   try {
     const out = await primary.editImage(args);
     st.fails = 0; // succès → reset
-    return { buffer: out, provider: primary.name, model: primary.modelLabel() };
+    return { buffer: out.buffer, provider: primary.name, model: out.model };
   } catch (primaryErr) {
     st.fails++;
     if (st.fails >= threshold && Date.now() >= st.openUntil) {
@@ -106,7 +107,8 @@ export async function editImage(
     }
     if (!fallback) throw primaryErr;
     // Bascule immédiate sur le secours pour CETTE requête
-    return { buffer: await fallback.editImage(args), provider: fallback.name, model: fallback.modelLabel() };
+    const res = await fallback.editImage(args);
+    return { buffer: res.buffer, provider: fallback.name, model: res.model };
   }
 }
 
@@ -125,4 +127,12 @@ export async function runProviderCanary(
     timeoutMs,
   });
   return { provider: primary.name, latencyMs: Date.now() - t0 };
+}
+
+/** Le filet interne au provider primaire est-il configuré ? (info /api/health/image) */
+export function hasResilienceFallback(): boolean {
+  const primary = getPrimaryProvider();
+  const fallback = getFallbackProvider(primary.name);
+  if (fallback) return true; // secours inter-provider (ex: gemini)
+  return primary.name === "fal" && Boolean(process.env.IMAGE_FAL_FALLBACK_MODEL !== "");
 }

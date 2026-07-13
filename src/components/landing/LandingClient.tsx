@@ -517,7 +517,7 @@ export default function LandingClient() {
               Pictaura retouche vos visuels et écrit le SEO directement
               dans le fichier — alt text, nom, description, schema.org. Prêt à
               publier sur Shopify, Instagram ou une annonce immobilière en
-              1 à 2 minutes par photo.
+              moins de 30 secondes par photo.
             </motion.p>
 
             <motion.div
@@ -543,7 +543,7 @@ export default function LandingClient() {
             >
               {[
                 "Immobilier · Social · E-commerce",
-                "Résultat en 1 à 2 min par photo",
+                "Résultat en moins de 30 secondes",
                 "Sans carte bancaire",
               ].map((t) => (
                 <span
@@ -600,7 +600,7 @@ export default function LandingClient() {
             >
               <div className="text-[10px] text-sun font-bold">Temps IA</div>
               <div className="text-base font-display text-cream flex items-center gap-1">
-                ~1–2 min <Zap className="w-4 h-4 text-sun" />
+                &lt; 30 sec <Zap className="w-4 h-4 text-sun" />
               </div>
             </motion.div>
           </motion.div>
@@ -943,7 +943,7 @@ export default function LandingClient() {
               },
               {
                 q: "Quels formats et tailles sont acceptés ?",
-                a: "JPEG, PNG, WEBP, HEIC et HEIF. Jusqu'à 50 Mo par photo — compatible avec les reflex professionnels. 5 photos maximum par lot : comptez 1 à 2 minutes par photo pour garder un résultat optimal.",
+                a: "JPEG, PNG, WEBP, HEIC et HEIF. Jusqu'à 50 Mo par photo — compatible avec les reflex professionnels. 30 photos maximum par lot, retouchées en parallèle : comptez moins de 30 secondes par photo.",
               },
               {
                 q: "Puis-je annuler mon abonnement ?",
@@ -994,7 +994,7 @@ export default function LandingClient() {
             <ArrowRight className="w-5 h-5" />
           </Link>
           <p className="text-cream/60 text-xs mt-6">
-            Sans carte bancaire · Sans engagement · Résultat en 1 à 2 min par photo
+            Sans carte bancaire · Sans engagement · Résultat en moins de 30 secondes
           </p>
         </FadeUp>
       </section>
@@ -1012,7 +1012,7 @@ export default function LandingClient() {
               </Link>
               <p className="text-cream/80 text-sm max-w-xs leading-relaxed">
                 Retouche IA et SEO, gravés dans vos photos. Immobilier,
-                réseaux sociaux, e-commerce — en 1 à 2 min par photo.
+                réseaux sociaux, e-commerce — en moins de 30 secondes par photo.
               </p>
             </div>
 

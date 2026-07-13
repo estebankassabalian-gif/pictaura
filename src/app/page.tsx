@@ -4,7 +4,7 @@ import LandingClient from "@/components/landing/LandingClient";
 
 export const metadata: Metadata = {
   title: "Pictaura — Le photographe pro IA pour votre business | Immobilier, E-commerce, Réseaux",
-  description: "Transformez vos photos en aimants à clients en 1 à 2 min par photo. Jusqu'à +61% de vues sur vos annonces, +40% de réservations Airbnb. 5 photos offertes sans CB.",
+  description: "Transformez vos photos en aimants à clients en moins de 30 secondes par photo. Jusqu'à +61% de vues sur vos annonces, +40% de réservations Airbnb. 5 photos offertes sans CB.",
   alternates: { canonical: "/" },
   openGraph: {
     title: "Pictaura — Le photographe pro IA pour votre business",

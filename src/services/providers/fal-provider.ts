@@ -1,5 +1,5 @@
 import { recordImageCall, classifyImageError } from "@/services/monitoring/image-metrics";
-import type { ImageEditArgs, ImageEditProvider } from "./types";
+import type { ImageEditArgs, ImageEditProvider, ImageEditResult } from "./types";
 
 /**
  * Provider fal.ai — modèle CONFIGURABLE sans redéploiement (IMAGE_FAL_MODEL).
@@ -9,8 +9,14 @@ import type { ImageEditArgs, ImageEditProvider } from "./types";
  * premium), servie par l'infra fal en ~15 s mesurées (vs 60-150 s via l'API
  * Google directe), SANS dépendance à la facturation Google.
  *
- * Alternatif via env : `fal-ai/flux-pro/kontext` (éditeur d'objets — fort sur
- * "retire la voiture / piscine propre", faible en rehaussement global).
+ * RÉSILIENCE : le fallback historique de l'orchestrateur (bascule vers
+ * GeminiProvider) est aujourd'hui inopérant — la facturation Google est
+ * cassée depuis fin juin. Ce provider porte donc son propre filet interne :
+ * si le modèle primaire échoue après tous ses retries, UNE tentative est
+ * faite sur IMAGE_FAL_FALLBACK_MODEL (défaut `fal-ai/flux-pro/kontext`,
+ * déjà validé qualité sur l'immo) avant d'abandonner. Le modèle réellement
+ * utilisé est renvoyé dans ImageEditResult.model — jamais déduit de
+ * modelLabel(), qui ne reflète que le primaire configuré.
  *
  * Endpoint synchrone `fal.run` : POST → JSON avec l'URL de l'image générée.
  * Entrée image en data-URI base64 (pas d'upload préalable nécessaire).
@@ -19,6 +25,13 @@ import type { ImageEditArgs, ImageEditProvider } from "./types";
  */
 function falModel(): string {
   return process.env.IMAGE_FAL_MODEL?.trim() || "fal-ai/nano-banana-2/edit";
+}
+
+function falFallbackModel(): string | null {
+  const v = process.env.IMAGE_FAL_FALLBACK_MODEL?.trim();
+  if (v === "") return null; // désactivation explicite du filet interne
+  const model = v || "fal-ai/flux-pro/kontext";
+  return model !== falModel() ? model : null; // pas de filet si identique au primaire
 }
 
 const REAL_TIMEOUT_MS = 120_000;
@@ -58,13 +71,41 @@ export class FalProvider implements ImageEditProvider {
     return `fal:${falModel()}`;
   }
 
-  async editImage(args: ImageEditArgs): Promise<Buffer> {
+  async editImage(args: ImageEditArgs): Promise<ImageEditResult> {
     const kind = args.kind ?? "real";
+    const prompt = buildFalPrompt(args.instruction.slice(0, 1200));
+
+    const primaryModel = falModel();
+    const primaryErr = await this.tryModel(primaryModel, args, prompt, kind);
+    if (!("error" in primaryErr)) return primaryErr;
+
+    // Le canary doit refléter l'état brut du primaire — jamais masqué par un filet.
+    if (kind === "canary") throw primaryErr.error;
+
+    const fallbackModel = falFallbackModel();
+    if (!fallbackModel) throw primaryErr.error;
+
+    console.warn(
+      `fal: "${primaryModel}" a épuisé ses tentatives, essai du filet interne "${fallbackModel}"`
+    );
+    const fallbackRes = await this.tryModel(fallbackModel, args, prompt, kind);
+    if (!("error" in fallbackRes)) return fallbackRes;
+
+    // Les deux ont échoué : on remonte l'erreur du PRIMAIRE (plus pertinente
+    // pour le breaker/les alertes — c'est lui la config attendue).
+    throw primaryErr.error;
+  }
+
+  /** Tente un modèle avec ses retries propres. Ne throw jamais : renvoie {error}. */
+  private async tryModel(
+    model: string,
+    args: ImageEditArgs,
+    prompt: string,
+    kind: "real" | "canary"
+  ): Promise<ImageEditResult | { error: Error }> {
     const maxAttempts = kind === "canary" ? 1 : 3;
     const timeoutMs = args.timeoutMs ?? REAL_TIMEOUT_MS;
-    const model = falModel();
     const label = `fal:${model}`;
-    const prompt = buildFalPrompt(args.instruction.slice(0, 1200));
 
     let lastErr: Error | null = null;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -75,7 +116,7 @@ export class FalProvider implements ImageEditProvider {
       try {
         const buffer = await this.callOnce(model, args.imageBase64, prompt, timeoutMs);
         recordImageCall({ kind, success: true, latencyMs: Date.now() - t0, model: label });
-        return buffer;
+        return { buffer, model: label };
       } catch (err) {
         lastErr = err instanceof Error ? err : new Error(String(err));
         recordImageCall({
@@ -87,10 +128,10 @@ export class FalProvider implements ImageEditProvider {
         });
         // 4xx non-429 (clé invalide, payload rejeté, solde épuisé=403) : inutile de retenter
         const m = lastErr.message.match(/^fal HTTP (\d{3})/);
-        if (m && !isRetryable(Number(m[1]))) throw lastErr;
+        if (m && !isRetryable(Number(m[1]))) break;
       }
     }
-    throw lastErr ?? new Error("fal: échec sans détail");
+    return { error: lastErr ?? new Error(`fal (${model}): échec sans détail`) };
   }
 
   private async callOnce(model: string, imageBase64: string, prompt: string, timeoutMs: number): Promise<Buffer> {
