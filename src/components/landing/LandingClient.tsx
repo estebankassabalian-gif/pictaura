@@ -119,15 +119,17 @@ const DASHBOARDS: Dashboard[] = [
     accent: "#E1306C",
     presetLabel: "Preset Instagram & Stories",
     bullets: [
+      "Personnes et badauds effacés automatiquement",
+      "Arrière-plan flouté, rendu éditorial",
       "Formats 1:1, 4:5 et 9:16 automatiques",
-      "Rendu cinématique Orange & Teal",
       "Hashtags et alt text SEO générés",
-      "Caption et alt text accrocheurs",
     ],
-    imageUrl:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&q=85",
-    beforeFilter: "grayscale(30%) brightness(0.78) contrast(0.85) saturate(0.5)",
-    afterFilter: "brightness(1.1) saturate(1.35) contrast(1.1)",
+    // VRAIE retouche Pictaura : les inconnus autour des deux sujets ont été
+    // effacés et l'arrière-plan flouté — pas une simulation par filtre CSS.
+    imageUrl: "/demo/social-avant.jpg",
+    afterImageUrl: "/demo/social-apres.jpg",
+    beforeFilter: "",
+    afterFilter: "",
   },
   {
     segmentId: "ecommerce",
@@ -137,15 +139,17 @@ const DASHBOARDS: Dashboard[] = [
     accent: "#09B884",
     presetLabel: "Presets Shopify & Vinted",
     bullets: [
+      "Fond studio neutre et professionnel",
       "Couleurs et matières fidèles",
-      "Produit éclairci, rendu net",
       "JSON-LD Product schema.org",
       "Alt text et nom SEO auto-générés",
     ],
-    imageUrl:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&q=85",
-    beforeFilter: "grayscale(20%) brightness(0.78) contrast(0.85) saturate(0.55)",
-    afterFilter: "brightness(1.15) saturate(1.28) contrast(1.08)",
+    // VRAIE retouche Pictaura : un pull photographié à l'arrache devient une
+    // photo studio — pas une simulation par filtre CSS.
+    imageUrl: "/demo/ecommerce-avant.jpg",
+    afterImageUrl: "/demo/ecommerce-apres.jpg",
+    beforeFilter: "",
+    afterFilter: "",
   },
 ];
 
