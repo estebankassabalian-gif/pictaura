@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
   Sparkles,
@@ -12,7 +13,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Send,
-  ImageIcon,
   X,
   Copy,
   Check,
@@ -22,6 +22,8 @@ import { AGENTS, type AgentSuggestion } from "@/config/agents";
 import { getPlatformsForPreset, getPlatformById } from "@/config/platforms";
 
 type Step = "upload" | "configure";
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 interface PhotoConfig {
   file: File;
@@ -43,10 +45,19 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
   const [applyToAll, setApplyToAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
+  const [uploadedCount, setUploadedCount] = useState(0);
   const [error, setError] = useState("");
 
   const credits = session?.user?.credits ?? 0;
   const isAdmin = session?.user?.role === "ADMIN";
+
+  // Miniatures réelles pour l'étape 1 (fluide et concret dès le dépôt, au
+  // lieu d'une liste de noms de fichiers). Révoquées au démontage / changement.
+  const previewUrls = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
+  useEffect(() => {
+    return () => previewUrls.forEach((u) => URL.revokeObjectURL(u));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewUrls]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setError("");
@@ -148,6 +159,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
     }
     setLoading(true);
     setError("");
+    setUploadedCount(0);
     setUploadProgress("Création du traitement...");
 
     try {
@@ -214,6 +226,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
           if (i >= files.length) return;
           await uploadOne(i);
           uploadedCount++;
+          setUploadedCount(uploadedCount);
           setUploadProgress(`Upload des photos : ${uploadedCount}/${files.length}...`);
         }
       };
@@ -291,9 +304,16 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
         })}
       </div>
 
+      <AnimatePresence mode="wait">
       {/* STEP 1: Upload */}
       {step === "upload" && (
-        <div className="animate-fade-in">
+        <motion.div
+          key="upload"
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -16 }}
+          transition={{ duration: 0.3, ease: EASE }}
+        >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-sm font-semibold text-[var(--muted)] uppercase tracking-wider">Ajoutez vos photos</h2>
             <span className="text-xs text-[var(--muted)]">
@@ -319,26 +339,42 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
             </p>
           </div>
 
-          {/* File list */}
+          {/* Grille de miniatures — concret dès le dépôt */}
           {files.length > 0 && (
-            <div className="mb-6 space-y-2">
-              {files.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between bg-white border border-ink/10 rounded-xl px-4 py-3 shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <ImageIcon className="w-4 h-4 text-ink-muted" />
-                    <div>
-                      <div className="text-sm font-semibold text-ink truncate max-w-64">{file.name}</div>
-                      <div className="text-xs text-ink-muted">{(file.size / 1024 / 1024).toFixed(1)} Mo</div>
-                    </div>
-                  </div>
-                  <button onClick={() => removeFile(index)} className="text-ink-muted hover:text-accent transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+            <div className="mb-6">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mb-3">
+                <AnimatePresence initial={false}>
+                  {files.map((file, index) => (
+                    <motion.div
+                      key={`${file.name}-${file.size}-${index}`}
+                      layout
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{ duration: 0.25, ease: EASE }}
+                      className="group relative aspect-square rounded-xl overflow-hidden border border-ink/10 bg-cream-2 shadow-sm"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={previewUrls[index]}
+                        alt={file.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <button
+                        onClick={() => removeFile(index)}
+                        aria-label={`Retirer ${file.name}`}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-ink/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="absolute bottom-1.5 left-1.5 text-[10px] font-semibold text-white bg-ink/60 rounded-full px-2 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {(file.size / 1024 / 1024).toFixed(1)} Mo
+                      </span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
               <div className="text-xs text-accent font-bold pl-1">
                 {files.length} photo(s) — {files.length} crédit(s)
               </div>
@@ -359,12 +395,18 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
             <Sparkles className="w-5 h-5" />
             Configurer les retouches
           </button>
-        </div>
+        </motion.div>
       )}
 
       {/* STEP 2: Configure per-photo instructions */}
       {step === "configure" && currentConfig && (
-        <div className="animate-fade-in">
+        <motion.div
+          key="configure"
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 16 }}
+          transition={{ duration: 0.3, ease: EASE }}
+        >
           <button
             onClick={() => setStep("upload")}
             disabled={loading}
@@ -575,6 +617,20 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
                 </>
               )}
             </button>
+
+            {/* Barre de progression réelle pendant l'upload — fluide, pas
+                juste un spinner opaque sur ce qui peut prendre plusieurs
+                secondes pour un gros lot. */}
+            {loading && files.length > 1 && (
+              <div className="w-full h-1.5 bg-ink/10 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-accent rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(100, (uploadedCount / files.length) * 100)}%` }}
+                  transition={{ duration: 0.3, ease: EASE }}
+                />
+              </div>
+            )}
           </div>
 
           {!isAdmin && credits < files.length && (
@@ -583,8 +639,9 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
               <a href="/billing" className="underline font-semibold">Voir les abonnements</a>
             </p>
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
