@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { PRESET_LABELS, INPAINTING_CREDITS_COST } from "@/config/plans";
 import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { DEFAULT_SUGGESTIONS, RetouchingSuggestion } from "@/config/retouching-suggestions";
@@ -65,6 +66,7 @@ type RetoucheState =
   | { step: "validated"; resultUrl: string; inpaintingJobId: string }; // legacy, kept for type safety
 
 const PRESETS = ["AIRBNB", "IMMOBILIER", "INSTAGRAM", "SHOPIFY"] as const;
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 // RetoucheChat
 function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset: string; onPhotoUpdated?: () => void }) {
@@ -232,17 +234,32 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
         <Pencil className="w-4 h-4 text-accent" /> Retouche IA
       </h3>
 
+      <AnimatePresence mode="wait">
       {/* ANALYZING */}
       {state.step === "analyzing" && (
-        <div className="bg-sun/15 border border-sun/40 rounded-xl p-4 flex items-center gap-3">
+        <motion.div
+          key="analyzing"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25, ease: EASE }}
+          className="bg-sun/15 border border-sun/40 rounded-xl p-4 flex items-center gap-3"
+        >
           <Search className="w-5 h-5 text-accent animate-pulse" />
           <p className="text-sm text-ink">Analyse de la photo en cours... (gratuit)</p>
-        </div>
+        </motion.div>
       )}
 
       {/* READY */}
       {state.step === "ready" && (
-        <div className="space-y-3">
+        <motion.div
+          key="ready"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25, ease: EASE }}
+          className="space-y-3"
+        >
           <div className="bg-cream-2 border border-ink/10 rounded-xl p-3">
             <p className="text-xs text-ink-muted font-medium mb-1 flex items-center gap-1">
               <Search className="w-3 h-3" /> Analyse
@@ -303,23 +320,37 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
               Le crédit est débité uniquement si vous validez le résultat.
             </p>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* RETOUCHING */}
       {state.step === "retouching" && (
-        <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 flex items-center gap-3">
+        <motion.div
+          key="retouching"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25, ease: EASE }}
+          className="bg-accent/10 border border-accent/30 rounded-xl p-4 flex items-center gap-3"
+        >
           <Loader2 className="w-5 h-5 text-accent animate-spin" />
           <div>
             <p className="text-sm font-semibold text-accent">Retouche IA en cours...</p>
             <p className="text-xs text-ink-muted mt-0.5">Pictaura analyse et retouche votre photo (~20-40s)</p>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* VALIDATING */}
       {state.step === "validating" && (
-        <div className="space-y-3">
+        <motion.div
+          key="validating"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25, ease: EASE }}
+          className="space-y-3"
+        >
           <p className="text-sm text-ink-muted">
             Résultat prêt — <strong>aucun crédit débité pour l'instant.</strong>
           </p>
@@ -353,12 +384,19 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
               <XCircle className="w-4 h-4" /> Rejeter — gratuit
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* VALIDATED */}
       {state.step === "validated" && (
-        <div className="space-y-3">
+        <motion.div
+          key="validated"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25, ease: EASE }}
+          className="space-y-3"
+        >
           <div className="bg-sun/15 border border-sun/40 rounded-xl p-3 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-accent" />
             <div className="flex-1">
@@ -394,8 +432,9 @@ function RetoucheChat({ photo, preset, onPhotoUpdated }: { photo: Photo; preset:
           >
             <Pencil className="w-3.5 h-3.5" /> Affiner encore (nouvelle retouche)
           </button>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Error */}
       {error && (
@@ -650,12 +689,20 @@ export default function ResultsPage() {
       )}
 
       {/* Download toast */}
-      {downloadToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-cream px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-fade-in">
-          <CheckCircle2 className="w-4 h-4 text-sun" />
-          <span className="text-sm font-medium">{downloadToast}</span>
-        </div>
-      )}
+      <AnimatePresence>
+        {downloadToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: EASE }}
+            className="fixed bottom-6 right-6 z-50 bg-ink text-cream px-5 py-3 rounded-xl shadow-lg flex items-center gap-2"
+          >
+            <CheckCircle2 className="w-4 h-4 text-sun" />
+            <span className="text-sm font-medium">{downloadToast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Processing indicator */}
       {isProcessing && (() => {
@@ -683,23 +730,36 @@ export default function ResultsPage() {
               Vos photos vous attendront dans votre dashboard.
             </p>
             <div className="w-full bg-cream-2 rounded-full h-2.5 mb-3 overflow-hidden">
-              <div
-                className="bg-accent h-full rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${Math.max(3, (completedPhotos.length / Math.max(job.photos.length, 1)) * 100)}%` }}
+              <motion.div
+                className="bg-accent h-full rounded-full"
+                animate={{ width: `${Math.max(3, (completedPhotos.length / Math.max(job.photos.length, 1)) * 100)}%` }}
+                transition={{ duration: 0.5, ease: EASE }}
               />
             </div>
             <div className="flex flex-wrap gap-2">
               {job.photos.map((p, i) => (
-                <span
+                <motion.span
                   key={p.id}
+                  layout
                   title={p.fileName}
                   className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-medium ${getStatusBadgeClasses(p.status)}`}
                 >
-                  {p.status === "COMPLETED" ? <CheckCircle2 className="w-3 h-3" /> :
-                   p.status === "FAILED"    ? <XCircle className="w-3 h-3" /> :
-                   p.status === "PROCESSING"? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={p.status}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="inline-flex"
+                    >
+                      {p.status === "COMPLETED" ? <CheckCircle2 className="w-3 h-3" /> :
+                       p.status === "FAILED"    ? <XCircle className="w-3 h-3" /> :
+                       p.status === "PROCESSING"? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                    </motion.span>
+                  </AnimatePresence>
                   Photo {i + 1}
-                </span>
+                </motion.span>
               ))}
             </div>
           </div>
@@ -752,9 +812,10 @@ export default function ResultsPage() {
       {job.photos.length > 1 && (
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {job.photos.map((photo, index) => (
-            <button
+            <motion.button
               key={photo.id}
               onClick={() => setActivePhoto(index)}
+              whileTap={{ scale: 0.92 }}
               className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
                 activePhoto === index ? "border-accent ring-2 ring-accent/25" : "border-ink/15"
               }`}
@@ -767,7 +828,7 @@ export default function ResultsPage() {
                   {photo.status === "COMPLETED" ? <CheckCircle2 className="w-4 h-4 text-accent" /> : <Clock className="w-4 h-4 text-ink-muted" />}
                 </div>
               )}
-            </button>
+            </motion.button>
           ))}
         </div>
       )}
@@ -777,6 +838,14 @@ export default function ResultsPage() {
         <div className="bg-white rounded-2xl border border-ink/10 p-4 md:p-6 mb-6 shadow-sm">
           <h2 className="font-display text-base md:text-lg text-ink mb-4 truncate">{currentPhoto.fileName}</h2>
 
+          <AnimatePresence mode="wait">
+          <motion.div
+            key={currentPhoto.id}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.25, ease: EASE }}
+          >
           {currentPhoto.status === "COMPLETED" && currentPhoto.originalUrl && currentPhoto.processedUrl ? (
             <>
               <BeforeAfterSlider
@@ -838,6 +907,8 @@ export default function ResultsPage() {
               <p className="text-ink-muted">Traitement en cours...</p>
             </div>
           )}
+          </motion.div>
+          </AnimatePresence>
 
           {/* Watermark notice */}
           {currentPhoto.status === "COMPLETED" && job.isWatermarked === true && (
