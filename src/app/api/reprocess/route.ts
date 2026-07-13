@@ -83,10 +83,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Erreur lors de la création du job" }, { status: 500 });
   }
 
-  // Lancer le traitement en arrière-plan
-  const { processJob } = await import("@/services/processing/pipeline");
-  processJob(newJobId).catch((err) => {
-    console.error(`Reprocess job ${newJobId} failed:`, err);
+  // Publie la demande de traitement dans la file persistante (pg-boss) —
+  // survit à un crash/redeploy juste après cette requête, contrairement à un
+  // fire-and-forget en mémoire.
+  const { enqueueProcessJob } = await import("@/services/processing/queue");
+  await enqueueProcessJob(newJobId).catch((err) => {
+    console.error(`Échec de la mise en file du reprocess ${newJobId}:`, err);
   });
 
   return NextResponse.json({ jobId: newJobId }, { status: 201 });

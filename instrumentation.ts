@@ -10,13 +10,22 @@ export async function register() {
       .then(({ latency_ms }) => console.log(`Gemini pre-warmed in ${latency_ms}ms`))
       .catch((err) => console.warn("Gemini pre-warm skipped:", err instanceof Error ? err.message : err));
 
-    // Recover jobs orphaned by the previous process (crash/redeploy) : the
-    // pipeline runs in-process, so any job it carried will never resume.
+    // Recover jobs orphaned by a previous process that died mid-processing
+    // (status déjà PROCESSING, worker mort en plein vol) : le claim atomique
+    // de processJob() empêche toute reprise automatique de ce cas précis.
     // Fire-and-forget, inactivity-based (won't touch jobs a still-draining
     // old container is finishing).
     import("./src/services/processing/job-recovery")
       .then(({ recoverOrphanedJobsOnBoot }) => recoverOrphanedJobsOnBoot())
       .catch((err) => console.warn("Boot job recovery skipped:", err instanceof Error ? err.message : err));
+
+    // Worker pg-boss : reprend la file persistante de lancements de pipeline.
+    // Couvre le cas où le lancement lui-même (pas le traitement) a été perdu
+    // par un crash/redeploy avant même de démarrer — le message survit en DB
+    // et est repris ici au boot du process suivant.
+    import("./src/services/processing/queue")
+      .then(({ startJobWorker }) => startJobWorker())
+      .catch((err) => console.warn("Job queue worker skipped:", err instanceof Error ? err.message : err));
 
     // Canary scheduler interne : sonde le provider image toutes les
     // CANARY_INTERVAL_MIN (défaut 45) si CANARY_ENABLED=true. Zéro cron externe.

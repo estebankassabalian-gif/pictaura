@@ -6,11 +6,11 @@ import { uploadToR2 } from "@/lib/r2";
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, ALLOWED_IMAGE_TYPES } from "@/config/plans";
 import { detectBlur } from "@/services/blur-detection";
 import {
-  processJob,
   resizeIfLarger,
   renditionKeyFor,
   GEMINI_INPUT_MAX_EDGE,
 } from "@/services/processing/pipeline";
+import { enqueueProcessJob } from "@/services/processing/queue";
 
 export const maxDuration = 60;
 
@@ -135,10 +135,12 @@ export async function POST(
 
     // Démarrage eager : dès la 1ère photo en place, le pipeline démarre et
     // traite au fil des arrivées — la 1ère photo revient ~30-60s plus tôt.
-    // Le claim atomique PENDING→PROCESSING dans processJob garantit un seul
-    // runner même si /api/process est aussi appelé en fin d'upload.
+    // Publié dans la file persistante (pg-boss) plutôt qu'en fire-and-forget :
+    // le claim atomique PENDING→PROCESSING dans processJob + la policy
+    // "stately" (1 message max par jobId) garantissent un seul runner même si
+    // /api/process est aussi appelé en fin d'upload.
     if (job.status === "PENDING") {
-      processJob(jobId).catch((err) =>
+      enqueueProcessJob(jobId).catch((err) =>
         console.error(`Eager processing start failed for job ${jobId}:`, err)
       );
     }

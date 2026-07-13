@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { processJob } from "@/services/processing/pipeline";
+import { enqueueProcessJob } from "@/services/processing/queue";
 
 export async function POST(
   req: NextRequest,
@@ -36,15 +36,17 @@ export async function POST(
     );
   }
 
-  // Lancer le traitement de façon asynchrone (non bloquant)
-  processJob(jobId).catch(async (error) => {
-    console.error(`Job ${jobId} failed:`, error);
-    // Ensure job is marked FAILED in DB even on unexpected crash
-    await prisma.processingJob.update({
-      where: { id: jobId },
-      data: { status: "FAILED", completedAt: new Date(), errorMsg: "Erreur interne du traitement" },
-    }).catch(console.error);
-  });
+  // Publie la demande de traitement dans la file persistante (pg-boss) au
+  // lieu d'un fire-and-forget en mémoire : le message survit même si le
+  // container meurt juste après cette requête. Le pipeline se charge lui-même
+  // de marquer le job FAILED + rembourser en cas d'erreur (pipeline.ts) ;
+  // job-recovery.ts couvre le cas d'un worker mort en plein traitement.
+  try {
+    await enqueueProcessJob(jobId);
+  } catch (error) {
+    console.error(`Échec de la mise en file du job ${jobId}:`, error);
+    return NextResponse.json({ error: "Erreur lors du lancement du traitement" }, { status: 500 });
+  }
 
   return NextResponse.json({ message: "Traitement lancé", jobId }, { status: 202 });
 }
