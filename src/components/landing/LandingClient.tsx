@@ -84,6 +84,9 @@ type Dashboard = {
   imageUrl: string;
   beforeFilter: string;
   afterFilter: string;
+  /** Vraie photo "après" (retouche Pictaura réelle) — désactive la simulation
+   *  par filtre CSS quand fournie. Voir BeforeAfterHero. */
+  afterImageUrl?: string;
 };
 
 const DASHBOARDS: Dashboard[] = [
@@ -97,15 +100,16 @@ const DASHBOARDS: Dashboard[] = [
     bullets: [
       "HDR adaptatif intérieur / extérieur",
       "Lumière et couleurs corrigées",
-      "Ciel bleu et jardin verdoyants",
+      "Piscine assainie, terrasse dégagée",
       "SEO gravé dans chaque photo",
     ],
-    // Photo extérieure : la démo avant/après montre réellement le ciel qui
-    // bleuit et le jardin qui verdit (cohérent avec la puce dédiée).
-    imageUrl:
-      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&q=85",
-    beforeFilter: "grayscale(35%) brightness(0.74) contrast(0.82) saturate(0.42)",
-    afterFilter: "brightness(1.16) saturate(1.45) contrast(1.12)",
+    // VRAIE retouche Pictaura (villa Var, même paire que le hero) : la
+    // piscine verte redevient limpide, la terrasse se dégage. Cohérent avec
+    // les puces ci-dessus — plus une simulation par filtre CSS.
+    imageUrl: "/demo/villa-avant.jpg",
+    afterImageUrl: "/demo/villa-apres.jpg",
+    beforeFilter: "",
+    afterFilter: "",
   },
   {
     segmentId: "social",
@@ -200,6 +204,7 @@ function DashboardCard({ d, delay }: { d: Dashboard; delay: number }) {
         <div className="relative aspect-[16/10] overflow-hidden bg-ink-soft">
           <BeforeAfterHero
             imageUrl={d.imageUrl}
+            afterImageUrl={d.afterImageUrl}
             beforeFilter={d.beforeFilter}
             afterFilter={d.afterFilter}
           />
