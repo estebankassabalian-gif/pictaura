@@ -1,11 +1,11 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { PRESET_LABELS } from "@/config/plans";
 import { Preset } from "@prisma/client";
-import { getStatusBadgeClasses, getStatusLabel } from "@/config/agents";
 import { ImageIcon, CreditCard, FolderOpen, AlertTriangle, Plus, ArrowRight, CheckCircle2 } from "lucide-react";
 import VoronoiBackground from "@/components/brand/VoronoiBackground";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { RecentJobsTable, type JobRow } from "@/components/dashboard/RecentJobsTable";
 
 export default async function DashboardPage({
   searchParams,
@@ -80,7 +80,7 @@ export default async function DashboardPage({
 
       {/* Écran succès paiement */}
       {payment === "success" && (
-        <div className="relative overflow-hidden bg-white border border-sun/40 rounded-3xl p-8 md:p-12 mb-8 text-center shadow-lg">
+        <div className="relative overflow-hidden bg-white border border-sun/40 rounded-3xl p-8 md:p-12 mb-8 text-center shadow-lg animate-fade-in">
           <div className="absolute inset-0 bg-gradient-to-br from-sun/10 via-transparent to-accent/5" aria-hidden="true" />
           <div className="relative z-10">
             <div className="w-16 h-16 bg-sun/20 rounded-full flex items-center justify-center mx-auto mb-5">
@@ -107,7 +107,7 @@ export default async function DashboardPage({
 
       {/* Onboarding welcome */}
       {welcome === "true" && (
-        <div className="bg-accent/10 border border-accent/30 text-ink rounded-2xl p-4 md:p-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="bg-accent/10 border border-accent/30 text-ink rounded-2xl p-4 md:p-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 animate-fade-in">
           <div>
             <p className="font-display text-base md:text-lg mb-1">
               Bienvenue sur Pictaura, {firstName} !
@@ -127,9 +127,9 @@ export default async function DashboardPage({
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatCard label="Photos traitées" value={String(totalPhotos)} icon={ImageIcon} />
-        <StatCard label="Crédits restants" value={isAdmin ? "\u221E" : String(session.user.credits)} icon={CreditCard} />
-        <StatCard label="Jobs total" value={String(totalJobs)} icon={FolderOpen} />
+        <StatCard label="Photos traitées" value={String(totalPhotos)} icon={ImageIcon} index={0} />
+        <StatCard label="Crédits restants" value={isAdmin ? "\u221E" : String(session.user.credits)} icon={CreditCard} index={1} />
+        <StatCard label="Jobs total" value={String(totalJobs)} icon={FolderOpen} index={2} />
       </div>
 
       {/* Alerte low credits */}
@@ -170,49 +170,17 @@ export default async function DashboardPage({
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-ink/10 overflow-x-auto shadow-sm">
-          <table className="w-full text-sm min-w-[500px]">
-            <thead className="bg-cream-2 border-b border-ink/10">
-              <tr>
-                <th className="text-left px-4 md:px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Plateforme</th>
-                <th className="text-left px-4 md:px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Photos</th>
-                <th className="text-left px-4 md:px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs">Statut</th>
-                <th className="text-left px-4 md:px-6 py-3 font-semibold text-ink-muted uppercase tracking-wider text-xs hidden sm:table-cell">Date</th>
-                <th className="px-4 md:px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink/5">
-              {recentJobs.map((job) => (
-                <tr key={job.id} className="hover:bg-cream/60 transition-colors">
-                  <td className="px-4 md:px-6 py-3 md:py-4 font-semibold text-ink">
-                    {PRESET_LABELS[job.preset as Preset]}
-                  </td>
-                  <td className="px-4 md:px-6 py-3 md:py-4 text-ink-muted">
-                    {job._count.photos} photo(s)
-                  </td>
-                  <td className="px-4 md:px-6 py-3 md:py-4">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClasses(job.status)}`}>
-                      {getStatusLabel(job.status)}
-                    </span>
-                  </td>
-                  <td className="px-4 md:px-6 py-3 md:py-4 text-ink-muted hidden sm:table-cell">
-                    {new Date(job.createdAt).toLocaleDateString("fr-FR")}
-                  </td>
-                  <td className="px-4 md:px-6 py-3 md:py-4 text-right">
-                    {(job.status === "COMPLETED" || job.status === "PROCESSING" || job.status === "PENDING") && (
-                      <Link
-                        href={`/results/${job.id}`}
-                        className="text-accent font-semibold hover:underline flex items-center gap-1 justify-end"
-                      >
-                        Voir <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RecentJobsTable
+          jobs={recentJobs.map(
+            (job): JobRow => ({
+              id: job.id,
+              preset: job.preset,
+              status: job.status,
+              createdAtIso: job.createdAt.toISOString(),
+              photoCount: job._count.photos,
+            })
+          )}
+        />
       )}
 
       {/* Pagination */}
@@ -239,24 +207,6 @@ export default async function DashboardPage({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div className="bg-white rounded-2xl border border-ink/10 p-6 shadow-sm hover:shadow-md transition-shadow">
-      <Icon className="w-6 h-6 text-accent mb-3" />
-      <div className="text-3xl font-display tracking-tight text-ink">{value}</div>
-      <div className="text-sm text-ink-muted mt-1">{label}</div>
     </div>
   );
 }
