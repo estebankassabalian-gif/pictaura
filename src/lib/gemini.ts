@@ -43,6 +43,66 @@ export interface PhotoSeoResult {
   seoSchemaJson: string;
 }
 
+/**
+ * Appel texte+vision unifié pour SEO / score / analyse.
+ * Routage : fal any-llm/vision (Gemini Flash — facturation unique fal, ~2 s)
+ * → repli Google direct (utile quand la facturation Google sera réparée).
+ * Contexte : le Gemini texte Google est tombé en 429 total (quota gratuit
+ * épuisé par un lot de 20 photos) → "SEO en cours" infini côté client.
+ */
+async function visionTextCall(
+  prompt: string,
+  imageBase64: string,
+  opts: { maxOutputTokens: number; temperature?: number; timeoutMs?: number }
+): Promise<string> {
+  const timeoutMs = opts.timeoutMs ?? TEXT_TIMEOUT_MS;
+
+  // 1) fal any-llm/vision (si clé fal présente et pas explicitement désactivé)
+  if (process.env.FAL_KEY && process.env.SEO_PROVIDER !== "google") {
+    try {
+      const model = process.env.SEO_FAL_MODEL?.trim() || "google/gemini-flash-1.5";
+      const res = await fetch("https://fal.run/fal-ai/any-llm/vision", {
+        method: "POST",
+        headers: { Authorization: `Key ${process.env.FAL_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          prompt,
+          image_url: `data:image/jpeg;base64,${imageBase64}`,
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!res.ok) throw new Error(`fal any-llm HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 120)}`);
+      const json = (await res.json()) as { output?: string };
+      if (typeof json.output === "string" && json.output.trim()) return json.output;
+      throw new Error("fal any-llm: sortie vide");
+    } catch (err) {
+      console.warn("SEO via fal échoué, repli Google:", err instanceof Error ? err.message : err);
+      // → repli Google ci-dessous
+    }
+  }
+
+  // 2) Google direct (comportement historique)
+  const response = await getGenAI().models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+          { text: prompt },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: "application/json",
+      maxOutputTokens: opts.maxOutputTokens,
+      temperature: opts.temperature ?? 0.4,
+      abortSignal: AbortSignal.timeout(timeoutMs),
+    },
+  });
+  return extractText(response);
+}
+
 const SEO_FALLBACK: PhotoSeoResult = {
   altText: "",
   seoFileName: "",
@@ -343,26 +403,12 @@ export async function generatePhotoSEO(
 
   try {
     return await withRetry(async () => {
-      const response = await getGenAI().models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-              { text: prompt + "\n\nRéponds UNIQUEMENT en JSON valide, sans markdown." },
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          maxOutputTokens: 2800,
-          temperature: 0.4,
-          abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
-        },
-      });
-
-      const text = extractText(response).replace(/```json\n?|\n?```/g, "").trim();
+      const raw = await visionTextCall(
+        prompt + "\n\nRéponds UNIQUEMENT en JSON valide, sans markdown.",
+        imageBase64,
+        { maxOutputTokens: 2800, temperature: 0.4 }
+      );
+      const text = raw.replace(/```json\n?|\n?```/g, "").trim();
       const parsed = safeJsonParse(text);
       return coerceSeoResponse(parsed);
     }, "Gemini SEO");
@@ -393,39 +439,13 @@ export async function scorePhoto(
 
   try {
     return await withRetry(async () => {
-      const response = await getGenAI().models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-              {
-                text: `Tu es un expert photographe pro. Évalue cette photo pour ${preset} selon : ${criteria}.
-Réponds UNIQUEMENT en JSON : {"score": <0-10 avec 1 décimale>, "report": "<2-3 phrases FR : points forts, faibles, gain IA>"}`,
-              },
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          // Schema constraint → Gemini cannot return malformed JSON, eliminating
-          // the truncation/parse-error class of failures entirely for this call.
-          responseSchema: {
-            type: "object",
-            properties: {
-              score: { type: "number" },
-              report: { type: "string" },
-            },
-            required: ["score", "report"],
-          },
-          maxOutputTokens: 500,
-          temperature: 0.3,
-          abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
-        },
-      });
-
-      const text = extractText(response).replace(/```json\n?|\n?```/g, "").trim();
+      const raw = await visionTextCall(
+        `Tu es un expert photographe pro. Évalue cette photo pour ${preset} selon : ${criteria}.
+Réponds UNIQUEMENT en JSON valide, sans markdown : {"score": <0-10 avec 1 décimale>, "report": "<2-3 phrases FR : points forts, faibles, gain IA>"}`,
+        imageBase64,
+        { maxOutputTokens: 500, temperature: 0.3 }
+      );
+      const text = raw.replace(/```json\n?|\n?```/g, "").trim();
       const parsed = safeJsonParse(text);
       return {
         score: Math.min(10, Math.max(0, Number(parsed.score) || 0)),
@@ -464,31 +484,16 @@ export async function analyzePhotoForRetouching(
   analyzePrompt: string
 ): Promise<{ analysis: string; suggestions: string[] }> {
   return await withRetry(async () => {
-    const response = await getGenAI().models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-            {
-              text: `${analyzePrompt}
+    const raw = await visionTextCall(
+      `${analyzePrompt}
 
 IMPORTANT: Réponds UNIQUEMENT avec du JSON valide, sans markdown :
 {"analysis":"une phrase en français décrivant la photo","suggestions":["suggestion 1 en français","suggestion 2 en français","suggestion 3 en français"]}`,
-            },
-          ],
-        },
-      ],
-      config: {
-        responseMimeType: "application/json",
-        maxOutputTokens: 500,
-        abortSignal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
-      },
-    });
-
-    const text = extractText(response).replace(/```json\n?|\n?```/g, "").trim();
-    const parsed = JSON.parse(text);
+      imageBase64,
+      { maxOutputTokens: 500 }
+    );
+    const text = raw.replace(/```json\n?|\n?```/g, "").trim();
+    const parsed = safeJsonParse(text);
     return {
       analysis: String(parsed.analysis ?? "Photo prête à être retouchée"),
       suggestions: Array.isArray(parsed.suggestions)

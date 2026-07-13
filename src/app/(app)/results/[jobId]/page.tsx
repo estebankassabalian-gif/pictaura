@@ -436,6 +436,9 @@ export default function ResultsPage() {
   }, [jobId]);
 
   const [pollTimeout, setPollTimeout] = useState(false);
+  // true = le SEO background n'arrivera plus (cap de polling atteint) →
+  // afficher un état stable au lieu d'un spinner infini
+  const [seoCapped, setSeoCapped] = useState(false);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -467,7 +470,9 @@ export default function ResultsPage() {
         );
         const seoElapsed = Date.now() - jobCompletedAt;
         if (!seoStillMissing || seoElapsed > SEO_POLL_CAP_MS) {
-          return; // SEO injecté pour toutes les photos OU timeout atteint
+          // SEO injecté partout OU délai dépassé → état stable (pas de spinner infini)
+          if (seoStillMissing) setSeoCapped(true);
+          return;
         }
         // Continue à poller doucement le temps que le SEO background termine
         timeoutId = setTimeout(poll, 2500);
@@ -620,10 +625,17 @@ export default function ResultsPage() {
               {downloading ? "Téléchargement..." : completedPhotos.length === 1 ? "Télécharger la photo" : `Tout télécharger (ZIP — ${completedPhotos.length} photos + SEO)`}
             </button>
             {photosAwaitingSeo > 0 && (
-              <span className="text-xs text-ink-muted flex items-center gap-1" title="Le SEO est encore en cours d'injection sur certaines photos. Attendez quelques secondes pour avoir toutes les métadonnées dans les fichiers.">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                SEO en cours sur {photosAwaitingSeo}/{completedPhotos.length} photo{photosAwaitingSeo > 1 ? "s" : ""}
-              </span>
+              seoCapped ? (
+                <span className="text-xs text-accent flex items-center gap-1" title="La génération SEO n'a pas pu aboutir pour ces photos. Les photos elles-mêmes sont prêtes et téléchargeables.">
+                  <XCircle className="w-3 h-3" />
+                  SEO indisponible sur {photosAwaitingSeo}/{completedPhotos.length} photo{photosAwaitingSeo > 1 ? "s" : ""} — photos téléchargeables
+                </span>
+              ) : (
+                <span className="text-xs text-ink-muted flex items-center gap-1" title="Le SEO est encore en cours d'injection sur certaines photos. Attendez quelques secondes pour avoir toutes les métadonnées dans les fichiers.">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  SEO en cours sur {photosAwaitingSeo}/{completedPhotos.length} photo{photosAwaitingSeo > 1 ? "s" : ""}
+                </span>
+              )
             )}
           </div>
         )}
@@ -788,6 +800,13 @@ export default function ResultsPage() {
                       title="Métadonnées SEO (alt text, keywords, JSON-LD) injectées dans le fichier image"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> SEO prêt
+                    </span>
+                  ) : seoCapped ? (
+                    <span
+                      className="text-xs font-medium text-accent flex items-center gap-1"
+                      title="La génération SEO n'a pas pu aboutir pour cette photo. La photo elle-même est prête et téléchargeable."
+                    >
+                      <XCircle className="w-3.5 h-3.5" /> SEO indisponible
                     </span>
                   ) : (
                     <span
