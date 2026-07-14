@@ -3,6 +3,7 @@ import { HeadBucketCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import { getR2 } from "@/lib/r2";
 import { pingGemini } from "@/lib/gemini";
+import { getQueueWorkerStatus } from "@/services/processing/queue";
 import { env } from "@/config/env";
 
 /**
@@ -40,6 +41,12 @@ export async function GET(req: NextRequest) {
       db,
       storage,
       gemini,
+      // "ok" = worker pg-boss enregistré (lancements de jobs durables actifs).
+      // "not_started"/"error: ..." = les uploads passeraient quand même par le
+      // remboursement automatique, mais aucun traitement ne démarrerait → à
+      // surveiller après chaque deploy. N'affecte pas le status global (l'app
+      // sert toujours ses pages) mais rend le problème VISIBLE.
+      queueWorker: getQueueWorkerStatus(),
       version: process.env.NEXT_PUBLIC_BUILD_SHA ?? process.env.SOURCE_COMMIT ?? "unknown",
       uptime_ms: Math.round(process.uptime() * 1000),
       latency_ms: Date.now() - start,

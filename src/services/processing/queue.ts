@@ -29,6 +29,13 @@ declare global {
   var __pictauraBoss: PgBoss | undefined;
   // eslint-disable-next-line no-var
   var __pictauraBossReady: Promise<PgBoss> | undefined;
+  // eslint-disable-next-line no-var
+  var __pictauraQueueWorkerStatus: "ok" | "not_started" | `error: ${string}` | undefined;
+}
+
+/** État du worker pour /api/health — vérifiable à distance après un deploy. */
+export function getQueueWorkerStatus(): string {
+  return globalThis.__pictauraQueueWorkerStatus ?? "not_started";
 }
 
 async function getBoss(): Promise<PgBoss> {
@@ -71,15 +78,22 @@ async function getBoss(): Promise<PgBoss> {
  * seule fois au boot (cf. instrumentation.ts).
  */
 export async function startJobWorker(): Promise<void> {
-  const boss = await getBoss();
-  await boss.work<{ jobId: string }>(
-    QUEUE_PROCESS_JOB,
-    { batchSize: 1 },
-    async ([job]) => {
-      await processJob(job.data.jobId);
-    }
-  );
-  console.log("Worker pg-boss actif sur la file 'process-job'");
+  try {
+    const boss = await getBoss();
+    await boss.work<{ jobId: string }>(
+      QUEUE_PROCESS_JOB,
+      { batchSize: 1 },
+      async ([job]) => {
+        await processJob(job.data.jobId);
+      }
+    );
+    globalThis.__pictauraQueueWorkerStatus = "ok";
+    console.log("Worker pg-boss actif sur la file 'process-job'");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message.slice(0, 120) : "erreur inconnue";
+    globalThis.__pictauraQueueWorkerStatus = `error: ${msg}`;
+    throw err;
+  }
 }
 
 /**
