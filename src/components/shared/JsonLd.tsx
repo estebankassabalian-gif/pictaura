@@ -73,13 +73,10 @@ export function SoftwareApplicationJsonLd() {
       "Compatible JPEG, PNG, WEBP, HEIC",
     ],
     screenshot: `${APP_URL}/og-image.jpg`,
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.8",
-      ratingCount: "12",
-      bestRating: "5",
-      worstRating: "1",
-    },
+    // Pas d'aggregateRating tant qu'il n'existe pas de vrais avis publiés sur
+    // le site : les notes en données structurées doivent refléter des avis
+    // réels et vérifiables (guidelines Google — risque de pénalité manuelle
+    // sinon). À réintroduire quand de vrais avis clients seront collectés.
   };
 
   return (

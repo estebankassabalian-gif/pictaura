@@ -68,7 +68,9 @@ export const metadata: Metadata = {
       "La retouche photo simple mais experte, centrée sur le regard humain. En moins de 30 secondes par photo, par l'IA. 5 crédits gratuits à l'inscription.",
     images: [
       {
-        url: "/og-image.svg",
+        // JPG obligatoire : Facebook/LinkedIn/WhatsApp ne supportent PAS le
+        // SVG en og:image (aperçu vide avec le .svg précédent).
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "Pictaura — Retouche photo IA",
@@ -80,7 +82,7 @@ export const metadata: Metadata = {
     title: "Pictaura — Des photos à la hauteur de votre vision",
     description:
       "La retouche photo simple mais experte, centrée sur le regard humain. En moins de 30 secondes par photo, par l'IA.",
-    images: ["/og-image.svg"],
+    images: ["/og-image.jpg"],
     creator: "@pictaura_fr",
   },
   alternates: {

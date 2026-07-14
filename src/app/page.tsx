@@ -11,6 +11,9 @@ export const metadata: Metadata = {
     description: "Vos photos à la hauteur de votre vraie valeur. +61% de vues, +40% de réservations. 5 photos offertes.",
     type: "website",
     locale: "fr_FR",
+    // Sans `images`, cet override du layout supprimait TOUTE image d'aperçu :
+    // un lien partagé sur WhatsApp/LinkedIn/Facebook s'affichait sans visuel.
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Pictaura — Retouche photo IA" }],
   },
 };
 
