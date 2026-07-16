@@ -49,10 +49,16 @@ export async function runCanaryProbe(): Promise<CanaryResult> {
     return { ok: true, provider, latencyMs, slow: false };
   } catch (err) {
     const msg = err instanceof Error ? err.message.slice(0, 180) : "erreur inconnue";
+    // Rejet par le filtre de contenu ≠ panne : le provider répond, il a juste
+    // refusé CE prompt (constaté probabiliste sur la sonde). Message distinct
+    // pour ne pas crier "panne" à tort.
+    const isContentPolicy = /content.?policy|flagged/i.test(msg);
     await alertWithCooldown(
       "canary",
       cooldownMin,
-      `🚨 PICTAURA canary — le provider image primaire NE RÉPOND PLUS.\n${msg}\n→ Les retouches clients sont probablement en panne (ou basculées sur le secours).`
+      isContentPolicy
+        ? `⚠️ PICTAURA canary — sonde REJETÉE par le filtre de contenu du provider (faux positif probable, pas une panne).\n${msg}\n→ Si cette alerte se répète plusieurs fois d'affilée, vérifier qu'une vraie retouche passe.`
+        : `🚨 PICTAURA canary — le provider image primaire NE RÉPOND PLUS.\n${msg}\n→ Les retouches clients sont probablement en panne (ou basculées sur le secours).`
     );
     return { ok: false, error: msg };
   }

@@ -47,9 +47,17 @@ function isRetryable(status: number): boolean {
  * ("sky replacement, facade cleaning, lawn enhancement…") : un éditeur
  * littéral peut INVENTER une façade sur une photo sans bâtiment (constaté
  * en prod avec Kontext : maison générée dans une forêt).
+ *
+ * Formulation SANS tokens sensibles : le checker de contenu fal ne lit pas
+ * les négations — l'ancienne clause "do not remove... person... no watermark"
+ * a déclenché un 422 content_policy_violation (constaté sur une sonde canary
+ * 2026-07-16, de façon probabiliste : la même sonde repassait 8 h plus tard).
+ * "watermark" et "remove + person" sont des motifs classiquement bloqués
+ * (demandes de retrait de watermark / de personnes) : on exprime la même
+ * contrainte en termes POSITIFS ("keep", "preserve", "do not introduce").
  */
 function buildFalPrompt(instruction: string): string {
-  return `${instruction.trim()} — Strictly photorealistic. Do NOT add, remove, move or invent any object, building, structure, person or scenery that is not in the original photo. No text, no watermark. Preserve the original scene, framing and composition exactly.`;
+  return `${instruction.trim()} — Strictly photorealistic. Do not invent or introduce any object, building, structure or scenery that is not present in the original photo. Do not add any text or graphic overlay. Beyond the requested edit, preserve the original scene, framing and composition exactly.`;
 }
 
 /** Adaptateur de schéma d'entrée : nano-banana attend image_urls (pluriel). */
@@ -73,7 +81,13 @@ export class FalProvider implements ImageEditProvider {
 
   async editImage(args: ImageEditArgs): Promise<ImageEditResult> {
     const kind = args.kind ?? "real";
-    const prompt = buildFalPrompt(args.instruction.slice(0, 1200));
+    // Canary : instruction nue, sans la clause anti-invention — la sonde ne
+    // juge pas la qualité, seulement "le provider répond-il ?". Moins de
+    // surface = moins de faux positifs du checker de contenu.
+    const prompt =
+      kind === "canary"
+        ? args.instruction.trim()
+        : buildFalPrompt(args.instruction.slice(0, 1200));
 
     const primaryModel = falModel();
     const primaryErr = await this.tryModel(primaryModel, args, prompt, kind);

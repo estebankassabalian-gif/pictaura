@@ -20,7 +20,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendTelegramAlert } from "@/lib/telegram";
 
-export type ImageErrorCode = "429" | "quota" | "timeout" | "other";
+export type ImageErrorCode = "429" | "quota" | "timeout" | "content_policy" | "other";
 
 const num = (v: string | undefined, dflt: number): number => {
   const n = Number(v);
@@ -41,6 +41,7 @@ export function classifyImageError(err: unknown): ImageErrorCode {
   if (msg.includes("429")) return "429";
   if (msg.includes("quota") || msg.includes("exceeded") || msg.includes("billing")) return "quota";
   if (msg.includes("timeout") || msg.includes("abort")) return "timeout";
+  if (msg.includes("content_policy") || msg.includes("content policy") || msg.includes("flagged")) return "content_policy";
   return "other";
 }
 
