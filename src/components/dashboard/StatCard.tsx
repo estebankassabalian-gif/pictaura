@@ -7,12 +7,16 @@ const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 export function StatCard({
   label,
   value,
-  icon: Icon,
+  icon,
   index = 0,
 }: {
   label: string;
   value: string;
-  icon: React.ComponentType<{ className?: string }>;
+  // Élément déjà rendu (ex: <ImageIcon className="..." />), PAS une référence
+  // de composant : un Server Component ne peut pas passer une fonction/
+  // référence de composant à un Client Component ("use client") — seul un
+  // élément React déjà instancié traverse la frontière serveur→client.
+  icon: React.ReactNode;
   index?: number;
 }) {
   return (
@@ -23,7 +27,7 @@ export function StatCard({
       whileHover={{ y: -3 }}
       className="bg-white rounded-2xl border border-ink/10 p-6 shadow-sm hover:shadow-md transition-shadow"
     >
-      <Icon className="w-6 h-6 text-accent mb-3" />
+      <div className="mb-3">{icon}</div>
       <div className="text-3xl font-display tracking-tight text-ink">{value}</div>
       <div className="text-sm text-ink-muted mt-1">{label}</div>
     </motion.div>

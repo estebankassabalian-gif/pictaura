@@ -127,9 +127,9 @@ export default async function DashboardPage({
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatCard label="Photos traitées" value={String(totalPhotos)} icon={ImageIcon} index={0} />
-        <StatCard label="Crédits restants" value={isAdmin ? "\u221E" : String(session.user.credits)} icon={CreditCard} index={1} />
-        <StatCard label="Jobs total" value={String(totalJobs)} icon={FolderOpen} index={2} />
+        <StatCard label="Photos traitées" value={String(totalPhotos)} icon={<ImageIcon className="w-6 h-6 text-accent" />} index={0} />
+        <StatCard label="Crédits restants" value={isAdmin ? "\u221E" : String(session.user.credits)} icon={<CreditCard className="w-6 h-6 text-accent" />} index={1} />
+        <StatCard label="Jobs total" value={String(totalJobs)} icon={<FolderOpen className="w-6 h-6 text-accent" />} index={2} />
       </div>
 
       {/* Alerte low credits */}
