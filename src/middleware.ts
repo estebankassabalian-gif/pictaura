@@ -26,6 +26,8 @@ export default auth((req) => {
     "/mentions-legales",
     "/politique-confidentialite",
     "/contact",
+    "/unsubscribe",
+    "/api/unsubscribe",
     "/robots.txt",
     "/sitemap.xml",
   ];
