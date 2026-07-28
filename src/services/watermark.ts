@@ -1,73 +1,63 @@
 import sharp from "sharp";
+import { ARCHIVO_BLACK_BASE64 } from "../assets/archivo-black-base64";
 
 /**
- * "Pictaura" as SVG path outlines (no font dependency).
- * Designed on a 260×40 viewBox, bold block letters, fill #031D68.
- * Each letter is a simple rect/path — not a real font trace, but reads clearly at any size.
+ * Police embarquée en base64 (Archivo Black — même police que le "font-display"
+ * du site, licence SIL Open Font, libre de redistribution).
+ *
+ * Nécessaire car librsvg (moteur SVG de sharp) ne dépend d'aucune police système
+ * installée dans le conteneur Docker de prod : un `font-family` non embarqué
+ * retomberait sur une police par défaut différente selon l'environnement, ou
+ * pire, sur un rendu invisible/à chasse différente. L'ancienne version dessinait
+ * les lettres à la main en `<rect>` pour éviter ce problème — mais la lettre
+ * "a" avait un tracé bugué (rectangle fermé sur les 4 côtés + barre médiane =
+ * se lit visuellement comme un "e") : le wordmark affichait "Picteure" au lieu
+ * de "Pictaura" sur CHAQUE photo livrée aux comptes non-abonnés. Police réelle
+ * embarquée = orthographe garantie + rendu identique partout, une fois pour toutes.
+ *
+ * Import d'une constante compilée plutôt qu'un readFileSync : le Dockerfile
+ * standalone ne copie PAS src/ brut en prod (seulement .next/standalone +
+ * public/ + node_modules) — un readFileSync sur un asset src/ échouerait
+ * silencieusement en conteneur alors qu'il marche en local.
  */
-const PICTAURA_TEXT_PATHS = `
-  <!-- P -->
-  <rect x="0" y="0" width="7" height="40" rx="1" fill="#031D68"/>
-  <rect x="7" y="0" width="18" height="7" rx="1" fill="#031D68"/>
-  <rect x="7" y="16" width="18" height="7" rx="1" fill="#031D68"/>
-  <rect x="22" y="3" width="7" height="17" rx="1" fill="#031D68"/>
-  <!-- i -->
-  <rect x="36" y="0" width="7" height="7" rx="1" fill="#031D68"/>
-  <rect x="36" y="12" width="7" height="28" rx="1" fill="#031D68"/>
-  <!-- c -->
-  <rect x="50" y="12" width="7" height="28" rx="1" fill="#031D68"/>
-  <rect x="57" y="12" width="14" height="7" rx="1" fill="#031D68"/>
-  <rect x="57" y="33" width="14" height="7" rx="1" fill="#031D68"/>
-  <!-- t -->
-  <rect x="78" y="4" width="7" height="36" rx="1" fill="#031D68"/>
-  <rect x="72" y="12" width="18" height="7" rx="1" fill="#031D68"/>
-  <!-- a -->
-  <rect x="97" y="12" width="7" height="28" rx="1" fill="#031D68"/>
-  <rect x="104" y="12" width="10" height="7" rx="1" fill="#031D68"/>
-  <rect x="104" y="23" width="10" height="7" rx="1" fill="#031D68"/>
-  <rect x="104" y="33" width="10" height="7" rx="1" fill="#031D68"/>
-  <rect x="111" y="12" width="7" height="28" rx="1" fill="#031D68"/>
-  <!-- u -->
-  <rect x="125" y="12" width="7" height="28" rx="1" fill="#031D68"/>
-  <rect x="132" y="33" width="10" height="7" rx="1" fill="#031D68"/>
-  <rect x="139" y="12" width="7" height="28" rx="1" fill="#031D68"/>
-  <!-- r -->
-  <rect x="153" y="12" width="7" height="28" rx="1" fill="#031D68"/>
-  <rect x="160" y="12" width="12" height="7" rx="1" fill="#031D68"/>
-  <rect x="169" y="15" width="7" height="10" rx="1" fill="#031D68"/>
-  <!-- a -->
-  <rect x="183" y="12" width="7" height="28" rx="1" fill="#031D68"/>
-  <rect x="190" y="12" width="10" height="7" rx="1" fill="#031D68"/>
-  <rect x="190" y="23" width="10" height="7" rx="1" fill="#031D68"/>
-  <rect x="190" y="33" width="10" height="7" rx="1" fill="#031D68"/>
-  <rect x="197" y="12" width="7" height="28" rx="1" fill="#031D68"/>
-`;
 
 /**
- * Génère un watermark SVG avec le logo Pictaura + texte en paths (pas de police requise).
- * Fond semi-transparent pour rester lisible sur n'importe quelle photo.
+ * Génère le badge watermark (icône œil/boussole + wordmark "Pictaura") en SVG.
+ * Fond blanc quasi-opaque + ombre portée douce pour rester lisible et se
+ * détacher proprement de n'importe quelle photo, sombre ou claire.
  */
 function buildWatermarkSvg(w: number, h: number): string {
-  // Badge = ~25% de la largeur, min 200px
-  const badgeW = Math.max(200, Math.round(w * 0.25));
-  const badgeH = Math.round(badgeW * 0.28);
+  // Badge = ~22% de la largeur, min 190px — légèrement réduit vs l'ancienne
+  // version (25%) pour un rendu moins envahissant, toujours bien visible.
+  const badgeW = Math.max(190, Math.round(w * 0.22));
+  const badgeH = Math.round(badgeW * 0.27);
   const margin = Math.round(Math.min(w, h) * 0.025);
+  const radius = Math.round(badgeH * 0.22);
+  const padX = Math.round(badgeH * 0.22);
 
-  // Icon (logo mark) takes ~30% of badge width
-  const iconAreaW = Math.round(badgeH * 0.85);
-  const iconScale = (badgeH * 0.55) / 64; // logo viewBox is ~84x64
+  // Icône : occupe la hauteur du badge (moins le padding vertical)
+  const iconSize = badgeH - padX * 2;
+  const iconScale = iconSize / 64; // viewBox source de l'icône ≈ 64
 
-  // Text area starts after icon, scales to fill remaining space
-  const textX = iconAreaW;
-  const textAvailW = badgeW - iconAreaW - Math.round(badgeH * 0.15);
-  const textScale = textAvailW / 204; // text paths viewBox width = 204
-  const textH = 40 * textScale;
+  const textX = padX + iconSize + Math.round(badgeH * 0.16);
+  const fontSize = Math.round(badgeH * 0.44);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
-  <g transform="translate(${w - badgeW - margin}, ${h - badgeH - margin})">
-    <rect rx="${Math.round(badgeH * 0.18)}" width="${badgeW}" height="${badgeH}" fill="rgba(255,255,255,0.9)"/>
-    <!-- Logo mark -->
-    <g transform="translate(${Math.round(badgeH * 0.15)}, ${Math.round((badgeH - iconScale * 64) / 2)}) scale(${iconScale.toFixed(4)})">
+  <defs>
+    <style>
+      @font-face {
+        font-family: 'Archivo Black Watermark';
+        src: url(data:font/ttf;base64,${ARCHIVO_BLACK_BASE64}) format('truetype');
+      }
+    </style>
+    <filter id="badgeShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0A1028" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <g transform="translate(${w - badgeW - margin}, ${h - badgeH - margin})" filter="url(#badgeShadow)">
+    <rect rx="${radius}" width="${badgeW}" height="${badgeH}" fill="rgba(255,255,255,0.94)"/>
+    <!-- Logo mark (œil / boussole) -->
+    <g transform="translate(${padX}, ${padX}) scale(${iconScale.toFixed(4)})">
       <path d="M 8 32 L 40 10" stroke="#0A1028" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M 8 32 L 40 54" stroke="#0A1028" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M 40 10 Q 52 32 40 54" stroke="#0A1028" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -76,10 +66,15 @@ function buildWatermarkSvg(w: number, h: number): string {
       <line x1="52" y1="32" x2="84" y2="32" stroke="#FFC529" stroke-width="5" stroke-linecap="round"/>
       <line x1="46" y1="50" x2="74" y2="60" stroke="#F87005" stroke-width="5" stroke-linecap="round"/>
     </g>
-    <!-- "Pictaura" text as paths (no font needed) -->
-    <g transform="translate(${textX}, ${((badgeH - textH) / 2).toFixed(1)}) scale(${textScale.toFixed(4)})">
-      ${PICTAURA_TEXT_PATHS}
-    </g>
+    <!-- "Pictaura" — vraie police embarquée, plus de tracé main hasardeux -->
+    <text
+      x="${textX}"
+      y="${Math.round(badgeH / 2 + fontSize * 0.36)}"
+      font-family="Archivo Black Watermark"
+      font-size="${fontSize}"
+      fill="#031D68"
+      letter-spacing="0.5"
+    >Pictaura</text>
   </g>
 </svg>`;
 }
