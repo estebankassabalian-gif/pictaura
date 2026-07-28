@@ -165,14 +165,49 @@ const settingsNav = [
   { href: "/account", label: "Compte", icon: Settings },
 ];
 
-export function SidebarNav({ userName, userEmail, userInitial, credits, isAdmin }: SidebarNavProps) {
+export function SidebarNav({ userName, userEmail, userInitial, credits: initialCredits, isAdmin }: SidebarNavProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Le layout serveur ne se re-rend pas sur une navigation client-side entre
+  // pages soeurs (dashboard -> résultats -> ...) : le solde qu'il a transmis
+  // en prop reste figé même après qu'une retouche ou une validation
+  // d'inpainting ait débité un crédit en base. On resynchronise ce solde
+  // côté client (montage, retour d'onglet, toutes les 15s) sans recharger
+  // toute la page.
+  const [credits, setCredits] = useState(initialCredits);
 
   // Close mobile menu on navigation
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function refreshCredits() {
+      try {
+        const res = await fetch("/api/account/credits", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled && typeof data.credits === "number") setCredits(data.credits);
+      } catch {
+        /* la sidebar garde son dernier solde connu en cas d'échec réseau */
+      }
+    }
+
+    refreshCredits();
+    const onVisible = () => { if (document.visibilityState === "visible") refreshCredits(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refreshCredits);
+    const interval = setInterval(refreshCredits, 15_000);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refreshCredits);
+      clearInterval(interval);
+    };
+  }, []);
 
   const sidebarContent = (
     <>

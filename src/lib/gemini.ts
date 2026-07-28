@@ -410,7 +410,17 @@ export async function generatePhotoSEO(
       );
       const text = raw.replace(/```json\n?|\n?```/g, "").trim();
       const parsed = safeJsonParse(text);
-      return coerceSeoResponse(parsed);
+      const result = coerceSeoResponse(parsed);
+      // Un JSON bien formé mais avec un champ clé vide (safety filter partiel,
+      // troncature silencieuse) ne doit JAMAIS être traité comme un succès :
+      // le front décide "SEO prêt" uniquement sur seoFileName non-vide, donc
+      // livrer altText/description vides sous cette étiquette serait un texte
+      // cassé présenté comme crédible. On force un retry plutôt qu'accepter
+      // un résultat partiel — mêmes garanties qu'un échec réseau classique.
+      if (!result.altText.trim() || !result.seoFileName.trim() || !result.description.trim()) {
+        throw new Error("Réponse SEO incomplète (champ essentiel vide)");
+      }
+      return result;
     }, "Gemini SEO");
   } catch (err) {
     console.error("generatePhotoSEO: all retries failed, falling back", err);
@@ -494,11 +504,16 @@ IMPORTANT: Réponds UNIQUEMENT avec du JSON valide, sans markdown :
     );
     const text = raw.replace(/```json\n?|\n?```/g, "").trim();
     const parsed = safeJsonParse(text);
+    const suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 5) : [];
+    // JSON valide mais suggestions vides = génération incomplète : mieux vaut
+    // retenter (le route handler a de toute façon un filet de secours par
+    // preset) que d'afficher zéro puce de suggestion à l'utilisateur.
+    if (suggestions.length === 0) {
+      throw new Error("Réponse d'analyse incomplète (aucune suggestion)");
+    }
     return {
       analysis: String(parsed.analysis ?? "Photo prête à être retouchée"),
-      suggestions: Array.isArray(parsed.suggestions)
-        ? parsed.suggestions.slice(0, 5)
-        : [],
+      suggestions,
     };
   }, "Gemini analyze");
 }
