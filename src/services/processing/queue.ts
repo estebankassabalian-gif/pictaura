@@ -77,12 +77,25 @@ async function getBoss(): Promise<PgBoss> {
  * Enregistre le worker qui exécute réellement le pipeline. À appeler une
  * seule fois au boot (cf. instrumentation.ts).
  */
+// Nombre de jobs (= lots photo de clients DIFFÉRENTS) traités EN PARALLÈLE.
+// pg-boss vaut 1 par défaut si non précisé — constaté en auditant la capacité
+// de l'app à l'approche du démarchage agences (2026-07-30) : une agence qui
+// lance un lot de 20 photos bloquait alors TOUTES les autres jusqu'à la fin
+// de son lot entier, quel que soit computeConcurrency() en interne à un job
+// (qui ne parallélise que les photos D'UN MÊME job, jamais entre jobs).
+// 3 est une valeur prudente : chaque job additionnel peut lui-même monter à
+// 8 photos en parallèle (computeConcurrency), donc 3 jobs simultanés = jusqu'à
+// 24 appels fal.ai en vol en même temps. À ajuster à la hausse seulement après
+// avoir vérifié le palier de rate-limit du compte fal.ai (dashboard fal.ai) —
+// aucune valeur fiable n'était disponible pour la calibrer plus précisément.
+const JOB_LOCAL_CONCURRENCY = 3;
+
 export async function startJobWorker(): Promise<void> {
   try {
     const boss = await getBoss();
     await boss.work<{ jobId: string }>(
       QUEUE_PROCESS_JOB,
-      { batchSize: 1 },
+      { batchSize: 1, localConcurrency: JOB_LOCAL_CONCURRENCY },
       async ([job]) => {
         await processJob(job.data.jobId);
       }
