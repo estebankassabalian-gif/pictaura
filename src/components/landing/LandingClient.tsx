@@ -433,7 +433,7 @@ export default function LandingClient() {
                   scrolled ? "text-ink-muted" : "text-cream/70"
                 }`}
               >
-                BY GK Technologies
+                Par Esteban Kassabalian
               </span>
             </div>
           </Link>
