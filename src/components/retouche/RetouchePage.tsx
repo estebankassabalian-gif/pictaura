@@ -131,13 +131,19 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
   }
 
   function buildInstructionForPhoto(config: PhotoConfig): string {
-    // Vide si l'utilisateur n'a rien écrit : le backend applique alors
-    // l'instruction par défaut du preset (source de vérité unique — un défaut
-    // codé en dur ici court-circuitait les défauts métier du pipeline).
+    // Vide UNIQUEMENT si ni texte utilisateur ni plateforme : le backend
+    // applique alors l'instruction par défaut du preset (source de vérité
+    // unique — un défaut codé en dur ici court-circuitait les défauts métier
+    // du pipeline). AVANT ce fix, choisir une plateforme (Amazon, Reels...)
+    // SANS taper de texte perdait silencieusement tout le promptHint de la
+    // plateforme (fond blanc 85%, zones de sécurité 9:16...) — le cas le plus
+    // courant en pratique, et exactement les retours des beta testeurs
+    // ("cadrage incorrect", "ne correspond pas à la demande").
     const userPart = config.customInstruction.trim();
-    if (!userPart) return "";
     const platform = config.platformId ? getPlatformById(agent.id, config.platformId) : undefined;
+    if (!userPart && !platform) return "";
     if (!platform) return userPart;
+    if (!userPart) return platform.promptHint;
     return `${userPart}\n\n${platform.promptHint}`;
   }
 

@@ -56,14 +56,32 @@ function isRetryable(status: number): boolean {
  * (demandes de retrait de watermark / de personnes) : on exprime la même
  * contrainte en termes POSITIFS ("keep", "preserve", "do not introduce").
  */
-function buildFalPrompt(instruction: string): string {
-  return `${instruction.trim()} — Strictly photorealistic. Do not invent or introduce any object, building, structure or scenery that is not present in the original photo. Do not add any text or graphic overlay. Beyond the requested edit, preserve the original scene, framing and composition exactly.`;
+function buildFalPrompt(instruction: string, aspectRatio?: string): string {
+  // Avec un aspect_ratio cible, "preserve...composition exactly" contredirait
+  // la consigne de recadrage envoyée séparément à l'API — le modèle doit
+  // recomposer le cadrage pour remplir le nouveau format (ex: portrait 4:5 →
+  // vertical 9:16), mais toujours sans rien inventer.
+  const framingClause = aspectRatio
+    ? "Beyond the requested edit, preserve the original scene content exactly — you may reframe and recompose to fill the target aspect ratio, but do not add, remove or invent any object, building, structure, person or scenery."
+    : "Beyond the requested edit, preserve the original scene, framing and composition exactly.";
+  return `${instruction.trim()} — Strictly photorealistic. Do not invent or introduce any object, building, structure or scenery that is not present in the original photo. Do not add any text or graphic overlay. ${framingClause}`;
 }
 
-/** Adaptateur de schéma d'entrée : nano-banana attend image_urls (pluriel). */
-function buildRequestBody(model: string, prompt: string, dataUri: string): Record<string, unknown> {
+/**
+ * Adaptateur de schéma d'entrée : nano-banana attend image_urls (pluriel).
+ * aspect_ratio : uniquement documenté pour nano-banana-2 (voir fal.ai/models/
+ * fal-ai/nano-banana-2/edit/api) — pas envoyé à Kontext (filet interne),
+ * dont le support de ce paramètre n'est pas confirmé.
+ */
+function buildRequestBody(model: string, prompt: string, dataUri: string, aspectRatio?: string): Record<string, unknown> {
   if (model.includes("nano-banana")) {
-    return { prompt, image_urls: [dataUri], num_images: 1, output_format: "jpeg" };
+    return {
+      prompt,
+      image_urls: [dataUri],
+      num_images: 1,
+      output_format: "jpeg",
+      ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
+    };
   }
   return { prompt, image_url: dataUri, num_images: 1, output_format: "jpeg" };
 }
@@ -87,7 +105,7 @@ export class FalProvider implements ImageEditProvider {
     const prompt =
       kind === "canary"
         ? args.instruction.trim()
-        : buildFalPrompt(args.instruction.slice(0, 1200));
+        : buildFalPrompt(args.instruction.slice(0, 1200), args.aspectRatio);
 
     const primaryModel = falModel();
     const primaryErr = await this.tryModel(primaryModel, args, prompt, kind);
@@ -128,7 +146,7 @@ export class FalProvider implements ImageEditProvider {
       }
       const t0 = Date.now();
       try {
-        const buffer = await this.callOnce(model, args.imageBase64, prompt, timeoutMs);
+        const buffer = await this.callOnce(model, args.imageBase64, prompt, timeoutMs, args.aspectRatio);
         recordImageCall({ kind, success: true, latencyMs: Date.now() - t0, model: label });
         return { buffer, model: label };
       } catch (err) {
@@ -148,7 +166,7 @@ export class FalProvider implements ImageEditProvider {
     return { error: lastErr ?? new Error(`fal (${model}): échec sans détail`) };
   }
 
-  private async callOnce(model: string, imageBase64: string, prompt: string, timeoutMs: number): Promise<Buffer> {
+  private async callOnce(model: string, imageBase64: string, prompt: string, timeoutMs: number, aspectRatio?: string): Promise<Buffer> {
     const dataUri = `data:image/jpeg;base64,${imageBase64}`;
     const res = await fetch(`https://fal.run/${model}`, {
       method: "POST",
@@ -156,7 +174,7 @@ export class FalProvider implements ImageEditProvider {
         Authorization: `Key ${process.env.FAL_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(buildRequestBody(model, prompt, dataUri)),
+      body: JSON.stringify(buildRequestBody(model, prompt, dataUri, aspectRatio)),
       signal: AbortSignal.timeout(timeoutMs),
     });
 

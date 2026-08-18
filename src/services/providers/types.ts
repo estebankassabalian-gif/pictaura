@@ -15,6 +15,14 @@ export interface ImageEditArgs {
   kind?: "real" | "canary";
   /** Timeout par tentative (canary uniquement — les providers ont leurs défauts) */
   timeoutMs?: number;
+  /**
+   * Ratio cible de la plateforme sélectionnée (ex: "9:16", "1:1") — purement
+   * compositionnel, aucun risque d'hallucination. Laisse le modèle composer
+   * DIRECTEMENT au bon format au lieu de recadrer à l'aveugle après coup
+   * (cropToPlatform en Sharp "attention" ne sait pas ce que le modèle a
+   * réellement composé). Providers qui ne le supportent pas l'ignorent.
+   */
+  aspectRatio?: string;
 }
 
 export interface ImageEditResult {

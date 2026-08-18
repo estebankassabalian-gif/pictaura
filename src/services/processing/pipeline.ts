@@ -16,17 +16,30 @@ import { postEnhance } from "@/services/processing/post-enhance";
 // générée dans une forêt). Le défaut = rehaussement lumière/couleur/netteté
 // UNIQUEMENT. Les éditions d'objets (piscine, ciel, voiture…) viennent des
 // instructions EXPLICITES de l'utilisateur (suggestions cliquables).
+// Enrichi 2026-08-18 : la version précédente (générique "adjust ONLY light,
+// color and sharpness" pour les 5 presets) datait du fix anti-hallucination
+// de juillet, calibré pour Kontext — un éditeur littéral qui inventait des
+// structures à partir d'assertions d'objet ("make the sky blue" sur une photo
+// sans ciel visible → maison générée en forêt). Le modèle primaire est
+// maintenant Nano Banana 2, bien plus fiable sur la compréhension de scène ;
+// la prudence maximale n'était plus justifiée et coûtait tout le sens métier
+// de chaque preset (fond blanc e-commerce, remplacement de ciel immo...),
+// jamais transmis au modèle par défaut. Retours beta testeurs directement
+// visés : "résultat ne correspond pas à la demande", "manque de qualité".
+// Toujours SANS assertion d'existence (langage conditionnel "if X is
+// visible") — même discipline que la clause anti-invention ajoutée
+// automatiquement en aval par buildFalPrompt().
 const DEFAULT_INSTRUCTIONS: Record<string, string> = {
   AIRBNB:
-    "Professionally enhance this photo: significantly brighter, balanced, luminous exposure; corrected white balance; natural vivid colors; crisp details. Adjust ONLY light, color and sharpness.",
+    "Professionally enhance this real estate photo for a premium listing: significantly brighter and more luminous exposure, corrected white balance, natural vivid colors, crisp sharp details, corrected vertical perspective (straighten walls, doors and windows if tilted). If a sky is visible and looks dull or overcast, gently enhance its natural blue tone. If grass or plants are visible and look dry, gently enhance their natural green. Adjust only light, color, sharpness and perspective — do not alter the structure of the scene.",
   IMMOBILIER:
-    "Professionally enhance this photo: significantly brighter, balanced, luminous exposure; corrected white balance; natural vivid colors; crisp details. Adjust ONLY light, color and sharpness.",
+    "Professionally enhance this real estate photo for a premium listing: significantly brighter and more luminous exposure, corrected white balance, natural vivid colors, crisp sharp details, corrected vertical perspective (straighten walls, doors and windows if tilted). If a sky is visible and looks dull or overcast, gently enhance its natural blue tone. If grass or plants are visible and look dry, gently enhance their natural green. Adjust only light, color, sharpness and perspective — do not alter the structure of the scene.",
   INSTAGRAM:
-    "Professionally enhance this photo: vibrant cinematic color grade, punchy contrast, crisp details, brighter balanced exposure. Adjust ONLY light, color and sharpness.",
+    "Professionally enhance this photo for social media: vibrant cinematic color grade, punchy contrast, crisp sharp details, brighter balanced exposure. If a person's skin is visible, apply natural subtle skin smoothing while preserving texture and pores. If the background is visible and busy, you may gently soften it with a bokeh-style blur while keeping the main subject perfectly sharp. Adjust only light, color, sharpness and background blur.",
   VINTED:
-    "Professionally enhance this photo: clean bright lighting, sharp details, accurate faithful colors and materials. Adjust ONLY light, color and sharpness.",
+    "Professionally enhance this product photo for resale (Vinted, Leboncoin, marketplace): replace the background with a clean neutral background (white, light beige or gray), product perfectly centered, honest and trustworthy presentation. Bright clean lighting, sharp details, true-to-life accurate colors, smooth out any wrinkles or creases on fabric. Keep the product exactly as it is including any visible wear — do not hide defects or alter its shape, color or condition.",
   SHOPIFY:
-    "Professionally enhance this photo: clean bright lighting, sharp details, accurate faithful colors and materials. Adjust ONLY light, color and sharpness.",
+    "Professionally enhance this product photo for e-commerce: replace the background with a clean pure white (#FFFFFF) studio background, product perfectly centered with even margins, soft natural drop shadow beneath it. Bright sharp studio lighting, true-to-life accurate colors, smooth out any wrinkles or creases on fabric. Keep the product itself exactly as it is — do not alter its shape, color or size.",
 };
 const GENERIC_INSTRUCTION =
   "Professionally enhance this photo: brighter balanced exposure, natural vivid colors, crisp details. Adjust ONLY light, color and sharpness.";
@@ -34,6 +47,7 @@ import { applyWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
 import { cropToPlatform } from "@/services/processing/platform-crop";
 import { AGENTS } from "@/config/agents";
+import { getPlatformById } from "@/config/platforms";
 
 // Pre-resize inputs sent to Gemini: smaller payload = faster model processing.
 // 2048px keeps enough source detail for Gemini's understanding step (critical
@@ -273,11 +287,16 @@ async function processOnePhoto(
     const instruction =
       photo.instruction || DEFAULT_INSTRUCTIONS[job.preset] || GENERIC_INSTRUCTION;
 
+    // Ratio cible de la plateforme choisie, si applicable — laisse le modèle
+    // composer directement au bon format (cf. providers/fal-provider.ts)
+    // plutôt que de recadrer à l'aveugle après coup en Sharp.
+    const platform = photo.platformId ? getPlatformById(job.preset, photo.platformId) : undefined;
+
     // Couche provider : primaire + circuit breaker + secours (cf. providers/).
     // Le provider rend l'image brute ; crop → watermark → EXIF restent ici,
     // identiques quel que soit le modèle (pipeline provider-agnostique).
     const imageBase64 = inputBuffer.toString("base64");
-    const edited = await editImage({ imageBase64, instruction, systemPrompt });
+    const edited = await editImage({ imageBase64, instruction, systemPrompt, aspectRatio: platform?.ratio });
     let outputBuffer = edited.buffer;
 
     // Rehaussement photométrique derrière KONTEXT uniquement (éditeur d'objets
