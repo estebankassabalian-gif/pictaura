@@ -52,6 +52,7 @@ export const PLANS: readonly Plan[] = [
       "80 retouches IA par mois",
       "Tous les presets : Immobilier, Réseaux sociaux, E-commerce",
       "Tous les formats plateformes (Vinted, Shopify, Instagram, Stories, Reels…)",
+      "Résolution standard (1K)",
       "Métadonnées SEO + EXIF automatiques",
       "Hashtags FR + EN générés",
       "Jusqu'à 50 Mo par photo",
@@ -73,6 +74,7 @@ export const PLANS: readonly Plan[] = [
     features: [
       "250 retouches IA par mois",
       "Tout Starter inclus",
+      "Haute résolution 2K — photos plus nettes, idéales pour le zoom et l'impression",
       "Scoring IA de vos photos (note /10 + recommandations)",
       "JSON-LD schema.org pour le référencement",
       "Support prioritaire sous 24h",
