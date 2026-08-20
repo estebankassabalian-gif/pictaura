@@ -23,6 +23,12 @@ export interface ImageEditArgs {
    * réellement composé). Providers qui ne le supportent pas l'ignorent.
    */
   aspectRatio?: string;
+  /**
+   * Palier de résolution fal ("1K" par défaut si omis, "2K", "4K"...) —
+   * différenciateur qualité par plan (Starter=1K, Pro/Business=2K, décision
+   * Esteban 2026-08-19). Providers qui ne le supportent pas l'ignorent.
+   */
+  resolution?: string;
 }
 
 export interface ImageEditResult {

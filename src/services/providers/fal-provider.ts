@@ -27,6 +27,24 @@ function falModel(): string {
   return process.env.IMAGE_FAL_MODEL?.trim() || "fal-ai/nano-banana-2/edit";
 }
 
+/**
+ * Coût réel de l'appel pour le monitoring budget (recordImageCall.costCents).
+ * Sans ceci, un appel 2K (12¢) était compté au tarif plat par défaut (8¢,
+ * IMAGE_COST_CENTS) — le budget quotidien pouvait être dépassé sans jamais
+ * déclencher l'alerte. Tarifs nano-banana-2 vérifiés sur fal.ai (2026-08-18).
+ * Kontext (filet interne) n'a pas de palier resolution connu → undefined,
+ * recordImageCall retombe sur le tarif plat configuré.
+ */
+function falCostCents(model: string, resolution?: string): number | undefined {
+  if (!model.includes("nano-banana")) return undefined;
+  switch (resolution) {
+    case "0.5K": return 6;
+    case "2K": return 12;
+    case "4K": return 16;
+    default: return 8; // 1K, ou résolution non précisée (défaut fal)
+  }
+}
+
 function falFallbackModel(): string | null {
   const v = process.env.IMAGE_FAL_FALLBACK_MODEL?.trim();
   if (v === "") return null; // désactivation explicite du filet interne
@@ -69,11 +87,13 @@ function buildFalPrompt(instruction: string, aspectRatio?: string): string {
 
 /**
  * Adaptateur de schéma d'entrée : nano-banana attend image_urls (pluriel).
- * aspect_ratio : uniquement documenté pour nano-banana-2 (voir fal.ai/models/
- * fal-ai/nano-banana-2/edit/api) — pas envoyé à Kontext (filet interne),
- * dont le support de ce paramètre n'est pas confirmé.
+ * aspect_ratio / resolution : uniquement documentés pour nano-banana-2 (voir
+ * fal.ai/models/fal-ai/nano-banana-2/edit/api) — pas envoyés à Kontext
+ * (filet interne), dont le support de ces paramètres n'est pas confirmé.
+ * Tarifs resolution vérifiés sur fal.ai (2026-08-18) : 1K=$0.08 (défaut),
+ * 2K=$0.12 (×1.5), 4K=$0.16 (×2), 0.5K=$0.06 (×0.75).
  */
-function buildRequestBody(model: string, prompt: string, dataUri: string, aspectRatio?: string): Record<string, unknown> {
+function buildRequestBody(model: string, prompt: string, dataUri: string, aspectRatio?: string, resolution?: string): Record<string, unknown> {
   if (model.includes("nano-banana")) {
     return {
       prompt,
@@ -81,6 +101,7 @@ function buildRequestBody(model: string, prompt: string, dataUri: string, aspect
       num_images: 1,
       output_format: "jpeg",
       ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
+      ...(resolution ? { resolution } : {}),
     };
   }
   return { prompt, image_url: dataUri, num_images: 1, output_format: "jpeg" };
@@ -146,8 +167,8 @@ export class FalProvider implements ImageEditProvider {
       }
       const t0 = Date.now();
       try {
-        const buffer = await this.callOnce(model, args.imageBase64, prompt, timeoutMs, args.aspectRatio);
-        recordImageCall({ kind, success: true, latencyMs: Date.now() - t0, model: label });
+        const buffer = await this.callOnce(model, args.imageBase64, prompt, timeoutMs, args.aspectRatio, args.resolution);
+        recordImageCall({ kind, success: true, latencyMs: Date.now() - t0, model: label, costCents: falCostCents(model, args.resolution) });
         return { buffer, model: label };
       } catch (err) {
         lastErr = err instanceof Error ? err : new Error(String(err));
@@ -166,7 +187,7 @@ export class FalProvider implements ImageEditProvider {
     return { error: lastErr ?? new Error(`fal (${model}): échec sans détail`) };
   }
 
-  private async callOnce(model: string, imageBase64: string, prompt: string, timeoutMs: number, aspectRatio?: string): Promise<Buffer> {
+  private async callOnce(model: string, imageBase64: string, prompt: string, timeoutMs: number, aspectRatio?: string, resolution?: string): Promise<Buffer> {
     const dataUri = `data:image/jpeg;base64,${imageBase64}`;
     const res = await fetch(`https://fal.run/${model}`, {
       method: "POST",
@@ -174,7 +195,7 @@ export class FalProvider implements ImageEditProvider {
         Authorization: `Key ${process.env.FAL_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(buildRequestBody(model, prompt, dataUri, aspectRatio)),
+      body: JSON.stringify(buildRequestBody(model, prompt, dataUri, aspectRatio, resolution)),
       signal: AbortSignal.timeout(timeoutMs),
     });
 

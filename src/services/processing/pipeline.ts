@@ -292,11 +292,17 @@ async function processOnePhoto(
     // plutôt que de recadrer à l'aveugle après coup en Sharp.
     const platform = photo.platformId ? getPlatformById(job.preset, photo.platformId) : undefined;
 
+    // Palier qualité par plan (décision Esteban 2026-08-19, identique sur les
+    // 3 presets) : Starter = 1K (défaut fal, omis), Pro/Business = 2K natif —
+    // plus net qu'un 1K + upscale ESRGAN, et évite l'upscale dans la foulée
+    // pour ces comptes (upscaleIfNeeded ne se déclenche que sous 1920px).
+    const resolution = isPro ? "2K" : undefined;
+
     // Couche provider : primaire + circuit breaker + secours (cf. providers/).
     // Le provider rend l'image brute ; crop → watermark → EXIF restent ici,
     // identiques quel que soit le modèle (pipeline provider-agnostique).
     const imageBase64 = inputBuffer.toString("base64");
-    const edited = await editImage({ imageBase64, instruction, systemPrompt, aspectRatio: platform?.ratio });
+    const edited = await editImage({ imageBase64, instruction, systemPrompt, aspectRatio: platform?.ratio, resolution });
     let outputBuffer = edited.buffer;
 
     // Rehaussement photométrique derrière KONTEXT uniquement (éditeur d'objets
