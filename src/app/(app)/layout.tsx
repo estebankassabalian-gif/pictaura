@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SidebarNav } from "@/components/layout/SidebarNav";
+import { InstallAppPrompt } from "@/components/layout/InstallAppPrompt";
 
 export default async function AppLayout({
   children,
@@ -23,7 +24,10 @@ export default async function AppLayout({
       />
 
       <main className="flex-1 overflow-auto bg-cream">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 pt-16 md:pt-10 pb-10">{children}</div>
+        <div className="max-w-6xl mx-auto px-4 md:px-6 pt-16 md:pt-10 pb-10">
+          <InstallAppPrompt />
+          {children}
+        </div>
       </main>
     </div>
   );

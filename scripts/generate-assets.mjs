@@ -28,18 +28,38 @@ const CREAM  = "#FFFBF5"; // background
 
 // ─── SVG icon — Pictaura mark (triangle + iris + 3 rays) ────────────────────
 // Reprend le design de public/logo-mark.svg, adapté carré pour PWA.
-function iconSvg(size) {
-  const rx = size * 0.22; // rounded corners like iOS/Android
+//
+// maskable: true génère une variante conforme à la norme W3C maskable icons —
+// l'OS (Android, etc.) applique SON PROPRE masque (cercle, squircle...) par
+// dessus l'icône, donc : (1) fond plein SANS coins arrondis pré-cuits (les
+// coins arrondis de la variante normale entreraient en double avec le masque
+// OS), (2) le glyphe doit tenir dans la "safe zone" — un cercle centré
+// couvrant ~80% de l'icône — sinon l'OS le rogne. Le glyphe normal déborde
+// jusqu'à x=92/y=86 (marge insuffisante et asymétrique) : on le recentre et
+// le réduit via un <g transform> plutôt que de recalculer chaque coordonnée.
+function iconSvg(size, { maskable = false } = {}) {
   const sw = Math.max(1.8, size * 0.055);
-
-  // Coords normalisés 0-100 puis scaled. Logo-mark viewBox 0 0 88 64,
-  // on centre dans un carré en ajustant.
-  // Scale factor basé sur size / 100 pour faire tenir tout l'icon proprement.
   const s = size / 100;
   const x = (n) => n * s;
 
+  const background = maskable
+    ? `<rect width="${size}" height="${size}" fill="${CREAM}"/>`
+    : `<rect width="${size}" height="${size}" rx="${size * 0.22}" fill="${CREAM}"/>`;
+
+  // Glyphe original ≈ bounding box [18,92]×[14,86] (centre ~55,50) — MAIS déjà
+  // exprimé en pixels finaux via x(n)=n*s, pas en 0-100 normalisé. Le pivot de
+  // la transformation doit donc lui aussi être en pixels (x(50), x(55)...),
+  // pas en unités brutes 0-100 (bug du premier essai : glyphe collé en haut à
+  // gauche au lieu d'être centré, un icône 512px utilisant translate(50,50)
+  // au lieu de translate(256,256)).
+  const glyphOpen = maskable
+    ? `<g transform="translate(${x(50)},${x(50)}) scale(0.65) translate(${-x(55)},${-x(50)})">`
+    : "";
+  const glyphClose = maskable ? `</g>` : "";
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-  <rect width="${size}" height="${size}" rx="${rx}" fill="${CREAM}"/>
+  ${background}
+  ${glyphOpen}
   <!-- Triangle (top edge) -->
   <path d="M ${x(18)} ${x(50)} L ${x(45)} ${x(20)}" stroke="${DARK}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
   <path d="M ${x(18)} ${x(50)} L ${x(45)} ${x(80)}" stroke="${DARK}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
@@ -50,6 +70,7 @@ function iconSvg(size) {
   <line x1="${x(52)}" y1="${x(26)}" x2="${x(82)}" y2="${x(14)}" stroke="${DARK}" stroke-width="${sw}" stroke-linecap="round"/>
   <line x1="${x(58)}" y1="${x(50)}" x2="${x(92)}" y2="${x(50)}" stroke="#FFC529" stroke-width="${sw}" stroke-linecap="round"/>
   <line x1="${x(52)}" y1="${x(74)}" x2="${x(82)}" y2="${x(86)}" stroke="${ORANGE}" stroke-width="${sw}" stroke-linecap="round"/>
+  ${glyphClose}
 </svg>`;
 }
 
@@ -126,6 +147,15 @@ async function generate() {
     const outPath = join(PUBLIC, faviconFiles[size]);
     await sharp(svg).png().toFile(outPath);
     console.log(`✓ ${faviconFiles[size]} (${size}×${size})`);
+  }
+
+  // Icônes maskable (PWA manifest.ts, purpose: "maskable") — 192/512 uniquement,
+  // ce sont les seules tailles utiles pour l'installation d'app.
+  for (const size of [192, 512]) {
+    const svg = Buffer.from(iconSvg(size, { maskable: true }));
+    const outPath = join(PUBLIC, `android-chrome-${size}x${size}-maskable.png`);
+    await sharp(svg).png().toFile(outPath);
+    console.log(`✓ android-chrome-${size}x${size}-maskable.png (${size}×${size})`);
   }
 
   // favicon.ico — use 32×32 PNG renamed (browsers accept PNG-based ICO via link tag)

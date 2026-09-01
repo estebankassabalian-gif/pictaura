@@ -100,7 +100,13 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
-  manifest: "/site.webmanifest",
+  // Pas de clé "manifest" ici — src/app/manifest.ts (convention native Next)
+  // est servi et lié automatiquement.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Pictaura",
+  },
   verification: {
     // google: "GOOGLE_SEARCH_CONSOLE_CODE",
   },
