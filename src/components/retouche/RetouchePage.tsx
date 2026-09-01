@@ -9,9 +9,9 @@ import {
   Upload,
   Sparkles,
   Loader2,
-  CheckCircle2,
   ArrowLeft,
   ArrowRight,
+  ChevronDown,
   Send,
   X,
   Copy,
@@ -20,8 +20,6 @@ import {
 import { MAX_PHOTOS_PER_BATCH, MAX_FILE_SIZE_MB } from "@/config/plans";
 import { AGENTS, type AgentSuggestion } from "@/config/agents";
 import { getPlatformsForPreset, getPlatformById } from "@/config/platforms";
-
-type Step = "upload" | "configure";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -38,10 +36,10 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
   const router = useRouter();
   const Icon = agent.icon;
 
-  const [step, setStep] = useState<Step>("upload");
   const [files, setFiles] = useState<File[]>([]);
   const [photoConfigs, setPhotoConfigs] = useState<PhotoConfig[]>([]);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [applyToAll, setApplyToAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
@@ -51,13 +49,36 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
   const credits = session?.user?.credits ?? 0;
   const isAdmin = session?.user?.role === "ADMIN";
 
-  // Miniatures réelles pour l'étape 1 (fluide et concret dès le dépôt, au
-  // lieu d'une liste de noms de fichiers). Révoquées au démontage / changement.
+  // Miniatures réelles, fluide et concret dès le dépôt. Révoquées au
+  // démontage / changement.
   const previewUrls = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
   useEffect(() => {
     return () => previewUrls.forEach((u) => URL.revokeObjectURL(u));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewUrls]);
+
+  // photoConfigs existe dès le dépôt des fichiers (plus besoin d'un clic
+  // "Configurer" pour l'initialiser) — le bouton principal peut lancer la
+  // retouche automatique directement depuis cet écran unique. Matching par
+  // identité de fichier (pas par index) pour ne pas perdre une éventuelle
+  // personnalisation déjà faite (panneau avancé) si l'utilisateur ajoute ou
+  // retire une photo ensuite.
+  useEffect(() => {
+    setPhotoConfigs((prev) => {
+      const byFile = new Map(prev.map((c) => [c.file, c]));
+      return files.map((file, i) => {
+        const existing = byFile.get(file);
+        return existing ?? { file, previewUrl: previewUrls[i], customInstruction: "", platformId: null };
+      });
+    });
+  }, [files, previewUrls]);
+
+  // Garde-fou : si une photo est retirée pendant que le panneau avancé est
+  // ouvert sur une photo plus loin dans la liste, ne pas rester sur un index
+  // hors bornes (avant, la remise à 0 au clic "Configurer" évitait ce cas).
+  useEffect(() => {
+    setActivePhotoIndex((i) => Math.min(i, Math.max(0, files.length - 1)));
+  }, [files.length]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setError("");
@@ -81,25 +102,6 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
   function removeFile(index: number) {
     const newFiles = files.filter((_, i) => i !== index);
     setFiles(newFiles);
-  }
-
-  function handleStartConfigure() {
-    if (files.length === 0) {
-      setError("Ajoutez au moins une photo");
-      return;
-    }
-    setError("");
-
-    const configs: PhotoConfig[] = files.map((file) => ({
-      file,
-      previewUrl: URL.createObjectURL(file),
-      customInstruction: "",
-      platformId: null,
-    }));
-
-    setPhotoConfigs(configs);
-    setActivePhotoIndex(0);
-    setStep("configure");
   }
 
   function setCustomInstruction(photoIndex: number, value: string) {
@@ -265,15 +267,10 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
     }
   }
 
-  const progressSteps = [
-    { key: "upload", label: "Photos" },
-    { key: "configure", label: "Instructions" },
-  ];
-
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-8">
         <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${agent.gradient} flex items-center justify-center shadow-md`}>
           <Icon className="w-6 h-6 text-white" />
         </div>
@@ -283,43 +280,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="flex items-center gap-2 mb-8">
-        {progressSteps.map((s, i) => {
-          const isDone = s.key === "upload" && step !== "upload";
-          const isCurrent = s.key === step;
-          return (
-            <div key={s.key} className="flex items-center gap-2 flex-1">
-              <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  isDone
-                    ? "bg-accent/15 text-accent"
-                    : isCurrent
-                    ? "bg-gradient-to-br " + agent.gradient + " text-white"
-                    : "bg-white text-ink-muted border border-ink/10"
-                }`}
-              >
-                {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
-              </div>
-              <span className={`text-xs hidden sm:block ${isCurrent ? "text-[var(--text)] font-medium" : "text-[var(--muted)]"}`}>
-                {s.label}
-              </span>
-              {i < 1 && <div className="flex-1 h-px bg-[var(--border)]" />}
-            </div>
-          );
-        })}
-      </div>
-
-      <AnimatePresence mode="wait">
-      {/* STEP 1: Upload */}
-      {step === "upload" && (
-        <motion.div
-          key="upload"
-          initial={{ opacity: 0, x: -16 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -16 }}
-          transition={{ duration: 0.3, ease: EASE }}
-        >
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }}>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-sm font-semibold text-[var(--muted)] uppercase tracking-wider">Ajoutez vos photos</h2>
             <span className="text-xs text-[var(--muted)]">
@@ -393,35 +354,54 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
             </div>
           )}
 
+          {/* CTA principal : retouche automatique, sans étape de config —
+              le backend applique déjà DEFAULT_INSTRUCTIONS[preset] (lumière/
+              couleur/netteté uniquement, jamais d'ajout/suppression d'objet)
+              quand aucune instruction n'est envoyée. handleProcess est
+              INCHANGÉ, déjà tolérant à des photoConfigs vides par défaut. */}
           <button
-            onClick={handleStartConfigure}
-            disabled={files.length === 0}
+            onClick={handleProcess}
+            disabled={files.length === 0 || loading || (!isAdmin && credits < files.length)}
             className="btn-primary w-full py-4 text-base"
           >
-            <Sparkles className="w-5 h-5" />
-            Configurer les retouches
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {uploadProgress || "Envoi en cours..."}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                Lancer la retouche automatique — {files.length} crédit(s)
+              </>
+            )}
           </button>
-        </motion.div>
-      )}
 
-      {/* STEP 2: Configure per-photo instructions */}
-      {step === "configure" && currentConfig && (
+          {/* Option avancée, discrète : repliée par défaut, pour qui veut
+              personnaliser (plateforme, suggestions, texte libre) au lieu de
+              l'amélioration automatique. */}
+          {files.length > 0 && (
+            <button
+              onClick={() => setShowAdvanced((v) => !v)}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-1.5 text-sm text-ink-muted hover:text-accent mt-3 py-2 transition-colors disabled:opacity-30"
+            >
+              {showAdvanced ? "Réduire les options" : "Personnaliser la retouche (optionnel)"}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+            </button>
+          )}
+
+      <AnimatePresence initial={false}>
+      {showAdvanced && currentConfig && (
         <motion.div
-          key="configure"
-          initial={{ opacity: 0, x: 16 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 16 }}
+          key="advanced"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.3, ease: EASE }}
+          className="overflow-hidden"
         >
-          <button
-            onClick={() => setStep("upload")}
-            disabled={loading}
-            className="text-sm text-ink-muted hover:text-accent mb-4 flex items-center gap-1 transition-colors disabled:opacity-30"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Retour
-          </button>
-
+          <div className="border-t border-ink/10 mt-2 pt-6">
           {files.length > 1 && (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-3">
@@ -619,25 +599,30 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
               ) : (
                 <>
                   <Send className="w-5 h-5" />
-                  Lancer la retouche — {files.length} crédit(s)
+                  Lancer la retouche personnalisée — {files.length} crédit(s)
                 </>
               )}
             </button>
-
-            {/* Barre de progression réelle pendant l'upload — fluide, pas
-                juste un spinner opaque sur ce qui peut prendre plusieurs
-                secondes pour un gros lot. */}
-            {loading && files.length > 1 && (
-              <div className="w-full h-1.5 bg-ink/10 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-accent rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(100, (uploadedCount / files.length) * 100)}%` }}
-                  transition={{ duration: 0.3, ease: EASE }}
-                />
-              </div>
-            )}
           </div>
+          </div>
+        </motion.div>
+      )}
+      </AnimatePresence>
+
+          {/* Barre de progression réelle pendant l'upload — fluide, pas
+              juste un spinner opaque sur ce qui peut prendre plusieurs
+              secondes pour un gros lot. Partagée : déclenchée aussi bien par
+              le CTA principal que par le lancement depuis le panneau avancé. */}
+          {loading && files.length > 1 && (
+            <div className="w-full h-1.5 bg-ink/10 rounded-full overflow-hidden mt-3">
+              <motion.div
+                className="h-full bg-accent rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, (uploadedCount / files.length) * 100)}%` }}
+                transition={{ duration: 0.3, ease: EASE }}
+              />
+            </div>
+          )}
 
           {!isAdmin && credits < files.length && (
             <p className="text-sm text-accent mt-2 text-center">
@@ -645,9 +630,7 @@ export function RetouchePage({ agentKey }: { agentKey: string }) {
               <a href="/billing" className="underline font-semibold">Voir les abonnements</a>
             </p>
           )}
-        </motion.div>
-      )}
-      </AnimatePresence>
+      </motion.div>
     </div>
   );
 }
