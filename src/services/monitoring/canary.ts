@@ -7,6 +7,8 @@
  * brut du provider primaire actif, pas le masquer.
  */
 import sharp from "sharp";
+import { readFile } from "fs/promises";
+import path from "path";
 import { runProviderCanary } from "@/services/providers";
 import { alertWithCooldown } from "@/services/monitoring/image-metrics";
 
@@ -23,11 +25,16 @@ export async function runCanaryProbe(): Promise<CanaryResult> {
   const maxLatencyMs = num(process.env.CANARY_MAX_LATENCY_MS, 30_000);
   const cooldownMin = num(process.env.ALERT_COOLDOWN_MIN, 15);
 
-  // Mini-image générée à la volée : la plus petite charge possible.
-  const testImage = await sharp({
-    create: { width: 256, height: 256, channels: 3, background: { r: 112, g: 122, b: 136 } },
-  })
-    .jpeg({ quality: 80 })
+  // Vraie photo (pas un rectangle de couleur unie) : un aplat sans texture ni
+  // sujet ne donne au modèle rien à éditer, ce qui lui fait parfois échouer
+  // sa génération ("did not generate the expected output") — constaté en
+  // prod (canary 2026-09-08), faux positif sans rapport avec un vrai souci
+  // de contenu. Réutilise une photo de démo déjà présente dans public/,
+  // redimensionnée pour rester une charge minimale.
+  const demoPhoto = await readFile(path.join(process.cwd(), "public/demo/villa-avant.jpg"));
+  const testImage = await sharp(demoPhoto)
+    .resize(512, 512, { fit: "inside" })
+    .jpeg({ quality: 75 })
     .toBuffer();
 
   try {

@@ -41,7 +41,17 @@ export function classifyImageError(err: unknown): ImageErrorCode {
   if (msg.includes("429")) return "429";
   if (msg.includes("quota") || msg.includes("exceeded") || msg.includes("billing")) return "quota";
   if (msg.includes("timeout") || msg.includes("abort")) return "timeout";
-  if (msg.includes("content_policy") || msg.includes("content policy") || msg.includes("flagged")) return "content_policy";
+  // fal renvoie parfois un 422 générique ("did not generate the expected
+  // output... unsafe content, a prompt...") sans le token "content_policy" —
+  // constaté sur une image de test sans texture, pas un vrai rejet. Même
+  // classement "faux positif probable" que content_policy/flagged.
+  if (
+    msg.includes("content_policy") ||
+    msg.includes("content policy") ||
+    msg.includes("flagged") ||
+    msg.includes("did not generate the expected output")
+  )
+    return "content_policy";
   return "other";
 }
 
