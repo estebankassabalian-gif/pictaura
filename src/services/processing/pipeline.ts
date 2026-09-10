@@ -29,7 +29,7 @@ import { postEnhance } from "@/services/processing/post-enhance";
 // Toujours SANS assertion d'existence (langage conditionnel "if X is
 // visible") — même discipline que la clause anti-invention ajoutée
 // automatiquement en aval par buildFalPrompt().
-const DEFAULT_INSTRUCTIONS: Record<string, string> = {
+export const DEFAULT_INSTRUCTIONS: Record<string, string> = {
   AIRBNB:
     "Professionally enhance this real estate photo for a premium listing: significantly brighter and more luminous exposure, corrected white balance, natural vivid colors, crisp sharp details, corrected vertical perspective (straighten walls, doors and windows if tilted). If a sky is visible and looks dull or overcast, gently enhance its natural blue tone. If grass or plants are visible and look dry, gently enhance their natural green. Adjust only light, color, sharpness and perspective — do not alter the structure of the scene.",
   IMMOBILIER:
@@ -41,7 +41,7 @@ const DEFAULT_INSTRUCTIONS: Record<string, string> = {
   SHOPIFY:
     "Professionally enhance this product photo for e-commerce: replace the background with a clean pure white (#FFFFFF) studio background, product perfectly centered with even margins, soft natural drop shadow beneath it. Bright sharp studio lighting, true-to-life accurate colors, smooth out any wrinkles or creases on fabric. Keep the product itself exactly as it is — do not alter its shape, color or size.",
 };
-const GENERIC_INSTRUCTION =
+export const GENERIC_INSTRUCTION =
   "Professionally enhance this photo: brighter balanced exposure, natural vivid colors, crisp details. Adjust ONLY light, color and sharpness.";
 import { applyWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
