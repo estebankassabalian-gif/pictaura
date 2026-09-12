@@ -65,6 +65,23 @@ async function assertPublicUrl(raw: string): Promise<URL> {
   return url;
 }
 
+/** Ratio supporté le plus proche de la source, pour que le modèle ne recadre pas. */
+const SUPPORTED_RATIOS: Array<[string, number]> = [
+  ["9:16", 9 / 16], ["2:3", 2 / 3], ["3:4", 3 / 4], ["4:5", 4 / 5],
+  ["1:1", 1], ["5:4", 5 / 4], ["4:3", 4 / 3], ["3:2", 3 / 2],
+  ["16:9", 16 / 9], ["21:9", 21 / 9],
+];
+
+function nearestAspectRatio(width?: number, height?: number): string | undefined {
+  if (!width || !height) return undefined;
+  const target = width / height;
+  let best = SUPPORTED_RATIOS[0];
+  for (const candidate of SUPPORTED_RATIOS) {
+    if (Math.abs(candidate[1] - target) < Math.abs(best[1] - target)) best = candidate;
+  }
+  return best[0];
+}
+
 async function fetchImage(url: URL): Promise<Buffer> {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -127,23 +144,32 @@ export async function POST(req: NextRequest) {
     // Normalisation identique au pipeline de prod : même entrée, même sortie.
     const normalized = await resizeIfLarger(source, GEMINI_INPUT_MAX_EDGE);
 
+    // Le ratio de la source est imposé au modèle. Sans lui, nano-banana
+    // compose au format qu'il juge bon et RECADRE la scène : mesuré sur des
+    // agences réelles, l'écart de contours passait de ~5 à ~11 sur 255, soit
+    // une photo visiblement recomposée. Or une démo recomposée envoyée au
+    // propriétaire de la photo est pire que pas de démo du tout.
+    const srcMeta = await sharp(normalized).metadata();
+    const aspectRatio = nearestAspectRatio(srcMeta.width, srcMeta.height);
+
     const edited = await editImage({
       imageBase64: normalized.toString("base64"),
       instruction,
       systemPrompt,
+      aspectRatio,
       resolution: body.resolution ?? "2K",
     });
 
-    // L'avant est renvoyé aux dimensions de l'après : le composite côté script
-    // n'a alors aucune mise à l'échelle à faire, et la comparaison est honnête.
-    const afterMeta = await sharp(edited.buffer).metadata();
+    // L'avant est renvoyé TEL QUEL, jamais recadré au format de l'après :
+    // le forcer en `cover` masquait précisément le recadrage qu'on cherche à
+    // détecter, et rendait la comparaison mensongère.
     const before = await sharp(normalized)
-      .resize(afterMeta.width, afterMeta.height, { fit: "cover" })
       .jpeg({ quality: 90, mozjpeg: true })
       .toBuffer();
     const after = await sharp(edited.buffer)
       .jpeg({ quality: 90, mozjpeg: true })
       .toBuffer();
+    const afterMeta = await sharp(after).metadata();
 
     return NextResponse.json({
       ok: true,
