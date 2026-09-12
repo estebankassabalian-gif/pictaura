@@ -52,10 +52,10 @@ export default function CgvPage() {
               L&apos;Éditeur propose quatre formules :
             </p>
             <ul className="text-ink-muted space-y-2 list-disc list-inside">
-              <li><strong>Pack 30 crédits</strong> — paiement unique de 9,90€ TTC. Sans engagement. Crédits sans date d&apos;expiration.</li>
-              <li><strong>Abonnement Starter</strong> — 14,90€ TTC/mois ou 143€ TTC/an (soit 11,92€/mois). 100 crédits renouvelés chaque mois.</li>
-              <li><strong>Abonnement Pro</strong> — 39,90€ TTC/mois ou 383€ TTC/an (soit 31,92€/mois). 400 crédits renouvelés chaque mois.</li>
-              <li><strong>Abonnement Business</strong> — 89,90€ TTC/mois ou 863€ TTC/an (soit 71,92€/mois). 1200 crédits renouvelés chaque mois.</li>
+              <li><strong>Pack 30 crédits</strong> — paiement unique de 12,90€ TTC. Sans engagement. Crédits sans date d&apos;expiration.</li>
+              <li><strong>Abonnement Starter</strong> — 19,90€ TTC/mois ou 191€ TTC/an (soit 15,92€/mois). 60 crédits renouvelés chaque mois.</li>
+              <li><strong>Abonnement Pro</strong> — 49€ TTC/mois ou 479€ TTC/an (soit 39,92€/mois). 150 crédits renouvelés chaque mois.</li>
+              <li><strong>Abonnement Agence</strong> — 149€ TTC/mois ou 1430€ TTC/an (soit 119,17€/mois). 500 crédits renouvelés chaque mois.</li>
             </ul>
             <p className="text-ink-muted mt-3">
               Les crédits des abonnements ne sont pas cumulables d&apos;un mois sur l&apos;autre. Les crédits
