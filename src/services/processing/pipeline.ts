@@ -43,7 +43,7 @@ export const DEFAULT_INSTRUCTIONS: Record<string, string> = {
 };
 export const GENERIC_INSTRUCTION =
   "Professionally enhance this photo: brighter balanced exposure, natural vivid colors, crisp details. Adjust ONLY light, color and sharpness.";
-import { applyWatermark } from "@/services/watermark";
+import { applyWatermark, applyBrandWatermark } from "@/services/watermark";
 import { injectExifMetadata } from "@/services/processing/exif";
 import { cropToPlatform } from "@/services/processing/platform-crop";
 import { AGENTS } from "@/config/agents";
@@ -119,6 +119,20 @@ export async function processJob(jobId: string): Promise<void> {
     // Watermark logo Pictaura sur TOUTES les photos des comptes non-premium
     // (alignement avec la promesse pricing : seuls les abonnés livrent sans badge).
     const applyWm = !isSubscribed;
+    // Filigrane personnalisé : le plan Agence livre sous la marque du client.
+    // Chargé UNE fois par job plutôt qu'une fois par photo — sur un lot de 30,
+    // c'est 29 téléchargements R2 évités sur le chemin chaud.
+    const isAgence = job.user?.planId === "business";
+    let brandLogo: Buffer | null = null;
+    if (isAgence && job.user?.brandLogoKey) {
+      try {
+        const url = await getSignedDownloadUrl(job.user.brandLogoKey);
+        const res = await fetch(url);
+        if (res.ok) brandLogo = Buffer.from(await res.arrayBuffer());
+      } catch (e) {
+        console.error("Logo client illisible, filigrane ignoré :", e);
+      }
+    }
     // Score qualité (/10) et JSON-LD schema.org : réservés aux plans Pro et
     // Business conformément à la grille tarifaire.
     const isPro = isAdmin || job.user?.planId === "pro" || job.user?.planId === "business";
@@ -166,7 +180,7 @@ export async function processJob(jobId: string): Promise<void> {
           continue;
         }
         try {
-          const result = await processOnePhoto(next, job, systemPrompt, applyWm, isPro, job.user?.businessCity);
+          const result = await processOnePhoto(next, job, systemPrompt, applyWm, isPro, job.user?.businessCity, brandLogo);
           if (result.success) {
             successCount++;
           } else {
@@ -255,7 +269,8 @@ async function processOnePhoto(
   systemPrompt: string,
   shouldWatermark: boolean,
   isPro: boolean,
-  userLocation?: string | null
+  userLocation?: string | null,
+  brandLogo?: Buffer | null
 ): Promise<{ success: boolean }> {
   const startedAt = Date.now();
   try {
@@ -319,7 +334,10 @@ async function processOnePhoto(
 
     outputBuffer = await cropToPlatform(outputBuffer, job.preset, photo.platformId);
 
-    if (shouldWatermark) {
+    if (brandLogo) {
+      // Le logo du client remplace le badge Pictaura — jamais les deux.
+      outputBuffer = await applyBrandWatermark(outputBuffer, brandLogo);
+    } else if (shouldWatermark) {
       outputBuffer = await applyWatermark(outputBuffer);
     }
 

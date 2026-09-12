@@ -102,3 +102,68 @@ export async function applyWatermark(imageBuffer: Buffer): Promise<Buffer> {
     ])
     .toBuffer();
 }
+
+/**
+ * Applique le logo DU CLIENT en filigrane, à la place du badge Pictaura.
+ *
+ * Réservé au plan Agence : une agence livre ses photos sous sa propre marque,
+ * pas sous la nôtre. C'est la différence entre un outil qu'on subit et un
+ * outil qu'on s'approprie — et l'argument qui justifie l'écart de prix avec
+ * le plan Pro.
+ *
+ * Le logo est posé en bas à droite, à 18 % de la largeur de la photo, avec
+ * une marge proportionnelle : la même position relative quelle que soit la
+ * définition, pour que la mise en page reste cohérente sur tout un lot.
+ *
+ * Opacité 90 % plutôt que 100 % : un logo parfaitement opaque sur une photo
+ * d'intérieur accroche l'oeil plus que le bien lui-même.
+ *
+ * Ne throw jamais : un logo illisible ou corrompu ne doit pas faire échouer
+ * une photo déjà traitée et déjà facturée au client. En cas d'échec, la photo
+ * est livrée sans filigrane — un défaut invisible vaut mieux qu'un crédit perdu.
+ */
+export async function applyBrandWatermark(
+  imageBuffer: Buffer,
+  logoBuffer: Buffer
+): Promise<Buffer> {
+  try {
+    const metadata = await sharp(imageBuffer).metadata();
+    const width = metadata.width ?? 1920;
+    const height = metadata.height ?? 1280;
+
+    const logoWidth = Math.max(120, Math.round(width * 0.18));
+    const margin = Math.round(Math.min(width, height) * 0.03);
+
+    const logo = await sharp(logoBuffer)
+      .resize(logoWidth, null, { fit: "inside", withoutEnlargement: false })
+      .ensureAlpha()
+      .composite([
+        {
+          // Multiplie le canal alpha existant par 0,9 — préserve la
+          // transparence d'origine d'un PNG au lieu de l'écraser.
+          input: Buffer.from([255, 255, 255, Math.round(255 * 0.9)]),
+          raw: { width: 1, height: 1, channels: 4 },
+          tile: true,
+          blend: "dest-in",
+        },
+      ])
+      .png()
+      .toBuffer();
+
+    const logoMeta = await sharp(logo).metadata();
+
+    return await sharp(imageBuffer)
+      .composite([
+        {
+          input: logo,
+          top: height - (logoMeta.height ?? 0) - margin,
+          left: width - (logoMeta.width ?? 0) - margin,
+          blend: "over",
+        },
+      ])
+      .toBuffer();
+  } catch (err) {
+    console.error("Filigrane client impossible, photo livrée sans :", err);
+    return imageBuffer;
+  }
+}

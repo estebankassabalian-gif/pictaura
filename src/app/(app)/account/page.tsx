@@ -35,6 +35,62 @@ export default function AccountPage() {
   const [businessCity, setBusinessCity] = useState("");
   const [cityLoading, setCityLoading] = useState(false);
 
+  // Filigrane personnalisé — plan Agence uniquement. L'API répond 403 aux
+  // autres plans : on se sert de ce statut pour savoir s'il faut afficher
+  // la section, plutôt que de dupliquer la règle d'éligibilité côté client.
+  const [logoAutorise, setLogoAutorise] = useState(false);
+  const [logoPresent, setLogoPresent] = useState(false);
+  const [logoLoading, setLogoLoading] = useState(false);
+
+  useEffect(() => {
+    let annule = false;
+    fetch("/api/account/brand-logo")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (annule || !d) return;
+        setLogoAutorise(true);
+        setLogoPresent(Boolean(d.hasLogo));
+      })
+      .catch(() => {});
+    return () => {
+      annule = true;
+    };
+  }, []);
+
+  async function handleUploadLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const fichier = e.target.files?.[0];
+    if (!fichier) return;
+    setLogoLoading(true);
+    try {
+      const data = new FormData();
+      data.append("logo", fichier);
+      const r = await fetch("/api/account/brand-logo", { method: "POST", body: data });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setLogoPresent(true);
+        toast("Logo enregistré. Vos prochaines photos le porteront.", "success");
+      } else {
+        toast(d.error ?? "Envoi impossible.", "error");
+      }
+    } finally {
+      setLogoLoading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleDeleteLogo() {
+    setLogoLoading(true);
+    try {
+      const r = await fetch("/api/account/brand-logo", { method: "DELETE" });
+      if (r.ok) {
+        setLogoPresent(false);
+        toast("Logo retiré.", "success");
+      }
+    } finally {
+      setLogoLoading(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     fetch("/api/account/update-business-city")
@@ -198,6 +254,48 @@ export default function AccountPage() {
           </div>
         </form>
       </div>
+
+      {/* Filigrane personnalisé — plan Agence */}
+      {logoAutorise && (
+        <div className="bg-white rounded-2xl border border-ink/10 p-6 mb-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="font-display text-ink text-lg">Votre filigrane</h2>
+            <span className="text-[10px] uppercase tracking-wider font-bold text-brand bg-sun-soft px-2 py-0.5 rounded">
+              Agence
+            </span>
+          </div>
+          <p className="text-xs text-ink-muted mb-4">
+            Vos photos sont livrées sous votre marque plutôt que sous la nôtre. Le logo
+            est posé en bas à droite, à taille proportionnelle. PNG transparent recommandé,
+            2 Mo maximum.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent-hover transition-colors shadow-sm cursor-pointer">
+              {logoLoading ? "..." : logoPresent ? "Remplacer le logo" : "Choisir un logo"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleUploadLogo}
+                disabled={logoLoading}
+                className="hidden"
+              />
+            </label>
+            {logoPresent && (
+              <button
+                type="button"
+                onClick={handleDeleteLogo}
+                disabled={logoLoading}
+                className="text-sm text-ink-muted hover:text-ink underline disabled:opacity-50"
+              >
+                Retirer
+              </button>
+            )}
+            <span className="text-xs text-ink-muted">
+              {logoPresent ? "Logo actif sur vos photos." : "Aucun logo — photos livrées sans filigrane."}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Mot de passe */}
       <div className="bg-white rounded-2xl border border-ink/10 p-6 mb-6 shadow-sm">
