@@ -56,7 +56,6 @@ model User {
   stripeSubscriptionId String?   @unique
   subscriptionEndsAt   DateTime? // Fin de période courante (pour ne pas couper avant expiration)
   businessCity     String?   // Ville/zone par défaut utilisée pour enrichir le SEO JSON-LD (RealEstateListing geo + address)
-  brandLogoKey     String?   // Clé R2 du logo du client — filigrane personnalisé, réservé au plan Agence
   referredById     String?
   referredBy       User?     @relation("Referrals", fields: [referredById], references: [id])
   referrals        User[]    @relation("Referrals")

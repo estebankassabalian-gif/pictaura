@@ -94,7 +94,6 @@ export const PLANS: readonly Plan[] = [
     features: [
       "500 retouches IA par mois — l'équivalent de 25 biens",
       "Tout Pro inclus",
-      "Votre logo en filigrane : les photos sortent sous VOTRE marque",
       "Support dédié par email",
       "Facturation entreprise (TVA)",
       "Engagement qualité : remboursement crédit si résultat non satisfaisant",
