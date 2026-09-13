@@ -40,14 +40,13 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 
 # Entrypoint script: migrate then start
-# ETAPE TRANSITOIRE — retiree au commit suivant.
-# La migration 20260912120000_add_brand_logo_key a echoue en cours
-# d'application le 2026-09-12. Prisma en garde la trace dans
-# _prisma_migrations et refuse desormais d'appliquer QUOI QUE CE SOIT
-# (erreur P3009 a chaque demarrage) : toute evolution de schema est gelee.
-# `migrate resolve --rolled-back` efface cette trace. Le `|| true` est
-# volontaire : aux demarrages suivants il n'y aura plus rien a resoudre.
-RUN printf '#!/bin/sh\nset -e\necho "Resolving failed migration (one-shot)..."\nnode node_modules/prisma/build/index.js migrate resolve --rolled-back 20260912120000_add_brand_logo_key || true\necho "Running Prisma migrations..."\nnode node_modules/prisma/build/index.js migrate deploy || echo "Migration warning (may already be applied)"\necho "Starting server..."\nexec node server.js\n' > /app/start.sh && chmod +x /app/start.sh
+# Migrations AVANT le serveur, et l'echec est bloquant : pas de `|| echo`.
+# Ce garde a deja transforme une migration ratee en panne silencieuse — le
+# serveur demarrait avec un schema incoherent et toutes les lectures de la
+# table concernee echouaient en production sans que rien ne l'annonce.
+# Un demarrage refuse est visible immediatement, et Coolify laisse alors
+# l'ancien conteneur servir : echouer bruyamment est strictement plus sur.
+RUN printf '#!/bin/sh\nset -e\necho "Running Prisma migrations..."\nnode node_modules/prisma/build/index.js migrate deploy\necho "Starting server..."\nexec node server.js\n' > /app/start.sh && chmod +x /app/start.sh
 
 USER nextjs
 
