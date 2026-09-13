@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Role, TransactionType } from "@prisma/client";
+import { sendTelegramAlert } from "@/lib/telegram";
 
 /**
  * Vérifie si un utilisateur a assez de crédits.
@@ -181,6 +182,39 @@ export async function refundJobCredits(
 ): Promise<number> {
   if (requestedAmount <= 0) return 0;
 
+  // Un remboursement qui échoue laisse le client débité de crédits pour une
+  // photo qu'il n'a jamais reçue. Tous les appelants font `.catch(console.error)` :
+  // sans alerte, la perte est invisible et personne ne la répare jamais.
+  // On alerte ici, à la source, plutôt qu'aux cinq points d'appel.
+  try {
+    return await refundJobCreditsInner(jobId, requestedAmount, description);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`❌ Remboursement impossible (job ${jobId}):`, err);
+    await sendTelegramAlert(
+      `🧾 PICTAURA — REMBOURSEMENT ÉCHOUÉ
+
+` +
+      `Job : ${jobId}
+Crédits dus : ${requestedAmount}
+` +
+      `Motif : ${description ?? "non précisé"}
+
+` +
+      `Détail : ${message.slice(0, 300)}
+
+` +
+      `Le client est débité de crédits qu'il n'a pas consommés — à recréditer à la main.`
+    ).catch((e) => console.error("Alerte Telegram impossible:", e));
+    throw err;
+  }
+}
+
+async function refundJobCreditsInner(
+  jobId: string,
+  requestedAmount: number,
+  description?: string
+): Promise<number> {
   return prisma.$transaction(async (tx) => {
     // Verrouille la ligne du job : un seul appelant à la fois peut lire puis
     // écrire refundedCredits pour ce job, quel que soit le process qui l'appelle.

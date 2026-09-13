@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { stripe } from "@/lib/stripe";
 import { env } from "@/config/env";
 import { prisma } from "@/lib/prisma";
@@ -45,6 +46,36 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  // Un échec d'attribution de crédits est le bug le plus cher du système :
+  // le client a payé, Stripe a encaissé, et rien n'arrive sur son compte.
+  // Avant ce garde-fou, la route répondait 200 quoi qu'il arrive — ce qui
+  // dit à Stripe « c'est traité » et l'empêche de REJOUER l'événement. La
+  // seule trace était un console.error dans les journaux du conteneur.
+  //
+  // Désormais : alerte Telegram immédiate + réponse 500 pour que Stripe
+  // réessaie (il retente pendant 3 jours avec un intervalle croissant).
+  let echecCritique: string | null = null;
+
+  const signalerEchec = async (quoi: string, detail: unknown) => {
+    const message = detail instanceof Error ? detail.message : String(detail);
+    echecCritique = `${quoi} — ${message}`;
+    console.error(`❌ ${quoi}:`, detail);
+    await sendTelegramAlert(
+      `💳 PICTAURA — ÉCHEC DE CRÉDIT APRÈS PAIEMENT
+
+` +
+      `${quoi}
+Événement Stripe : ${event.id}
+Type : ${event.type}
+
+` +
+      `Détail : ${message.slice(0, 300)}
+
+` +
+      `Stripe va réessayer. Si l'alerte se répète, créditer le compte à la main.`
+    ).catch((e) => console.error("Alerte Telegram impossible:", e));
+  };
 
   switch (event.type) {
     // ── Nouvel abonnement OU pack one-shot via Checkout ──────────────
@@ -101,7 +132,7 @@ export async function POST(req: NextRequest) {
           );
           console.log(`✅ Pack ${packCredits} crédits ajouté pour ${userId}`);
         } catch (err) {
-          console.error("❌ Erreur crédit pack:", err);
+          await signalerEchec("Crédits du pack non attribués", err);
         }
         break;
       }
@@ -169,7 +200,7 @@ export async function POST(req: NextRequest) {
         );
         console.log(`✅ Abonnement ${planFromMeta.name} (${intervalFromMeta}) activé pour ${userId} — ${planFromMeta.creditsPerMonth} crédits`);
       } catch (err) {
-        console.error("❌ Erreur ajout crédits abonnement:", err);
+        await signalerEchec("Crédits d'abonnement non attribués", err);
       }
       break;
     }
@@ -221,7 +252,7 @@ export async function POST(req: NextRequest) {
         );
         console.log(`✅ Renouvellement ${planRenewal.name} pour ${userId} — ${planRenewal.creditsPerMonth} crédits`);
       } catch (err) {
-        console.error("Erreur ajout crédits renouvellement:", err);
+        await signalerEchec("Crédits de renouvellement non attribués", err);
       }
       break;
     }
@@ -311,5 +342,9 @@ export async function POST(req: NextRequest) {
       break;
   }
 
+  if (echecCritique) {
+    // 500 volontaire : c'est le signal qui déclenche le rejeu côté Stripe.
+    return NextResponse.json({ error: echecCritique }, { status: 500 });
+  }
   return NextResponse.json({ received: true });
 }
