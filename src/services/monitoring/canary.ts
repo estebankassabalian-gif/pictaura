@@ -11,6 +11,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { runProviderCanary } from "@/services/providers";
 import { alertWithCooldown } from "@/services/monitoring/image-metrics";
+import { getQueueWorkerStatus } from "@/services/processing/queue";
 
 const num = (v: string | undefined, dflt: number): number => {
   const n = Number(v);
@@ -22,6 +23,28 @@ export type CanaryResult =
   | { ok: false; error: string };
 
 export async function runCanaryProbe(): Promise<CanaryResult> {
+  // Le worker pg-boss peut mourir sans que le processus s'arrête (connexion
+  // Postgres perdue, erreur non rattrapée dans boss.work). L'application
+  // répond alors normalement, /api/health l'indique — mais personne ne
+  // regarde /api/health. Les lots restent PENDING jusqu'au balayage de
+  // job-recovery, qui rembourse au lieu de traiter : le client paie en
+  // attente et repart sans photos. On le signale ici, puisque la sonde
+  // tourne déjà périodiquement dans le même processus.
+  const worker = getQueueWorkerStatus();
+  if (worker !== "ok") {
+    await alertWithCooldown(
+      "canary",
+      num(process.env.ALERT_COOLDOWN_MIN, 15),
+      `⚙️ PICTAURA — WORKER DE TRAITEMENT À L'ARRÊT
+
+` +
+      `État : ${worker}
+
+` +
+      `Les lots photo ne sont plus traités. Redéployer l'application relance le worker.`
+    );
+  }
+
   const maxLatencyMs = num(process.env.CANARY_MAX_LATENCY_MS, 30_000);
   const cooldownMin = num(process.env.ALERT_COOLDOWN_MIN, 15);
 
