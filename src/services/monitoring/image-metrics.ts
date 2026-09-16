@@ -189,12 +189,21 @@ export async function getImageHealthSnapshot(): Promise<{
   calls1h: number;
   errorRate1h: number | null;
   budgetTodayCents: number;
+  /** Echecs reels de la derniere heure par code. Sans ca, une alerte "taux
+   *  d'echec anormal" ne dit pas QUOI reparer : quota, timeout et rejet de
+   *  contenu appellent trois actions opposees. Diagnostiquer imposait
+   *  jusqu'ici un acces direct au Postgres de prod. */
+  errorsByCode1h: Record<string, number>;
+  /** Derniers echecs reels (24 h), pour distinguer une rafale de retries sur
+   *  UNE photo (3 tentatives = 3 lignes) d'une panne diffuse sur tout le
+   *  trafic. Aucune donnee client. */
+  recentFailures: Array<{ at: string; code: string; model: string; latencyMs: number }>;
 }> {
   const hourAgo = new Date(Date.now() - 3_600_000);
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const [lastCanary, total1h, fails1h, budgetAgg] = await Promise.all([
+  const [lastCanary, total1h, fails1h, budgetAgg, byCode, lastFails] = await Promise.all([
     prisma.imageCallEvent.findFirst({
       where: { kind: "canary" },
       orderBy: { createdAt: "desc" },
@@ -208,6 +217,29 @@ export async function getImageHealthSnapshot(): Promise<{
       _sum: { estCostCents: true },
       where: { createdAt: { gte: startOfDay } },
     }),
+    // Les deux requetes de diagnostic sont increvables : /api/health/image est
+    // surveille par l'uptime monitor externe ET sert a diagnostiquer les
+    // pannes. Un detail de diagnostic qui echoue ne doit jamais faire passer
+    // la sonde de sante en 503 ni masquer les chiffres essentiels au-dessus.
+    prisma.imageCallEvent
+      .groupBy({
+        by: ["errorCode"],
+        _count: { _all: true },
+        where: { kind: "real", success: false, createdAt: { gte: hourAgo } },
+      })
+      .catch(() => [] as Array<{ errorCode: string | null; _count: { _all: number } }>),
+    prisma.imageCallEvent
+      .findMany({
+        where: {
+          kind: "real",
+          success: false,
+          createdAt: { gte: new Date(Date.now() - 24 * 3_600_000) },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: { createdAt: true, errorCode: true, model: true, latencyMs: true },
+      })
+      .catch(() => [] as Array<{ createdAt: Date; errorCode: string | null; model: string; latencyMs: number }>),
   ]);
 
   return {
@@ -216,5 +248,14 @@ export async function getImageHealthSnapshot(): Promise<{
     calls1h: total1h,
     errorRate1h: total1h > 0 ? Math.round((fails1h / total1h) * 100) / 100 : null,
     budgetTodayCents: budgetAgg._sum.estCostCents ?? 0,
+    errorsByCode1h: Object.fromEntries(
+      byCode.map((r) => [r.errorCode ?? "unknown", r._count._all])
+    ),
+    recentFailures: lastFails.map((f) => ({
+      at: f.createdAt.toISOString(),
+      code: f.errorCode ?? "unknown",
+      model: f.model,
+      latencyMs: f.latencyMs,
+    })),
   };
 }
