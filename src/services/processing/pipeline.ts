@@ -124,8 +124,6 @@ export async function processJob(jobId: string): Promise<void> {
     const isPro = isAdmin || job.user?.planId === "pro" || job.user?.planId === "business";
 
     const CONCURRENCY = computeConcurrency(job.photoCount);
-    let failedCount = 0;
-    let successCount = 0;
     const claimedIds = new Set<string>();
     let lastPhotoSeenAt = Date.now();
     // Les claims sont sérialisés via une chaîne de promesses : deux workers ne
@@ -149,7 +147,13 @@ export async function processJob(jobId: string): Promise<void> {
           lastPhotoSeenAt = Date.now();
           return photo;
         }
-        if (claimedIds.size >= job.photoCount) return null; // tout est dispatché
+        // Tout est dispatché dès que chaque photo du lot existe en base et
+        // qu'aucune n'attend. Compter les photos RÉCLAMÉES par ce run
+        // (ancienne règle) échouait sur une relance : le run ne réclame
+        // qu'une photo sur N et attendait UPLOAD_STALL_MS (3 min) des uploads
+        // qui n'arriveraient jamais, lot affiché "en cours" pendant ce temps.
+        const createdCount = await prisma.processedPhoto.count({ where: { jobId } });
+        if (createdCount >= job.photoCount) return null;
         if (Date.now() - lastPhotoSeenAt > UPLOAD_STALL_MS) return null; // upload abandonné
         return "wait" as const; // photos encore en cours d'upload → patienter
       });
@@ -166,16 +170,21 @@ export async function processJob(jobId: string): Promise<void> {
           continue;
         }
         try {
-          const result = await processOnePhoto(next, job, systemPrompt, applyWm, isPro, job.user?.businessCity);
-          if (result.success) {
-            successCount++;
-          } else {
-            failedCount++;
-          }
+          await processOnePhoto(next, job, systemPrompt, applyWm, isPro, job.user?.businessCity);
         } catch (err) {
           // processOnePhoto catches internally; this is a belt-and-braces path.
           console.error(`Worker crash on photo ${next.id}:`, err);
-          failedCount++;
+          // Statut posé explicitement : le statut final du lot est calculé
+          // depuis la base, une photo restée PROCESSING y serait invisible.
+          await prisma.processedPhoto
+            .updateMany({
+              where: { id: next.id, status: { not: JobStatus.COMPLETED } },
+              data: {
+                status: JobStatus.FAILED,
+                failReason: err instanceof Error ? err.message.slice(0, 300) : "Erreur inconnue",
+              },
+            })
+            .catch(console.error);
           await refundJobCredits(job.id, 1, "Photo en échec (crash worker)").catch(console.error);
         }
       }
@@ -191,9 +200,15 @@ export async function processJob(jobId: string): Promise<void> {
       await refundJobCredits(jobId, missingCount, "Photos jamais uploadées").catch(console.error);
     }
 
-    const anyFailure = failedCount > 0 || missingCount > 0;
+    // Statut final depuis la base, pas depuis les compteurs de CE run : une
+    // relance ne traite qu'une photo, les autres ont été livrées plus tôt.
+    const [completedInDb, failedInDb] = await Promise.all([
+      prisma.processedPhoto.count({ where: { jobId, status: JobStatus.COMPLETED } }),
+      prisma.processedPhoto.count({ where: { jobId, status: JobStatus.FAILED } }),
+    ]);
+    const anyFailure = failedInDb > 0 || missingCount > 0;
     const finalStatus =
-      successCount === 0 && anyFailure ? JobStatus.FAILED : JobStatus.COMPLETED;
+      completedInDb === 0 && anyFailure ? JobStatus.FAILED : JobStatus.COMPLETED;
 
     await prisma.processingJob.update({
       where: { id: jobId },
@@ -201,7 +216,7 @@ export async function processJob(jobId: string): Promise<void> {
         status: finalStatus,
         completedAt: new Date(),
         errorMsg: anyFailure
-          ? `${failedCount + missingCount} photo(s) en echec — credits rembourses`
+          ? `${failedInDb + missingCount} photo(s) en echec — credits rembourses`
           : null,
       },
     });

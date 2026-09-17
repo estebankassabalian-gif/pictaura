@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { JobStatus, Role } from "@prisma/client";
 import { getFreshSignedUrl } from "@/services/storage";
 import { computeConcurrency } from "@/services/processing/pipeline";
+import { failHintFor } from "@/services/processing/fail-hint";
 
 // Fallback when no measured duration is available yet (fresh DB) :
 // ordre de grandeur réel d'une génération Gemini 3.1 Flash Image.
@@ -129,10 +130,16 @@ export async function GET(
         } catch { /* ignore */ }
       }
 
+      // Motif d'échec traduit pour le client : failReason (message brut du
+      // provider) ne quitte jamais le serveur.
+      const failure = photo.status === JobStatus.FAILED ? failHintFor(photo.failReason) : null;
+
       return {
         id: photo.id,
         fileName: photo.fileName,
         status: photo.status,
+        failHint: failure?.hint ?? null,
+        retryable: failure?.retryable ?? false,
         originalUrl,
         processedUrl,
         fileSizeOriginal: photo.fileSizeOriginal,

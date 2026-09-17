@@ -28,6 +28,9 @@ type Photo = {
   id: string;
   fileName: string;
   status: string;
+  /** Motif d'échec lisible (photo FAILED uniquement) */
+  failHint?: string | null;
+  retryable?: boolean;
   originalUrl: string | null;
   processedUrl: string | null;
   fileSizeOriginal: number | null;
@@ -455,6 +458,11 @@ export default function ResultsPage() {
   const [activePhoto, setActivePhoto] = useState(0);
   const [reprocessing, setReprocessing] = useState(false);
   const [actionError, setActionError] = useState("");
+  // Photo en cours de relance (id) — un seul clic à la fois
+  const [retryingPhotoId, setRetryingPhotoId] = useState<string | null>(null);
+  // Incrémenté après une relance : le suivi s'arrête quand le lot est terminé,
+  // il doit repartir pour afficher le nouveau résultat.
+  const [pollNonce, setPollNonce] = useState(0);
 
   const [fetchError, setFetchError] = useState("");
 
@@ -525,7 +533,39 @@ export default function ResultsPage() {
 
     poll();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [fetchJob]);
+  }, [fetchJob, pollNonce]);
+
+  async function retryPhoto(photoId: string) {
+    setRetryingPhotoId(photoId);
+    setActionError("");
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/photos/${photoId}/retry`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError(data.error ?? "Relance impossible pour le moment");
+        return;
+      }
+      // Affichage immédiat « en cours » sans attendre le prochain poll
+      setJob((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "PENDING",
+              photos: prev.photos.map((p) =>
+                p.id === photoId ? { ...p, status: "PENDING", failHint: null, retryable: false } : p
+              ),
+            }
+          : prev
+      );
+      setPollTimeout(false);
+      setSeoCapped(false);
+      setPollNonce((n) => n + 1);
+    } catch {
+      setActionError("Relance impossible. Vérifiez votre connexion.");
+    } finally {
+      setRetryingPhotoId(null);
+    }
+  }
 
   async function downloadSinglePhoto(photoId: string) {
     const res = await fetch(`/api/jobs/${jobId}/download?photoId=${photoId}`);
@@ -900,6 +940,30 @@ export default function ResultsPage() {
             <div className="bg-accent/10 border border-accent/30 rounded-xl p-6 text-center">
               <XCircle className="w-8 h-8 text-accent mx-auto mb-2" />
               <p className="text-accent font-medium">Échec du traitement — crédit remboursé</p>
+              {currentPhoto.failHint && (
+                <p className="text-sm text-ink-muted mt-2 max-w-md mx-auto">{currentPhoto.failHint}</p>
+              )}
+              {currentPhoto.retryable && (
+                isProcessing ? (
+                  <p className="text-xs text-ink-muted mt-4">
+                    Relance possible dès que le reste du lot est terminé.
+                  </p>
+                ) : (
+                  <div className="mt-4 flex flex-col items-center gap-1.5">
+                    <button
+                      onClick={() => retryPhoto(currentPhoto.id)}
+                      disabled={retryingPhotoId !== null}
+                      className="inline-flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-xl font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 text-sm"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${retryingPhotoId === currentPhoto.id ? "animate-spin" : ""}`} />
+                      {retryingPhotoId === currentPhoto.id ? "Relance…" : "Relancer cette photo"}
+                    </button>
+                    <span className="text-xs text-ink-muted">
+                      1 crédit, rendu automatiquement si l&apos;échec se reproduit
+                    </span>
+                  </div>
+                )
+              )}
             </div>
           ) : (
             <div className="bg-cream-2 border border-ink/10 rounded-xl p-12 text-center">

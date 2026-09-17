@@ -1,4 +1,8 @@
-import { recordImageCall, classifyImageError } from "@/services/monitoring/image-metrics";
+import {
+  recordImageCall,
+  classifyImageError,
+  isPhotoSpecificRejection,
+} from "@/services/monitoring/image-metrics";
 import type { ImageEditArgs, ImageEditProvider, ImageEditResult } from "./types";
 
 /**
@@ -135,6 +139,26 @@ export class FalProvider implements ImageEditProvider {
     // Le canary doit refléter l'état brut du primaire — jamais masqué par un filet.
     if (kind === "canary") throw primaryErr.error;
 
+    // Refus propre à CETTE photo (filtre de contenu, génération ratée) : le
+    // checker juge la combinaison prompt + image. La clause anti-invention
+    // ajoute du texte que le checker lit sans ses négations ; l'instruction
+    // seule passe là où l'ensemble est refusé (c'est ce que le canary envoie,
+    // et il passe). Une tentative sur le MÊME modèle, avant Kontext, garde la
+    // qualité validée au lieu de dégrader la livraison en silence
+    // (incident du 2026-09-16 : 8 photos refusées en 6 min).
+    // Les refus du filtre répondent en 2-4 s : le surcoût en latence est faible.
+    const bareInstruction = args.instruction.slice(0, 1200).trim();
+    if (
+      isPhotoSpecificRejection(classifyImageError(primaryErr.error)) &&
+      bareInstruction !== prompt
+    ) {
+      console.warn(
+        `fal: "${primaryModel}" a refusé cette photo, nouvel essai avec l'instruction seule`
+      );
+      const bareRes = await this.tryModel(primaryModel, args, bareInstruction, kind);
+      if (!("error" in bareRes)) return bareRes;
+    }
+
     const fallbackModel = falFallbackModel();
     if (!fallbackModel) throw primaryErr.error;
 
@@ -178,6 +202,7 @@ export class FalProvider implements ImageEditProvider {
           latencyMs: Date.now() - t0,
           model: label,
           errorCode: classifyImageError(lastErr),
+          errorMessage: lastErr.message,
         });
         // 4xx non-429 (clé invalide, payload rejeté, solde épuisé=403) : inutile de retenter
         const m = lastErr.message.match(/^fal HTTP (\d{3})/);

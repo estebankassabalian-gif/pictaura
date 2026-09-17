@@ -114,7 +114,11 @@ export async function startJobWorker(): Promise<void> {
  * Postgres avant de retourner — jamais perdue même si le container meurt
  * juste après cet appel.
  */
-export async function enqueueProcessJob(jobId: string): Promise<void> {
+export async function enqueueProcessJob(jobId: string): Promise<boolean> {
   const boss = await getBoss();
-  await boss.send(QUEUE_PROCESS_JOB, { jobId }, { singletonKey: jobId });
+  // null = message écarté par la policy "stately" (un message pour ce job
+  // existe déjà dans cet état). Les appelants historiques l'ignorent ; la
+  // relance d'une photo s'en sert pour ne pas laisser un lot en attente.
+  const id = await boss.send(QUEUE_PROCESS_JOB, { jobId }, { singletonKey: jobId });
+  return id !== null;
 }

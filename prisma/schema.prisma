@@ -233,7 +233,8 @@ model ImageCallEvent {
   kind         String   // 'real' | 'canary'
   success      Boolean
   latencyMs    Int
-  errorCode    String?  // '429' | 'quota' | 'timeout' | 'other'
+  errorCode    String?  // '429' | 'quota' | 'timeout' | 'content_policy' | 'no_output' | 'other'
+  errorMessage String?  // extrait du message brut du provider (300 car.) — distingue les causes qu'un code agrege
   model        String
   estCostCents Int?     // coût estimé (appels réussis) → budget journalier
 

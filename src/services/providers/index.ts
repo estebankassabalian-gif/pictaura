@@ -17,7 +17,11 @@
 import { GeminiProvider } from "./gemini-provider";
 import { FalProvider } from "./fal-provider";
 import { hasPromptInjection } from "@/lib/gemini";
-import { alertWithCooldown } from "@/services/monitoring/image-metrics";
+import {
+  alertWithCooldown,
+  classifyImageError,
+  isPhotoSpecificRejection,
+} from "@/services/monitoring/image-metrics";
 import type { ImageEditArgs, ImageEditProvider } from "./types";
 
 const PROVIDERS: Record<string, ImageEditProvider> = {
@@ -93,8 +97,13 @@ export async function editImage(
     st.fails = 0; // succès → reset
     return { buffer: out.buffer, provider: primary.name, model: out.model };
   } catch (primaryErr) {
-    st.fails++;
-    if (st.fails >= threshold && Date.now() >= st.openUntil) {
+    // Un refus propre à la photo (filtre de contenu, génération ratée) ne dit
+    // rien de la santé du provider. Le compter ouvrait le breaker dès qu'un
+    // client envoyait 4 photos refusées d'affilée — et basculait alors TOUT le
+    // trafic, tous clients confondus, sur le secours pendant BREAKER_OPEN_S.
+    const photoSpecific = isPhotoSpecificRejection(classifyImageError(primaryErr));
+    if (!photoSpecific) st.fails++;
+    if (!photoSpecific && st.fails >= threshold && Date.now() >= st.openUntil) {
       st.openUntil = Date.now() + openMs;
       void alertWithCooldown(
         "breaker",
@@ -107,8 +116,19 @@ export async function editImage(
     }
     if (!fallback) throw primaryErr;
     // Bascule immédiate sur le secours pour CETTE requête
-    const res = await fallback.editImage(args);
-    return { buffer: res.buffer, provider: fallback.name, model: res.model };
+    try {
+      const res = await fallback.editImage(args);
+      return { buffer: res.buffer, provider: fallback.name, model: res.model };
+    } catch (fallbackErr) {
+      // On remonte l'erreur du PRIMAIRE : c'est elle qui explique l'échec. Le
+      // secours par défaut (gemini) a sa facturation coupée — son 429 écrasait
+      // la vraie cause dans failReason et dans ce que voit le client.
+      console.warn(
+        `Secours "${fallback.name}" en échec aussi :`,
+        fallbackErr instanceof Error ? fallbackErr.message.slice(0, 200) : fallbackErr
+      );
+      throw primaryErr;
+    }
   }
 }
 

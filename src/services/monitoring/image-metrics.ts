@@ -20,7 +20,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendTelegramAlert } from "@/lib/telegram";
 
-export type ImageErrorCode = "429" | "quota" | "timeout" | "content_policy" | "other";
+export type ImageErrorCode = "429" | "quota" | "timeout" | "content_policy" | "no_output" | "other";
 
 const num = (v: string | undefined, dflt: number): number => {
   const n = Number(v);
@@ -35,23 +35,30 @@ const CFG = () => ({
   imageCostCents: num(process.env.IMAGE_COST_CENTS, 4),
 });
 
+/** Refus propre à UNE photo (filtre ou génération ratée), pas une panne du
+ *  provider : ne doit ni ouvrir le circuit breaker, ni être retenté à l'identique. */
+export function isPhotoSpecificRejection(code: ImageErrorCode): boolean {
+  return code === "content_policy" || code === "no_output";
+}
+
+/** Retire les data-URI (base64 d'image) qu'un message d'erreur peut réécrire. */
+export function sanitizeErrorMessage(message: string, max = 300): string {
+  return message.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]*/gi, "data:<image>").slice(0, max);
+}
+
 /** Classe une erreur d'appel image pour les règles d'alerte. */
 export function classifyImageError(err: unknown): ImageErrorCode {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
   if (msg.includes("429")) return "429";
   if (msg.includes("quota") || msg.includes("exceeded") || msg.includes("billing")) return "quota";
   if (msg.includes("timeout") || msg.includes("abort")) return "timeout";
-  // fal renvoie parfois un 422 générique ("did not generate the expected
-  // output... unsafe content, a prompt...") sans le token "content_policy" —
-  // constaté sur une image de test sans texture, pas un vrai rejet. Même
-  // classement "faux positif probable" que content_policy/flagged.
-  if (
-    msg.includes("content_policy") ||
-    msg.includes("content policy") ||
-    msg.includes("flagged") ||
-    msg.includes("did not generate the expected output")
-  )
+  if (msg.includes("content_policy") || msg.includes("content policy") || msg.includes("flagged"))
     return "content_policy";
+  // Le 422 générique de fal ("did not generate the expected output") était
+  // jusqu'ici rangé sous content_policy. Ce sont deux causes distinctes — un
+  // refus du filtre de sécurité d'un côté, une génération ratée de l'autre —
+  // et les confondre a rendu l'incident du 2026-09-16 indiagnosticable.
+  if (msg.includes("did not generate the expected output")) return "no_output";
   return "other";
 }
 
@@ -65,6 +72,8 @@ export function recordImageCall(e: {
   latencyMs: number;
   model: string;
   errorCode?: ImageErrorCode;
+  /** Message brut de l'erreur — assaini et tronqué avant stockage */
+  errorMessage?: string;
   /** Coût spécifique (ex: upscale ~1 ct) — défaut IMAGE_COST_CENTS */
   costCents?: number;
 }): void {
@@ -78,6 +87,7 @@ export function recordImageCall(e: {
           latencyMs: e.latencyMs,
           model: e.model,
           errorCode: e.errorCode ?? null,
+          errorMessage: e.errorMessage ? sanitizeErrorMessage(e.errorMessage) : null,
           estCostCents: e.success ? e.costCents ?? cfg.imageCostCents : null,
         },
       });
@@ -197,7 +207,7 @@ export async function getImageHealthSnapshot(): Promise<{
   /** Derniers echecs reels (24 h), pour distinguer une rafale de retries sur
    *  UNE photo (3 tentatives = 3 lignes) d'une panne diffuse sur tout le
    *  trafic. Aucune donnee client. */
-  recentFailures: Array<{ at: string; code: string; model: string; latencyMs: number }>;
+  recentFailures: Array<{ at: string; code: string; model: string; latencyMs: number; message: string | null }>;
 }> {
   const hourAgo = new Date(Date.now() - 3_600_000);
   const startOfDay = new Date();
@@ -237,9 +247,18 @@ export async function getImageHealthSnapshot(): Promise<{
         },
         orderBy: { createdAt: "desc" },
         take: 20,
-        select: { createdAt: true, errorCode: true, model: true, latencyMs: true },
+        select: { createdAt: true, errorCode: true, errorMessage: true, model: true, latencyMs: true },
       })
-      .catch(() => [] as Array<{ createdAt: Date; errorCode: string | null; model: string; latencyMs: number }>),
+      .catch(
+        () =>
+          [] as Array<{
+            createdAt: Date;
+            errorCode: string | null;
+            errorMessage: string | null;
+            model: string;
+            latencyMs: number;
+          }>
+      ),
   ]);
 
   return {
@@ -256,6 +275,8 @@ export async function getImageHealthSnapshot(): Promise<{
       code: f.errorCode ?? "unknown",
       model: f.model,
       latencyMs: f.latencyMs,
+      // Endpoint public : extrait court, déjà assaini au stockage
+      message: f.errorMessage ? f.errorMessage.slice(0, 160) : null,
     })),
   };
 }
