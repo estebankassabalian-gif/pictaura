@@ -10,6 +10,7 @@
  * Config : UPSCALE_ENABLED ("false" pour couper — défaut actif),
  *          UPSCALE_MIN_EDGE (défaut 1920 : en-dessous, on upscale ×2).
  */
+import { withFalSlot } from "@/lib/fal-gate";
 import sharp from "sharp";
 import { recordImageCall, classifyImageError } from "@/services/monitoring/image-metrics";
 
@@ -35,27 +36,30 @@ export async function upscaleIfNeeded(buffer: Buffer): Promise<Buffer> {
 
     const t0 = Date.now();
     try {
-      const res = await fetch(`https://fal.run/${FAL_UPSCALE_MODEL}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${process.env.FAL_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          image_url: `data:image/jpeg;base64,${buffer.toString("base64")}`,
-          scale: 2,
-        }),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+      // Slot fal occupé le temps de la requête seulement (pas du téléchargement
+      // du résultat, servi par le CDN et hors limite de concurrence).
+      const json = await withFalSlot(async () => {
+        const res = await fetch(`https://fal.run/${FAL_UPSCALE_MODEL}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Key ${process.env.FAL_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            image_url: `data:image/jpeg;base64,${buffer.toString("base64")}`,
+            scale: 2,
+          }),
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
+        if (!res.ok) {
+          throw new Error(`fal HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 160)}`);
+        }
+        // Schéma esrgan : { image: {url} } — on tolère aussi { images: [{url}] }
+        return (await res.json()) as {
+          image?: { url?: string };
+          images?: Array<{ url?: string }>;
+        };
       });
-      if (!res.ok) {
-        throw new Error(`fal HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 160)}`);
-      }
-
-      // Schéma esrgan : { image: {url} } — on tolère aussi { images: [{url}] }
-      const json = (await res.json()) as {
-        image?: { url?: string };
-        images?: Array<{ url?: string }>;
-      };
       const url = json.image?.url ?? json.images?.[0]?.url;
       if (!url) throw new Error("esrgan: aucune image retournée");
 

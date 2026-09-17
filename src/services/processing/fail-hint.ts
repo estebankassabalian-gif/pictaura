@@ -53,6 +53,7 @@ export function failHintFor(failReason: string | null | undefined): FailHint {
         retryable: true,
       };
     case "429":
+    case "concurrency":
     case "quota":
       return {
         hint: "Le service de retouche était momentanément saturé. Réessayez dans quelques minutes.",

@@ -3,6 +3,7 @@ import {
   classifyImageError,
   isPhotoSpecificRejection,
 } from "@/services/monitoring/image-metrics";
+import { withFalSlot } from "@/lib/fal-gate";
 import type { ImageEditArgs, ImageEditProvider, ImageEditResult } from "./types";
 
 /**
@@ -214,23 +215,27 @@ export class FalProvider implements ImageEditProvider {
 
   private async callOnce(model: string, imageBase64: string, prompt: string, timeoutMs: number, aspectRatio?: string, resolution?: string): Promise<Buffer> {
     const dataUri = `data:image/jpeg;base64,${imageBase64}`;
-    const res = await fetch(`https://fal.run/${model}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${process.env.FAL_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(buildRequestBody(model, prompt, dataUri, aspectRatio, resolution)),
-      signal: AbortSignal.timeout(timeoutMs),
+    // Slot fal occupé le temps de la requête seulement ; le timeout est créé
+    // dans le slot pour ne pas décompter l'attente d'un slot libre.
+    const json = await withFalSlot(async () => {
+      const res = await fetch(`https://fal.run/${model}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${process.env.FAL_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(buildRequestBody(model, prompt, dataUri, aspectRatio, resolution)),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        // "429" / "quota" dans le message → classifyImageError les reconnaît
+        throw new Error(`fal HTTP ${res.status}${res.status === 429 ? " (429 rate limit)" : ""}: ${body.slice(0, 200)}`);
+      }
+
+      return (await res.json()) as { images?: Array<{ url?: string }>; image?: { url?: string } };
     });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      // "429" / "quota" dans le message → classifyImageError les reconnaît
-      throw new Error(`fal HTTP ${res.status}${res.status === 429 ? " (429 rate limit)" : ""}: ${body.slice(0, 200)}`);
-    }
-
-    const json = (await res.json()) as { images?: Array<{ url?: string }>; image?: { url?: string } };
     const url = json.images?.[0]?.url ?? json.image?.url;
     if (!url) throw new Error("fal: aucune image retournée");
 

@@ -5,6 +5,7 @@ import { JobStatus, Role } from "@prisma/client";
 import { getFreshSignedUrl } from "@/services/storage";
 import { computeConcurrency } from "@/services/processing/pipeline";
 import { failHintFor } from "@/services/processing/fail-hint";
+import { falMaxConcurrency } from "@/lib/fal-gate";
 
 // Fallback when no measured duration is available yet (fresh DB) :
 // ordre de grandeur réel d'une génération Gemini 3.1 Flash Image.
@@ -49,7 +50,9 @@ async function computeEtaSeconds(job: {
         : DEFAULT_PHOTO_MS;
   }
 
-  const concurrency = computeConcurrency(job.photoCount);
+  // Le plafond global fal borne la parallélisation réelle, même si le lot a
+  // plus de workers (processingMs mesuré inclut déjà l'attente d'un slot).
+  const concurrency = Math.min(computeConcurrency(job.photoCount), falMaxConcurrency());
   return Math.ceil((remaining * avgMs) / concurrency / 1000);
 }
 

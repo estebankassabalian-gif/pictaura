@@ -6,6 +6,7 @@
  * Retouche : gemini-3.1-flash-image-preview "Nano Banana 2"  (GOOGLE_AI_KEY)
  */
 
+import { withFalSlot, type FalPriority } from "@/lib/fal-gate";
 import { GoogleGenAI } from "@google/genai";
 import * as Sentry from "@sentry/nextjs";
 import { env } from "@/config/env";
@@ -53,7 +54,13 @@ export interface PhotoSeoResult {
 async function visionTextCall(
   prompt: string,
   imageBase64: string,
-  opts: { maxOutputTokens: number; temperature?: number; timeoutMs?: number }
+  opts: {
+    maxOutputTokens: number;
+    temperature?: number;
+    timeoutMs?: number;
+    /** "low" = enrichissement en arrière-plan, cède la place aux retouches */
+    priority?: FalPriority;
+  }
 ): Promise<string> {
   const timeoutMs = opts.timeoutMs ?? TEXT_TIMEOUT_MS;
 
@@ -61,18 +68,20 @@ async function visionTextCall(
   if (process.env.FAL_KEY && process.env.SEO_PROVIDER !== "google") {
     try {
       const model = process.env.SEO_FAL_MODEL?.trim() || "google/gemini-flash-1.5";
-      const res = await fetch("https://fal.run/fal-ai/any-llm/vision", {
-        method: "POST",
-        headers: { Authorization: `Key ${process.env.FAL_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          prompt,
-          image_url: `data:image/jpeg;base64,${imageBase64}`,
-        }),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-      if (!res.ok) throw new Error(`fal any-llm HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 120)}`);
-      const json = (await res.json()) as { output?: string };
+      const json = await withFalSlot(async () => {
+        const res = await fetch("https://fal.run/fal-ai/any-llm/vision", {
+          method: "POST",
+          headers: { Authorization: `Key ${process.env.FAL_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model,
+            prompt,
+            image_url: `data:image/jpeg;base64,${imageBase64}`,
+          }),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        if (!res.ok) throw new Error(`fal any-llm HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 120)}`);
+        return (await res.json()) as { output?: string };
+      }, opts.priority ?? "high");
       if (typeof json.output === "string" && json.output.trim()) return json.output;
       throw new Error("fal any-llm: sortie vide");
     } catch (err) {
@@ -406,7 +415,7 @@ export async function generatePhotoSEO(
       const raw = await visionTextCall(
         prompt + "\n\nRéponds UNIQUEMENT en JSON valide, sans markdown.",
         imageBase64,
-        { maxOutputTokens: 2800, temperature: 0.4 }
+        { maxOutputTokens: 2800, temperature: 0.4, priority: "low" }
       );
       const text = raw.replace(/```json\n?|\n?```/g, "").trim();
       const parsed = safeJsonParse(text);
@@ -453,7 +462,7 @@ export async function scorePhoto(
         `Tu es un expert photographe pro. Évalue cette photo pour ${preset} selon : ${criteria}.
 Réponds UNIQUEMENT en JSON valide, sans markdown : {"score": <0-10 avec 1 décimale>, "report": "<2-3 phrases FR : points forts, faibles, gain IA>"}`,
         imageBase64,
-        { maxOutputTokens: 500, temperature: 0.3 }
+        { maxOutputTokens: 500, temperature: 0.3, priority: "low" }
       );
       const text = raw.replace(/```json\n?|\n?```/g, "").trim();
       const parsed = safeJsonParse(text);

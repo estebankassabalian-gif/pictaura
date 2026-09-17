@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getImageHealthSnapshot } from "@/services/monitoring/image-metrics";
 import { getPrimaryProvider, hasResilienceFallback } from "@/services/providers";
+import { getFalGateSnapshot } from "@/lib/fal-gate";
 
 /**
  * GET /api/health/image — santé du chemin IMAGE (celui qui compte).
@@ -23,6 +24,9 @@ export async function GET() {
         ...snap,
         primaryModel: getPrimaryProvider().modelLabel(),
         hasFallback: hasResilienceFallback(),
+        // Plafond global des requêtes fal : queued > 0 durablement = le plafond
+        // freine les clients (le relever si la limite du compte le permet).
+        falGate: getFalGateSnapshot(),
         timestamp: new Date().toISOString(),
       },
       { status: degraded ? 503 : 200, headers: { "Cache-Control": "no-store" } }

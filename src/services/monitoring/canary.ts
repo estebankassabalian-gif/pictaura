@@ -12,6 +12,7 @@ import path from "path";
 import { runProviderCanary } from "@/services/providers";
 import { alertWithCooldown } from "@/services/monitoring/image-metrics";
 import { getQueueWorkerStatus } from "@/services/processing/queue";
+import { prisma } from "@/lib/prisma";
 
 const num = (v: string | undefined, dflt: number): number => {
   const n = Number(v);
@@ -22,7 +23,11 @@ export type CanaryResult =
   | { ok: true; provider: string; latencyMs: number; slow: boolean }
   | { ok: false; error: string };
 
-export async function runCanaryProbe(): Promise<CanaryResult> {
+/**
+ * Contrôle du worker de traitement, indépendant de la sonde provider : il doit
+ * tourner à chaque tick, y compris quand la sonde image est sautée.
+ */
+export async function checkQueueWorkerAndAlert(): Promise<void> {
   // Le worker pg-boss peut mourir sans que le processus s'arrête (connexion
   // Postgres perdue, erreur non rattrapée dans boss.work). L'application
   // répond alors normalement, /api/health l'indique — mais personne ne
@@ -44,6 +49,10 @@ export async function runCanaryProbe(): Promise<CanaryResult> {
       `Les lots photo ne sont plus traités. Redéployer l'application relance le worker.`
     );
   }
+}
+
+export async function runCanaryProbe(): Promise<CanaryResult> {
+  await checkQueueWorkerAndAlert();
 
   const maxLatencyMs = num(process.env.CANARY_MAX_LATENCY_MS, 30_000);
   const cooldownMin = num(process.env.ALERT_COOLDOWN_MIN, 15);
@@ -104,6 +113,31 @@ declare global {
   var __pictauraCanaryTimer: NodeJS.Timeout | undefined;
 }
 
+/**
+ * true si la sonde image est inutile pour ce tick : un appel réel a réussi
+ * dans l'intervalle ET la dernière sonde n'était pas en échec. En cas de
+ * doute (lecture impossible), false : mieux vaut une sonde de trop.
+ */
+export async function isCanaryProbeRedundant(intervalMs: number): Promise<boolean> {
+  try {
+    const [lastCanary, recentRealSuccess] = await Promise.all([
+      prisma.imageCallEvent.findFirst({
+        where: { kind: "canary" },
+        orderBy: { createdAt: "desc" },
+        select: { success: true },
+      }),
+      prisma.imageCallEvent.findFirst({
+        where: { kind: "real", success: true, createdAt: { gte: new Date(Date.now() - intervalMs) } },
+        select: { id: true },
+      }),
+    ]);
+    return Boolean(recentRealSuccess) && lastCanary?.success !== false;
+  } catch (e) {
+    console.warn("Canary : lecture du trafic impossible, sonde lancée par défaut", e);
+    return false;
+  }
+}
+
 export function startCanaryScheduler(): void {
   if (process.env.CANARY_ENABLED !== "true") return;
   if (globalThis.__pictauraCanaryTimer) return; // déjà programmé (HMR/double register)
@@ -111,7 +145,23 @@ export function startCanaryScheduler(): void {
   const intervalMs = num(process.env.CANARY_INTERVAL_MIN, 45) * 60_000;
   const firstDelayMs = 3 * 60_000; // laisser l'app finir de démarrer
 
-  const tick = () => {
+  let firstTick = true;
+  const tick = async () => {
+    const isFirst = firstTick;
+    firstTick = false;
+    // Sonde adaptative : un appel réel réussi depuis le dernier tick prouve
+    // déjà que le provider répond — et, s'il tombait pendant le trafic, la
+    // règle de taux d'échec alerterait avant la sonde. La sonde (~8 ct) ne
+    // sert qu'à couvrir les périodes SANS trafic : c'est là qu'une panne
+    // passerait inaperçue jusqu'au premier client.
+    // Jamais sautée : au démarrage (vérification post-déploiement) ni après
+    // une sonde en échec (seule une sonde réussie efface l'état "dégradé"
+    // de /api/health/image).
+    if (!isFirst && (await isCanaryProbeRedundant(intervalMs))) {
+      await checkQueueWorkerAndAlert();
+      console.log("Canary sauté : trafic réel réussi depuis le dernier passage");
+      return;
+    }
     runCanaryProbe()
       .then((r) =>
         console.log(

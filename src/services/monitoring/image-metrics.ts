@@ -20,7 +20,14 @@
 import { prisma } from "@/lib/prisma";
 import { sendTelegramAlert } from "@/lib/telegram";
 
-export type ImageErrorCode = "429" | "quota" | "timeout" | "content_policy" | "no_output" | "other";
+export type ImageErrorCode =
+  | "429"
+  | "concurrency"
+  | "quota"
+  | "timeout"
+  | "content_policy"
+  | "no_output"
+  | "other";
 
 const num = (v: string | undefined, dflt: number): number => {
   const n = Number(v);
@@ -49,6 +56,10 @@ export function sanitizeErrorMessage(message: string, max = 300): string {
 /** Classe une erreur d'appel image pour les règles d'alerte. */
 export function classifyImageError(err: unknown): ImageErrorCode {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  // 429 de fal pour dépassement de la limite de requêtes SIMULTANÉES du
+  // compte : un embouteillage, pas un quota ni une facturation. Testé avant
+  // "429" pour ne pas envoyer l'opérateur vérifier une facturation saine.
+  if (msg.includes("concurrent_requests_limit") || msg.includes("concurrent requests")) return "concurrency";
   if (msg.includes("429")) return "429";
   if (msg.includes("quota") || msg.includes("exceeded") || msg.includes("billing")) return "quota";
   if (msg.includes("timeout") || msg.includes("abort")) return "timeout";
@@ -109,7 +120,7 @@ export function recordImageCall(e: {
  * concurrents ne peuvent pas envoyer la même alerte en double.
  */
 export async function alertWithCooldown(
-  key: "quota" | "error_rate" | "budget" | "canary" | "breaker",
+  key: "quota" | "concurrency" | "error_rate" | "budget" | "canary" | "breaker",
   cooldownMin: number,
   text: string
 ): Promise<void> {
@@ -144,6 +155,14 @@ async function maybeAlertOnError(code: ImageErrorCode, model: string): Promise<v
       "quota",
       cfg.cooldownMin,
       `🚨 PICTAURA — ${code.toUpperCase()} sur le modèle image (${model}).\nLes retouches clients échouent probablement EN CE MOMENT.\n→ Vérifier quota / facturation du provider.`
+    );
+  }
+
+  if (code === "concurrency") {
+    await alertWithCooldown(
+      "concurrency",
+      cfg.cooldownMin,
+      `🚦 PICTAURA — limite de requêtes simultanées fal atteinte (${model}).\nCe n'est PAS un problème de crédits : le plafond interne FAL_MAX_CONCURRENCY (${process.env.FAL_MAX_CONCURRENCY ?? "6 par défaut"}) dépasse la limite réelle du compte, ou fal l'a abaissée.\n→ Comparer avec fal.ai/dashboard/usage-billing/concurrency et baisser FAL_MAX_CONCURRENCY dans Coolify.`
     );
   }
 
