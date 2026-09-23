@@ -11,13 +11,17 @@
  * - Zéro nouvelle infra : Postgres existant + bot Telegram.
  *
  * Config (process.env, toutes optionnelles avec défauts sains) :
- *   ALERT_ERROR_RATE_THRESHOLD  % d'échecs sur les 10 derniers appels (défaut 30)
- *   ALERT_WINDOW_MIN            fenêtre de comptage d'échecs (défaut 5 min)
+ *   ALERT_ERROR_RATE_THRESHOLD  % de photos clients perdues déclenchant l'alerte (défaut 30)
+ *   ALERT_PHOTO_WINDOW_MIN      fenêtre de comptage des photos (défaut 15 min)
+ *   ALERT_MIN_LOST_PHOTOS       plancher avant toute alerte (défaut 2)
+ *   ALERT_BURST_LOST_PHOTOS     nb de photos perdues alertant quel que soit le % (défaut 5)
+ *   ALERT_WINDOW_MIN            fenêtre héritée (tentatives) — conservée pour compat
  *   ALERT_COOLDOWN_MIN          anti-spam par type d'alerte (défaut 15 min)
  *   BUDGET_DAILY_CENTS          seuil budget API/jour (défaut 500 = 5 €)
  *   IMAGE_COST_CENTS            coût estimé d'un appel image réussi (défaut 4)
  */
 import { prisma } from "@/lib/prisma";
+import { JobStatus } from "@prisma/client";
 import { sendTelegramAlert } from "@/lib/telegram";
 
 export type ImageErrorCode =
@@ -37,6 +41,11 @@ const num = (v: string | undefined, dflt: number): number => {
 const CFG = () => ({
   errorRatePct: num(process.env.ALERT_ERROR_RATE_THRESHOLD, 30),
   windowMin: num(process.env.ALERT_WINDOW_MIN, 5),
+  // Fenêtre et seuils de la règle B, qui compte des PHOTOS livrées/perdues :
+  // plus longue que la fenêtre de tentatives, une photo prenant ~15-30 s.
+  photoWindowMin: num(process.env.ALERT_PHOTO_WINDOW_MIN, 15),
+  minLostPhotos: num(process.env.ALERT_MIN_LOST_PHOTOS, 2),
+  burstLostPhotos: num(process.env.ALERT_BURST_LOST_PHOTOS, 5),
   cooldownMin: num(process.env.ALERT_COOLDOWN_MIN, 15),
   budgetDailyCents: num(process.env.BUDGET_DAILY_CENTS, 500),
   imageCostCents: num(process.env.IMAGE_COST_CENTS, 4),
@@ -166,30 +175,48 @@ async function maybeAlertOnError(code: ImageErrorCode, model: string): Promise<v
     );
   }
 
-  const recent = await prisma.imageCallEvent.findMany({
-    where: { kind: "real" },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-    select: { success: true },
-  });
-  const fails = recent.filter((r) => !r.success).length;
-  const windowFails = await prisma.imageCallEvent.count({
-    where: {
-      kind: "real",
-      success: false,
-      createdAt: { gte: new Date(Date.now() - cfg.windowMin * 60_000) },
-    },
-  });
+  await maybeAlertOnPhotoLoss(code);
+}
 
-  const rateBreached = recent.length >= 5 && (fails * 100) / recent.length > cfg.errorRatePct;
-  const burstBreached = windowFails > 5;
-  if (rateBreached || burstBreached) {
-    await alertWithCooldown(
-      "error_rate",
-      cfg.cooldownMin,
-      `⚠️ PICTAURA — taux d'échec image anormal : ${fails}/${recent.length} sur les derniers appels, ${windowFails} échec(s) sur ${cfg.windowMin} min (dernier code : ${code}).`
-    );
-  }
+/**
+ * Règle B — part des PHOTOS CLIENTS perdues.
+ *
+ * Elle comptait les TENTATIVES : une photo qui épuise ses essais avant d'être
+ * rattrapée (instruction seule, puis modèle de secours) écrit plusieurs lignes
+ * d'échec, et une seule photo difficile suffisait à franchir les 30 %. Résultat
+ * observé les 2026-09-16, 09-17 et 09-23 : alertes « taux d'échec anormal »
+ * alors que TOUTES les photos avaient été livrées et aucun crédit perdu.
+ *
+ * Une alerte doit signaler ce que le client subit. On compte donc les photos
+ * réellement perdues (ProcessedPhoto.FAILED = crédit remboursé, rien livré)
+ * face aux photos livrées. Les pannes de provider restent couvertes en amont,
+ * immédiatement, par les règles quota / 429 / concurrence et par le canary.
+ */
+async function maybeAlertOnPhotoLoss(code: ImageErrorCode): Promise<void> {
+  const cfg = CFG();
+  const since = new Date(Date.now() - cfg.photoWindowMin * 60_000);
+  const [lost, delivered] = await Promise.all([
+    prisma.processedPhoto.count({ where: { status: JobStatus.FAILED, updatedAt: { gte: since } } }),
+    prisma.processedPhoto.count({ where: { status: JobStatus.COMPLETED, updatedAt: { gte: since } } }),
+  ]);
+
+  // Une photo perdue isolée arrive (photo illisible, consigne refusée) : ce
+  // n'est pas un incident, et réveiller l'opérateur pour ça use l'alerte.
+  if (lost < cfg.minLostPhotos) return;
+
+  const total = lost + delivered;
+  const ratioBreached = total > 0 && (lost * 100) / total > cfg.errorRatePct;
+  if (!ratioBreached && lost < cfg.burstLostPhotos) return;
+
+  await alertWithCooldown(
+    "error_rate",
+    cfg.cooldownMin,
+    `⚠️ PICTAURA — ${lost} photo(s) CLIENT perdue(s) sur ${total} traitée(s) en ${cfg.photoWindowMin} min (dernier code : ${code}).
+` +
+      `Crédits remboursés automatiquement, mais ces clients repartent sans leurs photos.
+` +
+      `→ Détail des causes : https://pictaura.app/api/health/image`
+  );
 }
 
 /** Règle C : budget API image journalier. Alerte au plus 1×/24 h. */
@@ -227,12 +254,16 @@ export async function getImageHealthSnapshot(): Promise<{
    *  UNE photo (3 tentatives = 3 lignes) d'une panne diffuse sur tout le
    *  trafic. Aucune donnee client. */
   recentFailures: Array<{ at: string; code: string; model: string; latencyMs: number; message: string | null }>;
+  /** Photos clients livrées / perdues sur 1 h — la seule mesure qui dit ce que
+   *  le client subit. Les tentatives rattrapées par un filet n'y figurent pas. */
+  photos1h: { delivered: number; lost: number };
 }> {
   const hourAgo = new Date(Date.now() - 3_600_000);
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const [lastCanary, total1h, fails1h, budgetAgg, byCode, lastFails] = await Promise.all([
+  const [lastCanary, total1h, fails1h, budgetAgg, delivered1h, lost1h, byCode, lastFails] =
+    await Promise.all([
     prisma.imageCallEvent.findFirst({
       where: { kind: "canary" },
       orderBy: { createdAt: "desc" },
@@ -245,6 +276,12 @@ export async function getImageHealthSnapshot(): Promise<{
     prisma.imageCallEvent.aggregate({
       _sum: { estCostCents: true },
       where: { createdAt: { gte: startOfDay } },
+    }),
+    prisma.processedPhoto.count({
+      where: { status: JobStatus.COMPLETED, updatedAt: { gte: hourAgo } },
+    }),
+    prisma.processedPhoto.count({
+      where: { status: JobStatus.FAILED, updatedAt: { gte: hourAgo } },
     }),
     // Les deux requetes de diagnostic sont increvables : /api/health/image est
     // surveille par l'uptime monitor externe ET sert a diagnostiquer les
@@ -286,6 +323,7 @@ export async function getImageHealthSnapshot(): Promise<{
     calls1h: total1h,
     errorRate1h: total1h > 0 ? Math.round((fails1h / total1h) * 100) / 100 : null,
     budgetTodayCents: budgetAgg._sum.estCostCents ?? 0,
+    photos1h: { delivered: delivered1h, lost: lost1h },
     errorsByCode1h: Object.fromEntries(
       byCode.map((r) => [r.errorCode ?? "unknown", r._count._all])
     ),
